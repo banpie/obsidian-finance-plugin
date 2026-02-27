@@ -38,6 +38,15 @@ export interface BeancountPluginSettings {
     structuredFolderName: string;
     /** Computed absolute path to the structured folder (set automatically). */
     structuredFolderPath: string;
+    // Price Fetching Settings
+    /** Whether to enable automatic price fetching on a schedule. */
+    autoPriceFetch: boolean;
+    /** Interval in hours for automatic price fetching. */
+    priceFetchIntervalHours: number;
+    /** Timestamp of last automatic price fetch. */
+    lastAutoPriceFetch: number;
+    /** Bean-price command path (detected automatically). */
+    beanPriceCommand: string;
 }
 
 /**
@@ -60,7 +69,12 @@ export const DEFAULT_SETTINGS: BeancountPluginSettings = {
     maxBackupFiles: 10,
     // Structured Layout Settings
     structuredFolderName: 'Finances',
-    structuredFolderPath: ''
+    structuredFolderPath: '',
+    // Price Fetching Settings
+    autoPriceFetch: false,
+    priceFetchIntervalHours: 24,
+    lastAutoPriceFetch: 0,
+    beanPriceCommand: ''
 }
 
 /**
@@ -79,28 +93,28 @@ export class BeancountSettingTab extends PluginSettingTab {
     }
 
     display(): void {
-        const {containerEl} = this;
+        const { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl('h2', {text: 'Beancount Settings'});
+        containerEl.createEl('h2', { text: 'Beancount Settings' });
 
         // Create tab navigation
-        const tabsContainer = containerEl.createDiv({cls: 'beancount-settings-tabs'});
-        const tabsNav = tabsContainer.createDiv({cls: 'beancount-tabs-nav'});
-        const tabsContent = tabsContainer.createDiv({cls: 'beancount-tabs-content'});
+        const tabsContainer = containerEl.createDiv({ cls: 'beancount-settings-tabs' });
+        const tabsNav = tabsContainer.createDiv({ cls: 'beancount-tabs-nav' });
+        const tabsContent = tabsContainer.createDiv({ cls: 'beancount-tabs-content' });
 
         // Define tabs
         const tabs = [
-            {id: 'general', label: '⚙️ General'},
-            {id: 'connection', label: '🔌 Connection'},
-            {id: 'files', label: '📁 File Organization'},
-            {id: 'bql', label: '📊 BQL'},
-            {id: 'performance', label: '⚡ Performance'},
-            {id: 'backup', label: '💾 Backup'}
+            { id: 'general', label: '⚙️ General' },
+            { id: 'connection', label: '🔌 Connection' },
+            { id: 'files', label: '📁 File Organization' },
+            { id: 'bql', label: '📊 BQL' },
+            { id: 'performance', label: '⚡ Performance' },
+            { id: 'backup', label: '💾 Backup' }
         ];
 
         // Create tab buttons
         tabs.forEach(tab => {
-            const tabBtn = tabsNav.createDiv({cls: 'beancount-tab-button'});
+            const tabBtn = tabsNav.createDiv({ cls: 'beancount-tab-button' });
             tabBtn.textContent = tab.label;
             if (this.activeTab === tab.id) {
                 tabBtn.addClass('active');
@@ -180,6 +194,71 @@ export class BeancountSettingTab extends PluginSettingTab {
                     this.plugin.settings.debugMode = value;
                     await this.plugin.saveSettings();
                 }));
+
+        // Price Fetching Settings Section
+        containerEl.createEl('h3', { text: 'Automatic Price Fetching' });
+
+        new Setting(containerEl)
+            .setName('Enable automatic price fetching')
+            .setDesc('Automatically fetch commodity prices at scheduled intervals using bean-price.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.autoPriceFetch)
+                .onChange(async (value) => {
+                    this.plugin.settings.autoPriceFetch = value;
+                    await this.plugin.saveSettings();
+                    // If enabled at runtime, start the interval immediately — no restart needed
+                    if (value) {
+                        this.plugin.setupAutomaticPriceFetching();
+                    }
+                    // Trigger re-render to show/hide interval setting
+                    this.display();
+                }));
+
+        if (this.plugin.settings.autoPriceFetch) {
+            new Setting(containerEl)
+                .setName('Fetch interval (hours)')
+                .setDesc('How often to automatically fetch prices for all commodities with configured price sources.')
+                .addText(text => text
+                    .setPlaceholder('24')
+                    .setValue(String(this.plugin.settings.priceFetchIntervalHours))
+                    .onChange(async (value) => {
+                        const hours = parseInt(value);
+                        if (!isNaN(hours) && hours > 0) {
+                            this.plugin.settings.priceFetchIntervalHours = hours;
+                            await this.plugin.saveSettings();
+                        }
+                    }));
+
+            // Display last fetch time if available
+            if (this.plugin.settings.lastAutoPriceFetch > 0) {
+                const lastFetchDate = new Date(this.plugin.settings.lastAutoPriceFetch);
+                const timeSince = this.formatTimeSince(lastFetchDate);
+
+                const infoEl = containerEl.createDiv({ cls: 'setting-item-description' });
+                infoEl.style.marginTop = '8px';
+                infoEl.style.fontSize = '0.9em';
+                infoEl.style.opacity = '0.7';
+                infoEl.textContent = `Last automatic fetch: ${timeSince} (${lastFetchDate.toLocaleString()})`;
+            }
+        }
+    }
+
+    /**
+     * Formats a time duration as a human-readable string.
+     */
+    private formatTimeSince(date: Date): string {
+        const now = new Date().getTime();
+        const past = date.getTime();
+        const diffMs = now - past;
+
+        const minutes = Math.floor(diffMs / 60000);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+
+        if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+        if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+        if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+        return 'just now';
     }
 
     private renderConnectionTab(containerEl: HTMLElement): void {
@@ -216,7 +295,7 @@ export class BeancountSettingTab extends PluginSettingTab {
             .setDesc('Path to markdown file containing BQL shortcut definitions. Leave empty to use defaults.');
 
         const filePickerContainer = templateSetting.controlEl.createDiv({ cls: 'bql-template-file-picker' });
-        
+
         const textInput = filePickerContainer.createEl('input', {
             type: 'text',
             placeholder: 'e.g., BQL_Shortcuts.md',
@@ -224,15 +303,15 @@ export class BeancountSettingTab extends PluginSettingTab {
         });
         textInput.style.width = '300px';
         textInput.style.marginRight = '8px';
-        
+
         this.setupFileAutocomplete(textInput);
-        
+
         textInput.addEventListener('input', async (event) => {
             const value = (event.target as HTMLInputElement).value;
             this.plugin.settings.bqlShorthandsTemplatePath = value;
             await this.plugin.saveSettings();
         });
-        
+
         const browseButton = filePickerContainer.createEl('button', {
             text: '📁 Browse',
             cls: 'mod-cta'
@@ -241,7 +320,7 @@ export class BeancountSettingTab extends PluginSettingTab {
         browseButton.addEventListener('click', () => {
             this.showFileSuggestModal(textInput);
         });
-        
+
         const createButton = filePickerContainer.createEl('button', {
             text: '✨ Create Template',
         });
@@ -251,7 +330,7 @@ export class BeancountSettingTab extends PluginSettingTab {
                 new Notice('Please specify a template file path first');
                 return;
             }
-            
+
             const { ShorthandParser } = await import('./utils/shorthandParser');
             try {
                 ShorthandParser.createDefaultTemplateFile(templatePath);
@@ -260,10 +339,10 @@ export class BeancountSettingTab extends PluginSettingTab {
                 new Notice(`Error creating template file: ${error.message}`);
             }
         });
-        
-        containerEl.createEl('p', { 
+
+        containerEl.createEl('p', {
             text: 'Use bql-sh:SHORTCUT in your notes to insert live financial data.',
-            cls: 'setting-item-description' 
+            cls: 'setting-item-description'
         });
     }
 
@@ -329,8 +408,8 @@ export class BeancountSettingTab extends PluginSettingTab {
 
     private renderFilesTab(containerEl: HTMLElement): void {
         containerEl.createEl('h3', { text: 'File Organization' });
-        
-        containerEl.createEl('p', { 
+
+        containerEl.createEl('p', {
             text: 'Your finances are organized using a structured folder layout with separate files for accounts, transactions, prices, and more.',
             cls: 'setting-item-description'
         });
@@ -353,12 +432,12 @@ export class BeancountSettingTab extends PluginSettingTab {
         infoDiv.style.marginTop = '10px';
         infoDiv.style.backgroundColor = 'var(--background-secondary)';
         infoDiv.style.borderRadius = '5px';
-        
+
         infoDiv.createEl('strong', { text: 'Structured Layout File Organization:' });
         const fileList = infoDiv.createEl('ul');
         fileList.style.marginTop = '8px';
         fileList.style.marginBottom = '0';
-        
+
         const files = [
             '📄 ledger.beancount - Main file with include statements',
             '📄 accounts.beancount - Account open/close directives',
@@ -370,7 +449,7 @@ export class BeancountSettingTab extends PluginSettingTab {
             '📄 events.beancount - Event directives',
             '📁 transactions/ - Folder with year-based transaction files (e.g., 2024.beancount, 2025.beancount)'
         ];
-        
+
         files.forEach(file => {
             const li = fileList.createEl('li');
             li.style.marginBottom = '4px';
@@ -384,12 +463,12 @@ export class BeancountSettingTab extends PluginSettingTab {
             pathDiv.style.padding = '10px';
             pathDiv.style.backgroundColor = 'var(--background-modifier-border)';
             pathDiv.style.borderRadius = '5px';
-            
-            pathDiv.createEl('div', { 
+
+            pathDiv.createEl('div', {
                 text: 'Main ledger file path:',
                 cls: 'setting-item-name'
             });
-            pathDiv.createEl('div', { 
+            pathDiv.createEl('div', {
                 text: this.plugin.settings.beancountFilePath,
                 cls: 'setting-item-description'
             }).style.fontFamily = 'monospace';
@@ -426,7 +505,7 @@ export class BeancountSettingTab extends PluginSettingTab {
     }
 
     private createValidationElement(container: HTMLElement): HTMLElement {
-        const validationEl = container.createEl('div', { 
+        const validationEl = container.createEl('div', {
             cls: 'beancount-validation-message',
             attr: { style: 'margin-top: 5px; font-size: 0.9em; opacity: 0.8;' }
         });
@@ -461,12 +540,12 @@ export class BeancountSettingTab extends PluginSettingTab {
 
     private setupFileAutocomplete(input: HTMLInputElement) {
         let suggestionContainer: HTMLElement | null = null;
-        
+
         const showSuggestions = (files: string[]) => {
             this.hideSuggestions();
-            
+
             if (files.length === 0) return;
-            
+
             suggestionContainer = document.createElement('div');
             suggestionContainer.className = 'bql-file-suggestions';
             suggestionContainer.style.cssText = `
@@ -482,7 +561,7 @@ export class BeancountSettingTab extends PluginSettingTab {
                 overflow-y: auto;
                 z-index: 1000;
             `;
-            
+
             files.forEach((file, index) => {
                 const item = document.createElement('div');
                 item.className = 'bql-file-suggestion-item';
@@ -492,56 +571,56 @@ export class BeancountSettingTab extends PluginSettingTab {
                     cursor: pointer;
                     border-bottom: 1px solid var(--background-modifier-border-hover);
                 `;
-                
+
                 item.addEventListener('mouseenter', () => {
                     item.style.background = 'var(--background-modifier-hover)';
                 });
-                
+
                 item.addEventListener('mouseleave', () => {
                     item.style.background = '';
                 });
-                
+
                 item.addEventListener('click', () => {
                     input.value = file;
                     input.dispatchEvent(new Event('input'));
                     this.hideSuggestions();
                 });
-                
+
                 if (index === files.length - 1) {
                     item.style.borderBottom = 'none';
                 }
-                
+
                 suggestionContainer!.appendChild(item);
             });
-            
+
             const inputRect = input.getBoundingClientRect();
             const parent = input.parentElement!;
             parent.style.position = 'relative';
             parent.appendChild(suggestionContainer);
         };
-        
+
         this.hideSuggestions = () => {
             if (suggestionContainer) {
                 suggestionContainer.remove();
                 suggestionContainer = null;
             }
         };
-        
+
         input.addEventListener('input', () => {
             const value = input.value.toLowerCase();
             if (value.length < 1) {
                 this.hideSuggestions();
                 return;
             }
-            
+
             const markdownFiles = this.app.vault.getMarkdownFiles()
                 .map(file => file.path)
                 .filter(path => path.toLowerCase().includes(value))
                 .slice(0, 10);
-            
+
             showSuggestions(markdownFiles);
         });
-        
+
         document.addEventListener('click', (event) => {
             if (!input.contains(event.target as Node) && !suggestionContainer?.contains(event.target as Node)) {
                 this.hideSuggestions();
@@ -549,7 +628,7 @@ export class BeancountSettingTab extends PluginSettingTab {
         });
     }
 
-    private hideSuggestions: () => void = () => {};
+    private hideSuggestions: () => void = () => { };
 
     private showFileSuggestModal(input: HTMLInputElement) {
         const modal = document.createElement('div');
@@ -566,7 +645,7 @@ export class BeancountSettingTab extends PluginSettingTab {
             justify-center: center;
             z-index: 9999;
         `;
-        
+
         const modalContent = modal.createEl('div', {
             cls: 'bql-file-modal-content'
         });
@@ -580,9 +659,9 @@ export class BeancountSettingTab extends PluginSettingTab {
             overflow-y: auto;
             border: 1px solid var(--background-modifier-border);
         `;
-        
+
         modalContent.createEl('h3', { text: 'Select Template File' });
-        
+
         const searchInput = modalContent.createEl('input', {
             type: 'text',
             placeholder: 'Search markdown files...'
@@ -596,7 +675,7 @@ export class BeancountSettingTab extends PluginSettingTab {
             background: var(--background-secondary);
             color: var(--text-normal);
         `;
-        
+
         const fileList = modalContent.createEl('div', {
             cls: 'bql-file-list'
         });
@@ -606,14 +685,14 @@ export class BeancountSettingTab extends PluginSettingTab {
             border: 1px solid var(--background-modifier-border);
             border-radius: 4px;
         `;
-        
+
         const updateFileList = (filter = '') => {
             fileList.empty();
-            
+
             const markdownFiles = this.app.vault.getMarkdownFiles()
                 .filter(file => filter === '' || file.path.toLowerCase().includes(filter.toLowerCase()))
                 .slice(0, 50);
-            
+
             if (markdownFiles.length === 0) {
                 const noFiles = fileList.createEl('div', {
                     text: 'No markdown files found',
@@ -627,7 +706,7 @@ export class BeancountSettingTab extends PluginSettingTab {
                 `;
                 return;
             }
-            
+
             markdownFiles.forEach(file => {
                 const item = fileList.createEl('div', {
                     text: file.path,
@@ -638,15 +717,15 @@ export class BeancountSettingTab extends PluginSettingTab {
                     cursor: pointer;
                     border-bottom: 1px solid var(--background-modifier-border-hover);
                 `;
-                
+
                 item.addEventListener('mouseenter', () => {
                     item.style.background = 'var(--background-modifier-hover)';
                 });
-                
+
                 item.addEventListener('mouseleave', () => {
                     item.style.background = '';
                 });
-                
+
                 item.addEventListener('click', () => {
                     input.value = file.path;
                     input.dispatchEvent(new Event('input'));
@@ -654,13 +733,13 @@ export class BeancountSettingTab extends PluginSettingTab {
                 });
             });
         };
-        
+
         updateFileList();
-        
+
         searchInput.addEventListener('input', () => {
             updateFileList(searchInput.value);
         });
-        
+
         const buttonContainer = modalContent.createEl('div');
         buttonContainer.style.cssText = `
             display: flex;
@@ -668,7 +747,7 @@ export class BeancountSettingTab extends PluginSettingTab {
             margin-top: 16px;
             gap: 8px;
         `;
-        
+
         const closeButton = buttonContainer.createEl('button', {
             text: 'Cancel'
         });
@@ -683,13 +762,13 @@ export class BeancountSettingTab extends PluginSettingTab {
         closeButton.addEventListener('click', () => {
             modal.remove();
         });
-        
+
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 modal.remove();
             }
         });
-        
+
         document.body.appendChild(modal);
     }
 

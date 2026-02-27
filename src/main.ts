@@ -4,13 +4,14 @@ import { Plugin } from 'obsidian';
 import { BeancountSettingTab, type BeancountPluginSettings, DEFAULT_SETTINGS } from './settings';
 import { BeancountView, BEANCOUNT_VIEW_TYPE } from './ui/views/sidebar/sidebar-view';
 import { UnifiedTransactionModal } from './ui/modals/UnifiedTransactionModal';
-import { runQuery, parseSingleValue, convertWslPathToWindows } from './utils/index';
+import { runQuery } from './utils/index';
 import { UnifiedDashboardView, UNIFIED_DASHBOARD_VIEW_TYPE } from './ui/views/dashboard/unified-dashboard-view';
 import { BQLCodeBlockProcessor } from './ui/markdown/BQLCodeBlockProcessor';
 import { InlineBQLProcessor } from './ui/markdown/InlineBQLProcessor';
 import { OnboardingModal } from './ui/modals/OnboardingModal';
 
 import { JournalService } from './services/journal.service';
+import { PriceService } from './services/price.service';
 import { createJournalStore } from './stores/journal.store';
 import { Logger } from './utils/logger';
 
@@ -27,6 +28,7 @@ export default class BeancountPlugin extends Plugin {
 
 	// Services
 	public journalService: JournalService;
+	public priceService: PriceService;
 	public journalStore: ReturnType<typeof createJournalStore>;
 
 	/**
@@ -36,25 +38,26 @@ export default class BeancountPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-        // Initialize Logger
-        Logger.setDebugMode(this.settings.debugMode);
-        Logger.log('Plugin loading...');
+		// Initialize Logger
+		Logger.setDebugMode(this.settings.debugMode);
+		Logger.log('Plugin loading...');
 
-        // Initialize Core Services
-        this.journalService = new JournalService(this);
-        this.journalStore = createJournalStore(this.journalService);
+		// Initialize Core Services
+		this.journalService = new JournalService(this);
+		this.priceService = new PriceService(this);
+		this.journalStore = createJournalStore(this.journalService);
 
-        // Check for onboarding
-        if (!this.settings.beancountFilePath) {
-            Logger.log('No Beancount file configured. Triggering onboarding.');
-            this.app.workspace.onLayoutReady(() => {
-                new OnboardingModal(this.app, this).open();
-            });
-        }
+		// Check for onboarding
+		if (!this.settings.beancountFilePath) {
+			Logger.log('No Beancount file configured. Triggering onboarding.');
+			this.app.workspace.onLayoutReady(() => {
+				new OnboardingModal(this.app, this).open();
+			});
+		}
 
 		// Initialize and register BQL code block processor
 		this.registerBQLProcessor();
-		
+
 		// Initialize and register inline BQL processor
 		this.registerInlineBQLProcessor();
 
@@ -69,7 +72,9 @@ export default class BeancountPlugin extends Plugin {
 		);
 
 		// Register file extensions so Obsidian shows .beancount and .bean files in file explorer
+		// Note: Uses 'markdown' view type, so Beancount syntax will have some Markdown rendering
 		this.registerExtensions(['beancount', 'bean'], 'markdown');
+
 		// Add Ribbon Icons
 		this.addRibbonIcon('plus-circle', 'Add Transaction', () => {
 			new UnifiedTransactionModal(this.app, this, null, this.getDashboardRefreshCallback()).open();
@@ -101,8 +106,72 @@ export default class BeancountPlugin extends Plugin {
 			callback: () => { new OnboardingModal(this.app, this).open(); }
 		});
 
+		// Add Fetch Commodity Prices command
+		this.addCommand({
+			id: 'fetch-commodity-prices',
+			name: 'Fetch Commodity Prices',
+			callback: async () => {
+				// Find the unified dashboard view and call fetchPrices on commodities controller
+				const leaves = this.app.workspace.getLeavesOfType(UNIFIED_DASHBOARD_VIEW_TYPE);
+				for (const leaf of leaves) {
+					if (leaf.view instanceof UnifiedDashboardView) {
+						await (leaf.view as any).commoditiesController?.fetchPrices();
+						return;
+					}
+				}
+				// If dashboard not open, just run the service directly
+				Logger.log('[Main] Fetching prices via command (dashboard not open)');
+				const result = await this.priceService.fetchAndSavePrices();
+				if (result.savedCount > 0) {
+					// @ts-ignore - Notice exists in Obsidian
+					new this.app.Notice(`✓ Fetched and saved ${result.savedCount} price(s)`);
+				} else {
+					// @ts-ignore
+					new this.app.Notice('No prices fetched. Check commodity price sources.');
+				}
+			}
+		});
+
+		// Setup automatic price fetching if enabled
+		if (this.settings.autoPriceFetch) {
+			this.setupAutomaticPriceFetching();
+		}
+
 
 		this.addSettingTab(new BeancountSettingTab(this.app, this));
+	}
+
+	/**
+	 * Sets up automatic price fetching on an interval.
+	 */
+	public setupAutomaticPriceFetching(): void {
+		const intervalMs = this.settings.priceFetchIntervalHours * 60 * 60 * 1000;
+		Logger.log(`[Main] Setting up automatic price fetching every ${this.settings.priceFetchIntervalHours} hours`);
+
+		// Register interval with Obsidian's lifecycle management
+		this.registerInterval(
+			window.setInterval(async () => {
+				Logger.log('[Main] Running automatic price fetch');
+				try {
+					const result = await this.priceService.fetchAndSavePrices();
+
+					// Update last fetch timestamp
+					this.settings.lastAutoPriceFetch = Date.now();
+					await this.saveSettings();
+
+					// Only show notice on errors (don't spam on success)
+					if (result.failed.length > 0) {
+						const failedSymbols = result.failed.map(f => f.commodity).join(', ');
+						// @ts-ignore
+						new this.app.Notice(`⚠ Automatic price fetch: Failed for ${failedSymbols}`);
+					}
+
+					Logger.log(`[Main] Automatic price fetch complete: ${result.savedCount} saved, ${result.failed.length} failed`);
+				} catch (error) {
+					Logger.error('[Main] Automatic price fetch error:', error);
+				}
+			}, intervalMs)
+		);
 	}
 
 	/**
@@ -113,7 +182,6 @@ export default class BeancountPlugin extends Plugin {
 	 */
 	async activateView(viewType: string, location: 'tab' | 'right' | 'left' = 'tab') {
 		// Detach existing leaves of this type first to avoid duplicates
-		this.app.workspace.detachLeavesOfType(viewType);
 		if (location === 'tab') {
 			this.app.workspace.detachLeavesOfType(viewType);
 		}
@@ -131,7 +199,7 @@ export default class BeancountPlugin extends Plugin {
 				leaf = this.app.workspace.getLeaf('split', 'horizontal');
 			}
 		}
-		 else { // Default to 'tab'
+		else { // Default to 'tab'
 			leaf = this.app.workspace.getLeaf('tab');
 		}
 
@@ -146,33 +214,14 @@ export default class BeancountPlugin extends Plugin {
 			Logger.error(`Could not get leaf for location: ${location}`);
 		}
 	}
-	
+
 	/**
-	 * Public wrapper for running BQL queries (used by views).
+	 * Public wrapper for running BQL queries (used by views and controllers).
 	 * @param {string} query - The BQL query.
 	 * @returns {Promise<string>} The CSV output.
 	 */
 	public runQuery = (query: string): Promise<string> => {
-		// Call the imported utility function, passing 'this' (the plugin instance)
 		return runQuery(this, query);
-	}
-
-	/**
-	 * Public wrapper for parsing single values from CSV (used by views).
-	 * @param {string} csv - The CSV string.
-	 * @returns {string} The parsed value.
-	 */
-	public parseSingleValue = (csv: string): string => {
-		return parseSingleValue(csv);
-	}
-
-	/**
-	 * Public wrapper for converting WSL paths (used by views).
-	 * @param {string} wslPath - The WSL path.
-	 * @returns {string} The Windows path.
-	 */
-	public convertWslPathToWindows = (wslPath: string): string => {
-		return convertWslPathToWindows(wslPath);
 	}
 
 	// Helper method to get dashboard refresh callback
@@ -193,27 +242,28 @@ export default class BeancountPlugin extends Plugin {
 	 * Called when the plugin is unloaded.
 	 */
 	onunload() {
-        Logger.log('Plugin unloading...');
-    }
-	
+		Logger.log('Plugin unloading...');
+		// Cleanup is handled automatically by registerInterval
+	}
+
 	// Register BQL processor
 	private registerBQLProcessor() {
 		// Create processor instance
 		this.bqlProcessor = new BQLCodeBlockProcessor(this);
-		
+
 		// Register the processor
 		this.registerMarkdownCodeBlockProcessor('bql', this.bqlProcessor.getProcessor());
 	}
-	
+
 	// Register inline BQL processor
 	private registerInlineBQLProcessor() {
 		// Create processor instance
 		this.inlineBqlProcessor = new InlineBQLProcessor(this);
-		
+
 		// Register the processor for all markdown content with high priority
 		this.registerMarkdownPostProcessor(this.inlineBqlProcessor.getProcessor(), -100);
 	}
-	
+
 	async loadSettings() {
 		const raw = await this.loadData();
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, raw);
@@ -228,15 +278,15 @@ export default class BeancountPlugin extends Plugin {
 			await this.saveSettings();
 		}
 	}
-	
-	async saveSettings() { 
-		await this.saveData(this.settings); 
+
+	async saveSettings() {
+		await this.saveData(this.settings);
 		// Refresh all BQL code blocks with new settings
 		if (this.bqlProcessor) {
 			this.refreshBQLBlocks();
 		}
 	}
-	
+
 	// Force refresh all BQL code blocks
 	private refreshBQLBlocks() {
 		// Use setTimeout to ensure settings are fully saved before refreshing

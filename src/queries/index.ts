@@ -19,25 +19,6 @@ export interface TransactionFilters {
 
 // --- Query Functions ---
 
-/**
- * Gets all unique account names
- * @returns {string} The BQL query string.
- */
-export function getAllAccountsQuery(): string {
-	return `SELECT account`; // Post-processing needed for unique list
-}
-
-/**
- * Gets all unique tags
- * @returns {string} The BQL query string.
- */
-export function getAllTagsQuery(): string {
-	return `SELECT tags`; // Post-processing needed for unique list
-}
-
-// src/queries/index.ts
-
-// ... (other query functions)
 
 /**
  * Gets converted cost of all Asset accounts
@@ -45,7 +26,7 @@ export function getAllTagsQuery(): string {
  * @returns {string} The BQL query string.
  */
 export function getTotalAssetsCostQuery(currency: string): string { // <-- NEW
-  return `SELECT convert(sum(position), '${currency}') WHERE account ~ '^Assets'`;
+	return `SELECT convert(sum(position), '${currency}') WHERE account ~ '^Assets'`;
 }
 
 /**
@@ -54,7 +35,7 @@ export function getTotalAssetsCostQuery(currency: string): string { // <-- NEW
  * @returns {string} The BQL query string.
  */
 export function getTotalLiabilitiesCostQuery(currency: string): string { // <-- NEW
-   return `SELECT convert(sum(position), '${currency}') WHERE account ~ '^Liabilities'`;
+	return `SELECT convert(sum(position), '${currency}') WHERE account ~ '^Liabilities'`;
 }
 
 /**
@@ -132,14 +113,18 @@ export function getTransactionsQuery(filters: TransactionFilters, limit: number 
 }
 
 /**
- * Query for file validation using bean-query (replaces bean-check)
- * Uses 'SELECT TRUE LIMIT 0' which validates file syntax without returning data
+ * Query for file validation using bean-query with ERRORS query
+ * Returns validation errors from the Beancount file
+ * Note: ERRORS query returns formatted text, not CSV, so don't use -f csv flag
  * @param {string} filePath - Path to beancount file.
  * @param {string} commandBase - Base command (bean-query).
  * @returns {string} The validation command string.
  */
 export function getBeanCheckCommand(filePath: string, commandBase: string): string {
-	return `${commandBase} "${filePath}" "SELECT TRUE LIMIT 0"`;
+	// Use bean-query with ERRORS query to get validation errors
+	// This keeps the plugin dependent only on bean-query
+	// Note: Don't use -f csv flag as ERRORS returns formatted text
+	return `${commandBase} "${filePath}" "ERRORS"`;
 }
 
 /**
@@ -203,4 +188,34 @@ export function getCommoditiesPriceDataQuery(currency: string): string {
  */
 export function getCommodityDetailsQuery(symbol: string): string {
 	return `SELECT name AS name_, last(meta) AS meta_, currency_meta(last(name),'logo') AS logo_, currency_meta(last(name), 'price') AS pricemetadata_, meta('filename') AS filename_, meta('lineno') AS lineno_ FROM #commodities WHERE name='${symbol}'`;
+}
+
+// --- Price Queries ---
+
+/**
+ * Gets price history for a specific commodity.
+ * @param {string} commodity - The commodity symbol.
+ * @returns {string} The BQL query string.
+ */
+export function getPriceHistoryQuery(commodity: string): string {
+	return `SELECT date, position, meta('filename') FROM #prices WHERE currency='${commodity}' ORDER BY date DESC`;
+}
+
+/**
+ * Gets commodities with stale prices (older than specified days).
+ * @param {number} daysOld - Number of days to consider price stale.
+ * @param {string} currency - The operating currency.
+ * @returns {string} The BQL query string.
+ */
+export function getStaleCommoditiesQuery(daysOld: number, currency: string): string {
+	return `SELECT currency AS commodity_, last(date) AS lastdate_, round(getprice(last(currency), '${currency}'),2) AS price_ FROM #prices GROUP BY currency HAVING today() - last(date) > ${daysOld}`;
+}
+
+/**
+ * Gets all prices ordered by date (most recent first).
+ * @param {number} [limit=100] - Maximum number of prices to return.
+ * @returns {string} The BQL query string.
+ */
+export function getAllPricesQuery(limit: number = 100): string {
+	return `SELECT date, currency, position FROM #prices ORDER BY date DESC LIMIT ${limit}`;
 }
