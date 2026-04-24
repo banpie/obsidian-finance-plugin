@@ -129,6 +129,12 @@
 		);
 		modal.open();
 	}
+
+	function handleRefresh() {
+		if (controller) {
+			controller.loadData();
+		}
+	}
 </script>
 
 <div class="balance-sheet-container">
@@ -155,6 +161,59 @@
 					<option value="units">Units</option>
 				</select>
 			</div>
+			<!-- View mode toggle -->
+			<div class="view-toggle" role="group" aria-label="View mode">
+				<button
+					class="view-toggle-btn"
+					class:active={viewMode === 'table'}
+					on:click={() => (viewMode = 'table')}
+					title="Table view"
+					aria-pressed={viewMode === 'table'}
+				>
+					<!-- Table icon -->
+					<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="3" y="3" width="18" height="18" rx="2"/>
+						<path d="M3 9h18M3 15h18M9 3v18"/>
+					</svg>
+					Table
+				</button>
+				<button
+					class="view-toggle-btn"
+					class:active={viewMode === 'sunburst'}
+					on:click={() => (viewMode = 'sunburst')}
+					title="Sunburst chart"
+					aria-pressed={viewMode === 'sunburst'}
+				>
+					<!-- Sunburst / radial icon -->
+					<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<circle cx="12" cy="12" r="3"/>
+						<circle cx="12" cy="12" r="7"/>
+						<circle cx="12" cy="12" r="11"/>
+					</svg>
+					Sunburst
+				</button>
+			</div>
+			<button
+				on:click={handleRefresh}
+				disabled={state.isLoading}
+				class="refresh-button"
+				title="Refresh balance sheet data"
+			>
+				{#if state.isLoading}
+					<svg class="loading-spinner" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M21 12a9 9 0 11-6.219-8.56"/>
+					</svg>
+					Refreshing...
+				{:else}
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M3 12a9 9 0 013.5-7.1"/>
+						<path d="M20.5 5.5a9 9 0 01.5 6.5"/>
+						<path d="M3 12a9 9 0 006.5 8.1"/>
+						<path d="M20.5 18.5a9 9 0 01-6.5-5.5"/>
+					</svg>
+					Refresh
+				{/if}
+			</button>
 		</div>
 	</div>
 
@@ -619,6 +678,11 @@
 		font-weight: 500;
 		line-height: 1.5;
 	}
+
+	.refresh-button { display: inline-flex; align-items: center; gap: 4px; padding: var(--size-4-1) var(--size-4-3); cursor: pointer; }
+	.refresh-button:disabled { opacity: 0.6; cursor: not-allowed; }
+	@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+	.loading-spinner { animation: spin 1s linear infinite; }
 
 	/* Responsive design */
 	@media (max-width: 1200px) {
