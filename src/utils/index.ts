@@ -13,7 +13,7 @@
 //   journal.ts      – getTransactionEntries, getBalanceEntries, getNoteEntries
 //   directives.ts   – all create/update/delete write operations + generateTransactionText + validateCommodityLocation
 
-export { runQuery } from './queryRunner';
+export { runQuery, type BQLFormat } from './queryRunner';
 export { convertWindowsPathToWsl, convertWslPathToWindows, atomicFileWrite, createBackupFile } from './fileEditor';
 export {
 	parseSingleValue,
@@ -25,7 +25,7 @@ export {
 	parseMetadataString,
 	debounce,
 } from './formatters';
-export { parseCommoditiesListCSV, parseCommoditiesPriceDataCSV, parseCommodityDetailsCSV } from './csvParsers';
+export { parseCommoditiesListCSV, parseCommoditiesPriceDataCSV, parseCommodityDetailsCSV, parseCommoditiesHoldingsCSV } from './csvParsers';
 export { buildAccountTree, getOpenAccounts, getPayees, getTags, getCommodities } from './accounts';
 export { getTransactionEntries, getBalanceEntries, getNoteEntries } from './journal';
 export {
@@ -47,6 +47,12 @@ export {
 	saveCloseDirective,
 	validateCommodityLocation,
 	updateOperatingCurrency,
+	createQueryDirective,
+	deleteQueryDirective,
+	getQueryDirectives,
+	parseQueryDirectives,
+	createIndicatorDirective,
+	type IndicatorDirectiveParams,
 } from './directives';
 
 // Re-export structuredLayout helpers that some callers pull from utils/index

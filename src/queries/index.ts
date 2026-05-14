@@ -20,64 +20,56 @@ export interface TransactionFilters {
 // --- Query Functions ---
 
 
-/**
- * Gets converted cost of all Asset accounts
- * @param {string} currency - The target currency.
- * @returns {string} The BQL query string.
- */
-export function getTotalAssetsCostQuery(currency: string): string { // <-- NEW
-	return `SELECT convert(sum(position), '${currency}') WHERE account ~ '^Assets'`;
+export function getTotalAssetsQuery(currency: string, rounding: number): string {
+	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _totalAssets WHERE account ~ '^Assets'`;
 }
 
-/**
- * Gets converted cost of all Liability accounts
- * @param {string} currency - The target currency.
- * @returns {string} The BQL query string.
- */
-export function getTotalLiabilitiesCostQuery(currency: string): string { // <-- NEW
-	return `SELECT convert(sum(position), '${currency}') WHERE account ~ '^Liabilities'`;
+export function getTotalLiabilitiesQuery(currency: string, rounding: number): string {
+	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _totalLiabilities WHERE account ~ '^Liabilities'`;
 }
 
-/**
- * Gets the balance sheet (Assets, Liabilities, Equity) converted to a currency.
- * @param {string} currency - The target currency.
- * @returns {string} The BQL query string.
- */
+export function getTotalWorthQuery(currency: string, rounding: number): string {
+	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _totalWorth WHERE account ~ '^(Assets|Liabilities)'`;
+}
+
+// This Month Queries
+export function getThisMonthIncomeQuery(currency: string, rounding: number): string {
+	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _thisMonthIncome WHERE account ~ '^Income' AND month=month(today()) AND year=year(today())`;
+}
+
+export function getThisMonthExpensesQuery(currency: string, rounding: number): string {
+	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _thisMonthExpenses WHERE account ~ '^Expenses' AND month=month(today()) AND year=year(today())`;
+}
+
+export function getThisMonthSavingsQuery(currency: string, rounding: number): string {
+	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _thisMonthNetWorthChange WHERE account ~ '^(Income|Expenses)' AND month=month(today()) AND year=year(today())`;
+}
+
 export function getBalanceSheetQuery(currency: string): string {
 	return `SELECT account, convert(sum(position), '${currency}') WHERE account ~ '^(Assets|Liabilities|Equity)' AND NOT close_date(account) GROUP BY account ORDER BY account`;
 }
 
-/**
- * Gets balance sheet at historical cost (no currency conversion)
- * @returns {string} The BQL query string.
- */
 export function getBalanceSheetQueryByCost(): string {
 	return `SELECT account, cost(sum(position)) WHERE account ~ '^(Assets|Liabilities|Equity)' AND NOT close_date(account) GROUP BY account ORDER BY account`;
 }
 
-/**
- * Gets balance sheet in raw units (no cost or currency conversion)
- * @returns {string} The BQL query string.
- */
 export function getBalanceSheetQueryByUnits(): string {
 	return `SELECT account, units(sum(position)) WHERE account ~ '^(Assets|Liabilities|Equity)' AND NOT close_date(account) GROUP BY account ORDER BY account`;
 }
 
-/**
- * Gets balances for ALL account types (Assets, Liabilities, Equity, Income, Expenses)
- * @param {string} currency - The target currency.
- * @returns {string} The BQL query string.
- */
-export function getAllAccountBalancesQuery(currency: string): string {
-	return `SELECT account, convert(sum(position), '${currency}') GROUP BY account ORDER BY account`;
+
+export function getIncomeStatementQuery(currency: string): string {
+	return `SELECT account, convert(sum(position), '${currency}') WHERE account ~ '^(Income|Expenses)' AND NOT close_date(account) GROUP BY account ORDER BY account`;
 }
 
-/**
- * Gets transactions based on filters
- * @param {TransactionFilters} filters - The filters to apply.
- * @param {number} [limit=1000] - Max number of transactions.
- * @returns {string} The BQL query string.
- */
+export function getIncomeStatementQueryByCost(): string {
+	return `SELECT account, cost(sum(position)) WHERE account ~ '^(Income|Expenses)' AND NOT close_date(account) GROUP BY account ORDER BY account`;
+}
+
+export function getIncomeStatementQueryByUnits(): string {
+	return `SELECT account, units(sum(position)) WHERE account ~ '^(Income|Expenses)' AND NOT close_date(account) GROUP BY account ORDER BY account`;
+}
+
 export function getTransactionsQuery(filters: TransactionFilters, limit: number = 1000): string {
 	const selectPart = `SELECT date, payee, narration, position, balance`; // Added balance column
 	const whereClauses: string[] = [];
@@ -112,14 +104,6 @@ export function getTransactionsQuery(filters: TransactionFilters, limit: number 
 	}
 }
 
-/**
- * Query for file validation using bean-query with ERRORS query
- * Returns validation errors from the Beancount file
- * Note: ERRORS query returns formatted text, not CSV, so don't use -f csv flag
- * @param {string} filePath - Path to beancount file.
- * @param {string} commandBase - Base command (bean-query).
- * @returns {string} The validation command string.
- */
 export function getBeanCheckCommand(filePath: string, commandBase: string): string {
 	// Use bean-query with ERRORS query to get validation errors
 	// This keeps the plugin dependent only on bean-query
@@ -127,95 +111,97 @@ export function getBeanCheckCommand(filePath: string, commandBase: string): stri
 	return `${commandBase} "${filePath}" "ERRORS"`;
 }
 
-/**
- * Gets monthly income for a period.
- * @param {string} startDate - Start date (YYYY-MM-DD).
- * @param {string} endDate - End date (YYYY-MM-DD).
- * @param {string} currency - Target currency.
- * @returns {string} The BQL query string.
- */
-export function getMonthlyIncomeQuery(startDate: string, endDate: string, currency: string): string { // Must accept 3 args
-	return `SELECT convert(sum(position), '${currency}') WHERE account ~ '^Income' AND date >= ${startDate} AND date <= ${endDate}`;
+export function getHistoricalNetWorthDataQuery(interval: 'month' | 'week' = 'month', currency: string): string {
+	if (interval === 'week') {
+		return `SELECT last(date_add(date_trunc('week', date), 6)) AS week_end, only('${currency}', convert(last(balance), '${currency}', last(date_add(date_trunc('week', date), 6)))) WHERE account ~ '^(Assets|Liabilities)' GROUP BY date_trunc('week', date) ORDER BY week_end`;
+	}
+	return `SELECT year, month, only('${currency}', convert(last(balance), '${currency}', last(date_add(date(year + int(month/12), (month%12+1), 1), -1)))) WHERE account ~ '^(Assets|Liabilities)' GROUP BY year, month ORDER BY year, month`;
 }
 
-/**
- * Gets monthly expenses for a period.
- * @param {string} startDate - Start date (YYYY-MM-DD).
- * @param {string} endDate - End date (YYYY-MM-DD).
- * @param {string} currency - Target currency.
- * @returns {string} The BQL query string.
- */
-export function getMonthlyExpensesQuery(startDate: string, endDate: string, currency: string): string { // Must accept 3 args
-	return `SELECT convert(sum(position), '${currency}') WHERE account ~ '^Expenses' AND date >= ${startDate} AND date <= ${endDate}`;
+
+export function getHistoricalNetProfitDataQuery(interval: 'month' | 'week' = 'month', currency: string): string {
+	if (interval === 'week') {
+		return `SELECT last(date_add(date_trunc('week', date), 6)) AS week_end, only('${currency}', convert(sum(position), '${currency}', last(date_add(date_trunc('week', date), 6)))) WHERE account ~ '^(Income|Expenses)' GROUP BY date_trunc('week', date) ORDER BY week_end`;
+	}
+	return `SELECT year, month, only('${currency}', convert(sum(position), '${currency}', last(date_add(date(year + int(month/12), (month%12+1), 1), -1)))) AS _worth WHERE account ~ '^(Income|Expenses)' GROUP BY year, month ORDER BY year, month`;
 }
 
-/**
- * Gets historical net worth data over time intervals.
- * @param {string} [interval='month'] - The grouping interval (e.g. 'month', 'year').
- * @param {string} currency - Target currency.
- * @returns {string} The BQL query string.
- */
-
-export function getHistoricalNetWorthDataQuery(interval: string = 'month', currency: string): string { // Must accept 2 args
-	return `SELECT year, month, only('${currency}', convert(last(balance), '${currency}', last(date))) WHERE account ~ '^(Assets|Liabilities)' ORDER BY year, month`;
+export function getHistoricalExpenseDataQuery(interval: 'month' | 'week' = 'month', currency: string): string {
+	if (interval === 'week') {
+		return `SELECT last(date_add(date_trunc('week', date), 6)) AS week_end, only('${currency}', convert(sum(position), '${currency}', last(date_add(date_trunc('week', date), 6)))) WHERE account ~ '^(Expenses)' GROUP BY date_trunc('week', date) ORDER BY week_end`;
+	}
+	return `SELECT year, month, only('${currency}', convert(sum(position), '${currency}', last(date_add(date(year + int(month/12), (month%12+1), 1), -1)))) AS _worth WHERE account ~ '^(Expenses)' GROUP BY year, month ORDER BY year, month`;
 }
+
+export function getHistoricalIncomeDataQuery(interval: 'month' | 'week' = 'month', currency: string): string {
+	if (interval === 'week') {
+		return `SELECT last(date_add(date_trunc('week', date), 6)) AS week_end, only('${currency}', convert(sum(position), '${currency}', last(date_add(date_trunc('week', date), 6)))) WHERE account ~ '^(Income)' GROUP BY date_trunc('week', date) ORDER BY week_end`;
+	}
+	return `SELECT year, month, only('${currency}', convert(sum(position), '${currency}', last(date_add(date(year + int(month/12), (month%12+1), 1), -1)))) AS _worth WHERE account ~ '^(Income)' GROUP BY year, month ORDER BY year, month`;
+}
+// --- List Budget/Target Quries ---	
+export function getBudgetListQuery(): string {
+	return `SELECT date AS _startDate, meta('name') AS _name, meta('accountQuery') AS _accountString, meta('cycle') AS _period, bool(meta('isRollover')) AS _isRollOver, meta('target') AS _budgetAmount, meta('currency') AS _currency FROM events WHERE type='Indicator' AND description='Budget'`;
+}
+
+export function getTargetListQuery(): string {
+	return `SELECT date AS _startDate, meta('name') AS _name, meta('accountQuery') AS _accountString, meta('cycle') AS _period, bool(meta('isRollover')) AS _isRollOver, meta('target') AS _targetAmount, meta('currency') AS _currency FROM events WHERE type='Indicator' AND description='Target'`;
+}
+
+
+// --- Budget/Target Queries ---
+
+export function getIndicatorStatusQuery(isRollOver: boolean, currency: string, accountString: string, budgetAmount: number, startDate: string, period: string): string {
+	if (isRollOver) {
+		if (period === 'week') {
+			return `SELECT year, date_part('week', date), number(only('${currency}', convert(sum(position), '${currency}'))) AS _expenseThisCycle, ((year(today())-year(${startDate}))*52+(date_part('week', today())-date_part('week',${startDate}))+1)*${budgetAmount}-last(number(only('${currency}',convert(balance, '${currency}')))) AS _remainingThisCycle FROM account ~ '^${accountString}' OPEN ON ${startDate} ORDER BY year DESC, date_part('week', date) DESC LIMIT 1`;
+		}
+		return `SELECT year, month, number(only('${currency}', convert(sum(position), '${currency}'))) AS _expenseThisCycle, ((year(today())-year(${startDate}))*12+(month(today())-month(${startDate}))+1)*${budgetAmount}-last(number(only('${currency}',convert(balance, '${currency}')))) AS _remainingThisCycle FROM account ~ '^${accountString}' OPEN ON ${startDate} ORDER BY year DESC, month DESC LIMIT 1`;
+	} else {
+		return `SELECT date, number(only('${currency}', convert(sum(position), '${currency}'))) AS _expenseThisCycle, ${budgetAmount}-number(only('${currency}', convert(sum(position), '${currency}'))) AS _remainingThisCycle WHERE account ~ '^${accountString}' AND date_trunc('${period}', date)=date_trunc('${period}', today())`;
+	}
+}
+
+
 
 // --- Commodities Queries ---
 
-/**
- * Gets all commodity symbols from Commodity directives.
- * @returns {string} The BQL query string.
- */
 export function getAllCommoditiesQuery(): string {
 	return `SELECT name AS name_ FROM #commodities GROUP BY name`;
 }
 
-/**
- * Gets enriched price data for all commodities with price directives.
- * Includes latest price, logo, date, and freshness indicator.
- * @param {string} currency - The operating currency for price conversion.
- * @returns {string} The BQL query string.
- */
 export function getCommoditiesPriceDataQuery(currency: string): string {
 	return `SELECT last(date) AS date_, last(currency) AS currency_, round(getprice(last(currency), '${currency}'),2) AS price_, currency_meta(last(currency), 'logo') AS logo_, bool(today()-1<last(date)) AS islatest_ FROM #prices GROUP BY currency`;
 }
 
 /**
- * Gets detailed information for a specific commodity.
- * Includes all metadata, logo, price metadata, filename, and line number.
- * @param {string} symbol - The commodity symbol.
- * @returns {string} The BQL query string.
+ * Holdings per commodity in Asset accounts:
+ *   - units_  : raw inventory (e.g. "11.80 USD" or ",30949 UYU"), used for display
+ *   - valueOp_: same holdings converted to the operating currency, used for sort
  */
+export function getCommoditiesHoldingsQuery(operatingCurrency: string): string {
+	return `SELECT currency, units(sum(position)) AS units_, convert(sum(position), '${operatingCurrency}') AS valueOp_ WHERE account ~ '^Assets' GROUP BY currency`;
+}
+
+
 export function getCommodityDetailsQuery(symbol: string): string {
 	return `SELECT name AS name_, last(meta) AS meta_, currency_meta(last(name),'logo') AS logo_, currency_meta(last(name), 'price') AS pricemetadata_, meta('filename') AS filename_, meta('lineno') AS lineno_ FROM #commodities WHERE name='${symbol}'`;
 }
 
 // --- Price Queries ---
 
-/**
- * Gets price history for a specific commodity.
- * @param {string} commodity - The commodity symbol.
- * @returns {string} The BQL query string.
- */
 export function getPriceHistoryQuery(commodity: string): string {
 	return `SELECT date, position, meta('filename') FROM #prices WHERE currency='${commodity}' ORDER BY date DESC`;
 }
 
-/**
- * Gets commodities with stale prices (older than specified days).
- * @param {number} daysOld - Number of days to consider price stale.
- * @param {string} currency - The operating currency.
- * @returns {string} The BQL query string.
- */
 export function getStaleCommoditiesQuery(daysOld: number, currency: string): string {
 	return `SELECT currency AS commodity_, last(date) AS lastdate_, round(getprice(last(currency), '${currency}'),2) AS price_ FROM #prices GROUP BY currency HAVING today() - last(date) > ${daysOld}`;
 }
 
-/**
- * Gets all prices ordered by date (most recent first).
- * @param {number} [limit=100] - Maximum number of prices to return.
- * @returns {string} The BQL query string.
- */
 export function getAllPricesQuery(limit: number = 100): string {
 	return `SELECT date, currency, position FROM #prices ORDER BY date DESC LIMIT ${limit}`;
+}
+
+export function getAllCurrenciesQuery(): string {
+	return `SELECT distinct(currency) AS currency_`;
 }

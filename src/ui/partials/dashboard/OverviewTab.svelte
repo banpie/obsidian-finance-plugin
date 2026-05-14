@@ -1,13 +1,15 @@
 <script lang="ts">
 	import CardComponent from '../../common/CardComponent.svelte';
-	import ChartComponent from '../../common/ChartComponent.svelte';
+	import IndicatorsSection from './IndicatorsSection.svelte';
 	import type { OverviewController } from '../../../controllers/OverviewController';
-	import type { ChartConfiguration } from 'chart.js/auto';
 	import { writable, type Writable } from 'svelte/store'; // Import writable
 	import type { OverviewState } from '../../../controllers/OverviewController'; // Import the State type
+	import { AddBudgetModal } from '../../modals/AddBudgetModal';
+	import { AddTargetModal } from '../../modals/AddTargetModal';
 
 	// --- Receive the controller ---
 	export let controller: OverviewController;
+	export let plugin: any = null;
 
 	// --- THIS IS THE FIX ---
 	// 1. Create a local, placeholder store with default values.
@@ -19,8 +21,6 @@
 		monthlyIncome: '0.00 USD',
 		monthlyExpenses: '0.00 USD',
 		savingsRate: '0%',
-		chartConfig: null,
-		chartError: null,
 		currency: 'USD',
 	});
 
@@ -37,6 +37,16 @@
 		if (controller) {
 			controller.loadData();
 		}
+	}
+
+	function handleAddBudget() {
+		if (!plugin) return;
+		new AddBudgetModal(plugin.app, plugin).open();
+	}
+
+	function handleAddTarget() {
+		if (!plugin) return;
+		new AddTargetModal(plugin.app, plugin).open();
 	}
 	// -----------------------
 </script>
@@ -86,16 +96,12 @@
 			<CardComponent label="Monthly Expenses" value={state.monthlyExpenses} comparison="Current month spending" />
 			<CardComponent label="Savings Rate" value={state.savingsRate} comparison="Income minus expenses" />
 		</div>
-		
-		<div class="chart-container">
-			{#if state.chartError}
-				<p class="error-message">Chart Error: {state.chartError}</p>
-			{:else if state.chartConfig}
-				<ChartComponent config={state.chartConfig} height="300px"/>
-			{:else if !state.isLoading}
-				<p>Not enough data to display chart.</p>
-			{/if}
-		</div>
+
+		<IndicatorsSection
+			{plugin}
+			on:add-budget={handleAddBudget}
+			on:add-target={handleAddTarget}
+		/>
 	{/if}
 </div>
 
@@ -175,9 +181,4 @@
 	}
 	
 	.error-message { color: var(--text-error); }
-	.chart-container {
-		margin-top: var(--size-4-8);
-		height: 300px;
-		position: relative;
-	}
 </style>
