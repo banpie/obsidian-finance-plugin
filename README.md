@@ -1,53 +1,120 @@
-# Obsidian Beancount Plugin
+# Beancount for Obsidian
 
-A plugin for [Obsidian.md](https://obsidian.md) to integrate your [Beancount](https://beancount.github.io/docs/) plain-text accounting ledger directly into your vault. View financial snapshots and add new transactions without leaving your notes.
+![Plugin Logo](docs/assets/Primary_horizontal_logo.png)
 
+A comprehensive Beancount integration for [Obsidian](https://obsidian.md) that transforms your vault into a powerful plain-text accounting dashboard.
 
-
----
-
-## Features
-
-* **Sidebar Dashboard:** Get a quick financial snapshot with key metrics like Assets, Liabilities, and Net Worth.
-* **Interactive Reports:** Instantly switch between Balance Sheet, Income, and Expenses reports directly in the sidebar.
-* **Quick Transaction Entry:** Use a simple command and modal form to add new transactions to your Beancount file.
-* **External Tool Powered:** Leverages the full power and accuracy of your existing Beancount installation.
+📘 **[Full Documentation](https://mkshp-dev.github.io/obsidian-finance-plugin/)** - Read the complete guide for features, configuration, and usage.
 
 ---
 
-##  Requirements
+## ✨ Key Features
 
-This plugin acts as a user interface for the Beancount command-line tools. You **must** have the following installed on your system:
+![Unified Dashboard](docs/assets/overview.png)
+<p align="center"><em>📊 Unified Dashboard - Net worth tracking, balance sheets, and interactive charts in one view</em></p>
 
-1.  **Python 3**
-2.  **Beancount (v3 or higher):** The plugin relies on the `bean-query` command. The recommended installation is via pip: `pip install beancount`.
-3.  **(For Windows Users)** If you are running Beancount within WSL, this plugin will work by prefixing commands with `wsl.exe`.
+<details>
+<summary><strong>🔍 Live BQL Queries</strong> - Click to see</summary>
+<br/>
+<img src="docs/assets/bql-query.png" alt="BQL Queries"/>
+<p align="center"><em>Embed dynamic financial data directly in your notes with shorthand support</em></p>
+</details>
+
+<details>
+<summary><strong>⚡ Smart Transaction Entry</strong> - Click to see</summary>
+<br/>
+<img src="docs/assets/adding-transaction.png" alt="Transactions"/>
+<p align="center"><em>Quick transaction creation with account autocomplete and validation</em></p>
+</details>
+
+**Highlights:**
+- 📈 Real-time financial metrics and trend visualization
+- 📝 Inline BQL queries with customizable shortcuts
+- 💰 Complete transaction, balance, and commodity management
+- 💹 **Automated Price Fetching** — runs `bean-price` on a schedule; new prices are deduplicated and appended to `prices.beancount` automatically
+- 🔄 Direct Beancount file integration—no separate database
 
 ---
 
-## Installation & Configuration
+## 🔧 Requirements
 
-1.  Download the latest release from the GitHub releases page (or build it yourself).
-2.  Copy the `main.js`, `styles.css`, and `manifest.json` files to your vault's plugin folder: `<YourVault>/.obsidian/plugins/<your-plugin-name>/`.
-3.  Enable the plugin in Obsidian's community plugin settings.
-4.  Go to the plugin's settings page.
-5.  In the "Path to beancount file" field, enter the **absolute path** to your main Beancount ledger file.
-    * **Important:** If using WSL, this must be the Linux-style path (e.g., `/mnt/c/Users/YourUser/Documents/finances.beancount`).
+This plugin integrates with your existing Beancount setup:
+
+1. **Python 3.8+**
+2. **Beancount v3+**: Install via `pip install beancount`
+3. **bean-query**: Command-line tool for querying Beancount files (`pip install beanquery`)
+4. **bean-price** *(optional)*: For automatic commodity price fetching (`pip install beanprice`)
+5. **WSL Support** *(optional)*: Full compatibility for Windows users running Beancount in WSL
+
+> **Note:** `bean-query` and `bean-price` are separate packages from Beancount itself and require their own `pip install` commands.
 
 ---
 
-## Usage
+## 📦 Installation
 
-### Viewing Reports
+### Manual Installation
+1. Download the latest release from [GitHub Releases](https://github.com/mkshp-dev/obsidian-finance-plugin/releases)
+2. Extract files to `<vault>/.obsidian/plugins/obsidian-finance-plugin/`
+3. Enable the plugin in Obsidian Settings → Community Plugins
 
-1.  Click the **dollar sign icon (`$`)** in the left-hand ribbon to open the Beancount Snapshot sidebar.
-2.  The sidebar will automatically load your key metrics and a default balance sheet.
-3.  Use the **[Balance]**, **[Income]**, and **[Expenses]** buttons to switch between reports.
-4.  Click the **[Refresh]** button to reload all data from your ledger file.
+### BRAT Beta Installation
 
-### Adding a Transaction
+For beta testers who want to try the latest development version:
 
-1.  Open the command palette (`Ctrl/Cmd + P`).
-2.  Search for and run the command **"Add Beancount Transaction"**.
-3.  A modal form will appear. Fill in the transaction details.
-4.  Click **"Add Transaction"**. The new entry will be appended to the bottom of your configured Beancount file.
+1. **Install BRAT Plugin**: 
+   - Install [BRAT (Beta Reviewers Auto-update Tester)](https://github.com/TfTHacker/obsidian42-brat) from Obsidian Community Plugins
+   - Enable BRAT in your Community Plugins settings
+
+2. **Add Beta Plugin**:
+   - Open Command Palette (`Ctrl/Cmd + P`)
+   - Run: "BRAT: Add a beta plugin for testing"
+   - Enter repository: `mkshp-dev/obsidian-finance-plugin`
+   - Select branch: `dev` (or `master` for stable)
+
+3. **Enable Plugin**:
+   - Go to Settings → Community Plugins
+   - Find "Beancount for Obsidian" and enable it
+
+BRAT will automatically check for updates and notify you of new versions. This is the recommended way to test beta features before official releases.
+
+**Note**: Beta versions may have bugs. Always keep backups of your Beancount files and vault data.
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our `CONTRIBUTING.md` for details.
+
+### Development Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/mkshp-dev/obsidian-finance-plugin.git
+cd obsidian-finance-plugin
+
+# Install dependencies
+npm install
+
+# Start development build
+npm run dev
+
+# Build for production
+npm run build
+```
+
+---
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+If this project helps your workflow, consider supporting its development with a ☕
+
+<a href="https://www.buymeacoffee.com/mkshp" target="_blank">
+  <img
+    src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=%E2%98%95&slug=mkshp&button_colour=5F7FFF&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00"
+    alt="Buy me a coffee"
+    height="45"
+  />
+</a>
