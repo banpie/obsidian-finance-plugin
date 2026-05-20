@@ -1,0 +1,154 @@
+# Releasing the Plugin
+
+This document covers the full release process — first-time submission to the Obsidian community directory and all subsequent version updates.
+
+## Branch Strategy
+
+| Branch | Purpose |
+|--------|---------|
+| `Dev` | Active development — all new features and fixes go here |
+| `master` | Stable release branch — only receives merges from `Dev` via PR |
+
+Tags are always created on `master`. The GitHub Actions workflow (`.github/workflows/release.yml`) triggers on any tag push and automatically builds the plugin and creates a draft GitHub Release.
+
+---
+
+## One-Time Setup (do this once)
+
+### 1. Enable GitHub Actions write permissions
+
+Go to your repo on GitHub:  
+**Settings → Actions → General → Workflow permissions → Read and write permissions → Save**
+
+This allows the workflow to create GitHub Releases on your behalf.
+
+### 2. Merge the release workflow into master
+
+The `release.yml` workflow lives in the `ci/add-release-workflow` branch. Open a PR and merge it into `master` before attempting any release.
+
+---
+
+## First Release
+
+### Step 1 — Ensure master has the release workflow
+
+Confirm `.github/workflows/release.yml` is present on `master` (merged via PR as described above).
+
+### Step 2 — Merge Dev into master via PR
+
+Open a pull request from `Dev` → `master` on GitHub and merge it. This brings all your work to the release branch.
+
+### Step 3 — Bump the version locally (on master)
+
+```bash
+git checkout master
+git pull origin master
+npm version 1.0.0 --no-git-tag-version
+git add manifest.json versions.json package.json
+git commit -m "Release 1.0.0"
+```
+
+> `--no-git-tag-version` prevents npm from tagging automatically — you control the tag in the next step.  
+> The `version-bump.mjs` script (wired to `npm version`) automatically keeps `manifest.json` and `versions.json` in sync.
+
+Since `master` is protected, push this commit via a PR or directly if your branch rules allow it. The version bump commit can be included in the Dev → master merge PR.
+
+### Step 4 — Create and push the release tag
+
+The tag **must exactly match** the version string in `manifest.json`:
+
+```bash
+git tag -a 1.0.0 -m "1.0.0"
+git push origin 1.0.0
+```
+
+This triggers the GitHub Actions workflow. Within a minute or two it will:
+1. Run `npm install && npm run build`
+2. Create a **draft** GitHub Release with `main.js`, `manifest.json`, and `styles.css` attached
+
+### Step 5 — Publish the draft release
+
+Go to your repo on GitHub → **Releases** → find the new draft → click the **pencil icon** → add release notes → click **Publish release**.
+
+### Step 6 — Submit to the Obsidian Community Directory (first time only)
+
+1. Go to [community.obsidian.md](https://community.obsidian.md) and sign in with your Obsidian account.
+2. Link your GitHub account in your profile settings.
+3. In the sidebar → **Plugins** → **New plugin**.
+4. Enter your repo URL: `https://github.com/mkshp-dev/obsidian-finance-plugin`
+5. Agree to the Developer policies → click **Submit**.
+
+Obsidian reads `manifest.json` from the HEAD of `master`, so keep the version there accurate. After the automated review passes, users can install the plugin directly from within Obsidian.
+
+---
+
+## Subsequent Updates
+
+### Step 1 — Develop on Dev as normal
+
+Commit and push all changes to the `Dev` branch.
+
+### Step 2 — Merge Dev → master via PR
+
+Open a pull request from `Dev` → `master` on GitHub and merge it.
+
+### Step 3 — Bump the version
+
+On your local `master` (after pulling):
+
+```bash
+git checkout master
+git pull origin master
+npm version 1.4.0 --no-git-tag-version
+git add manifest.json versions.json package.json
+git commit -m "Release 1.4.0"
+git push origin master   # or via PR if direct push is blocked
+```
+
+Replace `1.4.0` with the new version following [semver](https://semver.org/) (`x.y.z`):
+- `z` (patch) — bug fixes only
+- `y` (minor) — new features, backwards compatible
+- `x` (major) — breaking changes
+
+### Step 4 — Tag and push
+
+```bash
+git tag -a 1.4.0 -m "1.4.0"
+git push origin 1.4.0
+```
+
+GitHub Actions builds the plugin and creates a draft release automatically.
+
+### Step 5 — Publish the draft release
+
+Go to GitHub → **Releases** → edit the draft → add release notes → **Publish release**.
+
+Users on Obsidian will be notified of the update automatically.
+
+---
+
+## Quick Reference
+
+```
+# Bump version and release
+git checkout master && git pull origin master
+npm version <NEW_VERSION> --no-git-tag-version
+git add manifest.json versions.json package.json
+git commit -m "Release <NEW_VERSION>"
+git push origin master
+git tag -a <NEW_VERSION> -m "<NEW_VERSION>"
+git push origin <NEW_VERSION>
+# → Go to GitHub Releases, publish the draft
+```
+
+## Files involved in a release
+
+| File | Role |
+|------|------|
+| `manifest.json` | Plugin metadata; `version` field must match the git tag |
+| `versions.json` | Maps each release version to minimum Obsidian app version |
+| `package.json` | `version` field kept in sync by `npm version` |
+| `version-bump.mjs` | Script run by `npm version` to update `manifest.json` and `versions.json` |
+| `.github/workflows/release.yml` | CI workflow that builds and creates the GitHub Release on tag push |
+| `main.js` | Built plugin bundle — uploaded as release asset |
+| `styles.css` | Plugin styles — uploaded as release asset |
