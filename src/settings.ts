@@ -47,6 +47,8 @@ export interface BeancountPluginSettings {
     beanPriceCommand: string;
     /** Whether to enable account-name autocomplete in the Beancount editor. */
     accountAutocomplete: boolean;
+    /** Whether to format the Beancount file on every save (Format on save). */
+    formatOnSave: boolean;
 }
 
 /**
@@ -75,6 +77,7 @@ export const DEFAULT_SETTINGS: BeancountPluginSettings = {
     beanPriceCommand: '',
     // Editor Settings
     accountAutocomplete: true,
+    formatOnSave: false,
 }
 
 /**
@@ -322,6 +325,16 @@ export class BeancountSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.accountAutocomplete)
                 .onChange(async (value) => {
                     this.plugin.settings.accountAutocomplete = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Format on save')
+            .setDesc('Automatically format the Beancount file when saving: normalises indentation to 2 spaces, right-aligns amounts, and fixes @ price annotation spacing. Off by default.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.formatOnSave)
+                .onChange(async (value) => {
+                    this.plugin.settings.formatOnSave = value;
                     await this.plugin.saveSettings();
                 }));
 

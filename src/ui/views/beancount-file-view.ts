@@ -6,6 +6,8 @@ import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirro
 import { searchKeymap } from '@codemirror/search';
 import { beancount } from '../../lang/beancount-language';
 import { beancountAutocomplete, invalidateAccountCache } from '../../lang/beancount-autocomplete';
+import { beancountIndent } from '../../lang/beancount-indent';
+import { formatBeancountCommand } from '../../lang/beancount-format';
 import type BeancountPlugin from '../../main';
 
 export const BEANCOUNT_FILE_VIEW_TYPE = 'beancount-file';
@@ -55,7 +57,11 @@ export class BeancountFileView extends TextFileView {
 				drawSelection(),
 				highlightActiveLine(),
 				history(),
+				beancountIndent(),
 				keymap.of([
+					// Format Document: Ctrl+Shift+F (Windows/Linux) or Cmd+Shift+F (Mac)
+					{ key: 'Ctrl-Shift-f', run: formatBeancountCommand },
+					{ key: 'Cmd-Shift-f',  run: formatBeancountCommand },
 					...defaultKeymap,
 					...historyKeymap,
 					...searchKeymap,
@@ -89,7 +95,14 @@ export class BeancountFileView extends TextFileView {
 
 	/** Called by TextFileView when it needs the current editor content to save. */
 	getViewData(): string {
-		return this.editorView?.state.doc.toString() ?? '';
+		if (!this.editorView) return '';
+		const raw = this.editorView.state.doc.toString();
+		// Apply format-on-save if enabled
+		if (this.plugin?.settings.formatOnSave) {
+			formatBeancountCommand(this.editorView);
+			return this.editorView.state.doc.toString();
+		}
+		return raw;
 	}
 
 	/** Called by TextFileView when it loads or reloads the file from disk. */
