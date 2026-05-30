@@ -80,7 +80,7 @@ Once your commodities are annotated with price sources, you can let the plugin f
 4.  Your historical price log grows over time without manual intervention.
 
 ### Enabling Scheduled Fetching:
-1.  Go to **Settings → Beancount for Obsidian → General**.
+1.  Go to **Settings → Beancount Ledger → General**.
 2.  Toggle **"Enable automatic price fetching"** to **On**.
 3.  Set the **Fetch interval (hours)** (e.g., `24` hours).
 4.  The scheduled fetch starts running immediately.

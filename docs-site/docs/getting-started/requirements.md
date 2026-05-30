@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Requirements
 
-Before you can use Beancount for Obsidian, you need to set up the underlying Python and Beancount dependencies on your machine. This guide covers the required software and how to install them on any major operating system.
+Before you can use Beancount ledger, you need to set up the underlying Python and Beancount dependencies on your machine. This guide covers the required software and how to install them on any major operating system.
 
 ---
 

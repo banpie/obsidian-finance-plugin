@@ -43,14 +43,4 @@ You can create or retire accounts directly from this tab without writing plain t
     > [!WARNING]
     > An account can only be closed if its balance is exactly zero on the closing date. If it holds assets, transfer them to another account first.
 
----
 
-## 🔍 Behind the Scenes: BQL Queries
-
-The account list is fetched using the general Balance Sheet queries:
-
-```sql
-SELECT account, convert(sum(position), 'USD') WHERE account ~ '^(Assets|Liabilities|Equity)' AND NOT close_date(account) GROUP BY account ORDER BY account
-```
-
-The plugin processes the flat CSV rows returned by `bean-query` to build the nested tree structure dynamically. Closed accounts are excluded from the tree via the `NOT close_date(account)` filter.

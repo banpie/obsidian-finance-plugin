@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: 'Beancount for Obsidian',
+  title: 'Beancount ledger',
   tagline: 'Comprehensive financial dashboard for Obsidian with Beancount integration',
   favicon: 'img/favicon.ico',
 
@@ -55,9 +55,9 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'Beancount for Obsidian',
+      title: 'Beancount ledger',
       logo: {
-        alt: 'Beancount for Obsidian Logo',
+        alt: 'Beancount ledger Logo',
         src: 'img/logo.png',
       },
       items: [

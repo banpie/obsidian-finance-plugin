@@ -75,46 +75,4 @@ Each target card shows:
 #### Adding a Target
 Click **+ Add Target** and fill in the same fields as a budget, but select an `Assets:*` account. This writes an `event "Indicator" "Target"` directive to `events.beancount`.
 
----
 
-## 🔍 Behind the Scenes: BQL Queries
-
-All data on this tab comes from direct **bean-query** BQL queries:
-
-### Net Worth
-```sql
-SELECT round(number(only('USD', convert(sum(position), 'USD'))), 2) AS _totalWorth WHERE account ~ '^(Assets|Liabilities)'
-```
-
-### Monthly Metrics
-**Current Month Income:**
-```sql
-SELECT neg(round(number(only('USD', convert(sum(position), 'USD'))), 2)) AS _thisMonthIncome WHERE account ~ '^Income' AND month=month(today()) AND year=year(today())
-```
-
-**Current Month Expenses:**
-```sql
-SELECT round(number(only('USD', convert(sum(position), 'USD'))), 2) AS _thisMonthExpenses WHERE account ~ '^Expenses' AND month=month(today()) AND year=year(today())
-```
-
-**Current Month Savings** (net of income and expenses):
-```sql
-SELECT neg(round(number(only('USD', convert(sum(position), 'USD'))), 2)) AS _thisMonthNetWorthChange WHERE account ~ '^(Income|Expenses)' AND month=month(today()) AND year=year(today())
-```
-
-### Historical Chart Data
-**Net Worth Over Time:**
-```sql
-SELECT year, month, only('USD', convert(last(balance), 'USD', last(date_add(date(year + int(month/12), (month%12+1), 1), -1)))) WHERE account ~ '^(Assets|Liabilities)' GROUP BY year, month ORDER BY year, month
-```
-
-### Financial Indicators
-**List Indicators:**
-```sql
-SELECT date AS _startDate, meta('name') AS _name, meta('accountQuery') AS _accountString, meta('cycle') AS _period, bool(meta('isRollover')) AS _isRollOver, meta('target') AS _budgetAmount, meta('currency') AS _currency FROM events WHERE type='Indicator' AND description='Budget'
-```
-
-**Indicator Status (Current Cycle):**
-```sql
-SELECT number(only('USD', convert(sum(position), 'USD'))) AS _expenseThisCycle WHERE account ~ '^Expenses:Food:Groceries' AND date_trunc('Monthly', date)=date_trunc('Monthly', today())
-```

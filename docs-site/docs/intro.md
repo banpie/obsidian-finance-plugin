@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Introduction
 
-Welcome to the documentation for **Beancount for Obsidian**, a comprehensive personal finance plugin that brings the power of Plain Text Accounting directly into your Obsidian vault.
+Welcome to the documentation for **Beancount Ledger**, a comprehensive personal finance plugin that brings the power of Plain Text Accounting directly into your Obsidian vault.
 
 ---
 
@@ -28,7 +28,7 @@ If you are new to Beancount or want to deepen your understanding, check out thes
 
 ---
 
-## 🌟 Why Beancount for Obsidian?
+## 🌟 Why Beancount Ledger?
 
 This plugin bridges the gap between powerful plain-text accounting and the convenience of modern personal finance apps. It integrates seamlessly with your existing note-taking and journaling workflow in [Obsidian.md](https://obsidian.md).
 

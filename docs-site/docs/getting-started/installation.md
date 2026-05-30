@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Installation
 
-This guide covers how to install the **Beancount for Obsidian** plugin in your Obsidian vault. 
+This guide covers how to install the **Beancount Ledger** plugin in your Obsidian vault. 
 
 > [!NOTE]
 > Before running the plugin, ensure you have set up Python and Beancount on your machine. See the [Requirements](./requirements.md) guide for details.
@@ -19,7 +19,7 @@ You can install the plugin using one of the three methods below.
 Once the plugin is approved and listed in the official Obsidian store, this is the easiest method:
 1.  Open Obsidian and go to **Settings** → **Community Plugins**.
 2.  Turn off **Restricted mode** if it is enabled.
-3.  Click **Browse** and search for **"Beancount for Obsidian"**.
+3.  Click **Browse** and search for **"Beancount Ledger"**.
 4.  Click **Install**, and then click **Enable**.
 
 ---
@@ -44,7 +44,7 @@ If you need to install the plugin manually or without internet access:
 5.  Create a new folder named `beancount-finance`.
 6.  Place the downloaded `main.js`, `manifest.json`, and `styles.css` files into this folder.
 7.  Reload Obsidian or restart the app.
-8.  Go to **Settings** → **Community Plugins** and enable **Beancount for Obsidian**.
+8.  Go to **Settings** → **Community Plugins** and enable **Beancount Ledger**.
 
 ---
 

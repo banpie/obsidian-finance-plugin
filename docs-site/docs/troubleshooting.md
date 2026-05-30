@@ -14,7 +14,7 @@ This guide addresses common issues with connectivity, queries, and data display.
 *   **Cause**: The plugin cannot find `bean-query` in your system's PATH. Note that `bean-query` is **not** included with Beancount and must be installed separately.
 *   **Solution**: 
     1.  Install beanquery: `pip install beanquery` (see [Requirements](./getting-started/requirements.md)).
-    2.  Go to **Settings → Beancount for Obsidian → Connection**.
+    2.  Go to **Settings → Beancount Ledger → Connection**.
     3.  Click **Test All Commands** to see which commands fail.
     4.  If auto-detection fails, manually enter the absolute path to `bean-query`:
         *   Windows: `C:\Users\<YourUsername>\AppData\Local\Programs\Python\Python3X\Scripts\bean-query.exe`

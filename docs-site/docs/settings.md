@@ -10,7 +10,7 @@ The Settings page is where you configure the plugin to work with your Beancount 
 
 ## 📋 Overview
 
-Settings are accessible via **Settings → Community Plugins → Beancount for Obsidian**. The interface is organized into these tabs:
+Settings are accessible via **Settings → Community Plugins → Beancount Ledger**. The interface is organized into these tabs:
 
 1. **General** - Currency, automatic price fetching, and debug settings
 2. **Connection** - Beancount executable and system configuration

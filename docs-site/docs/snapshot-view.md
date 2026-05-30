@@ -29,28 +29,7 @@ All three values are rounded to 2 decimal places and shown in your configured Op
 ### Refresh Button
 Reloads all three KPI values and re-validates the Beancount file on demand.
 
----
 
-## 🔍 Underlying Queries
-
-The Snapshot View uses three typed BQL queries (using your configured Operating Currency, e.g. `USD`):
-
-**Assets:**
-```sql
-SELECT round(number(only('USD', convert(sum(position), 'USD'))), 2) WHERE account ~ '^Assets'
-```
-
-**Liabilities** (sign-flipped so positive = debt):
-```sql
-SELECT neg(round(number(only('USD', convert(sum(position), 'USD'))), 2)) WHERE account ~ '^Liabilities'
-```
-
-**Net Worth** (Assets + Liabilities combined):
-```sql
-SELECT round(number(only('USD', convert(sum(position), 'USD'))), 2) WHERE account ~ '^(Assets|Liabilities)'
-```
-
----
 
 ## 💡 Usage Tips
 
