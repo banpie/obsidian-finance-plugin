@@ -3,7 +3,7 @@
 import { App, Modal, Notice } from 'obsidian';
 import type BeancountPlugin from '../../main';
 import AddTargetModalComponent from './AddTargetModal.svelte';
-import { getOpenAccounts, runQuery, createIndicatorDirective, updateIndicatorDirective } from '../../utils';
+import { getOpenAccounts, runQuery, createIndicatorDirective, updateIndicatorDirective, normalizeMoneyCurrencyOptions } from '../../utils';
 import { getAllCurrenciesQuery } from '../../queries';
 import { parse as parseCsv } from 'csv-parse/sync';
 import { Logger } from '../../utils/logger';
@@ -32,7 +32,7 @@ export class AddTargetModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         this.modalEl.setCssStyles({ maxWidth: '560px', width: '90vw' });
-        this.setTitle(this.editingIndicator ? 'Edit Target' : 'Add Target');
+        this.setTitle(this.editingIndicator ? '编辑目标' : '新增目标');
 
         const operatingCurrency = this.plugin.settings.operatingCurrency || 'USD';
         // Fetch accounts and currencies from the ledger, fall back silently on error
@@ -49,10 +49,10 @@ export class AddTargetModal extends Modal {
                 const fetched = rows.map((r) => r.currency_).filter(Boolean);
                 if (fetched.length > 0) currencies = fetched;
             }
-            // Always include the operating currency
-            if (!currencies.includes(operatingCurrency)) currencies.unshift(operatingCurrency);
+            currencies = normalizeMoneyCurrencyOptions(currencies, operatingCurrency);
         } catch (err) {
             Logger.log('[AddTargetModal] Could not prefetch accounts/currencies:', err);
+            currencies = normalizeMoneyCurrencyOptions(currencies, operatingCurrency);
         }
 
         this.component = new (AddTargetModalComponent)({
@@ -111,15 +111,15 @@ export class AddTargetModal extends Modal {
                     }
 
                     if (result.success) {
-                        new Notice(this.editingIndicator ? `Target "${name}" updated successfully` : `Target "${name}" created successfully`);
+                        new Notice(this.editingIndicator ? `目标“${name}”已更新` : `目标“${name}”已创建`);
                         this.close();
                         if (this.onSuccess) this.onSuccess();
                     } else {
-                        new Notice(`Failed to save target: ${result.error || 'Unknown error'}`);
+                        new Notice(`保存目标失败：${result.error || '未知错误'}`);
                     }
                 } catch (error) {
                     Logger.error('[AddTargetModal] Error saving target:', error);
-                    new Notice(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    new Notice(`错误：${error instanceof Error ? error.message : '未知错误'}`);
                 }
             })();
         });
