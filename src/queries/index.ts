@@ -71,7 +71,7 @@ export function getIncomeStatementQueryByUnits(): string {
 }
 
 export function getTransactionsQuery(filters: TransactionFilters, limit = 1000): string {
-	const selectPart = `SELECT date, payee, narration, position, balance`; // Added balance column
+	const selectPart = `SELECT date, payee, narration, position`;
 	const whereClauses: string[] = [];
 	const orderByPart = `ORDER BY date DESC, lineno DESC LIMIT ${limit}`;
 

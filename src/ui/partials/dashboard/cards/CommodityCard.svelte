@@ -15,6 +15,16 @@
 
 	const dispatch = createEventDispatcher();
 
+	function escapeRegex(value: string): string {
+		return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	}
+
+	$: primaryLabel = commodity?.displayCode || commodity?.symbol || `UNKNOWN_${index}`;
+	$: secondaryLabel = commodity?.displayName || "";
+	$: displayHoldingsRaw = commodity?.holdingsRaw && commodity?.symbol
+		? commodity.holdingsRaw.replace(new RegExp(`\\b${escapeRegex(commodity.symbol)}\\b`, "g"), primaryLabel)
+		: commodity?.holdingsRaw;
+
 	function handleClick() {
 		dispatch("click", { commodity });
 	}
@@ -54,7 +64,7 @@
 
 	// Helper to format the price date
 	function formatStatusTime(dateStr: string | null | undefined): string {
-		if (!dateStr) return "No data";
+		if (!dateStr) return "无数据";
 
 		try {
 			const date = new Date(dateStr);
@@ -73,9 +83,9 @@
 			const diffMs = d2.getTime() - d1.getTime();
 			const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-			if (diffDays === 0) return "Today";
-			if (diffDays === 1) return "Yesterday";
-			if (diffDays < 7) return `${diffDays}d ago`;
+			if (diffDays === 0) return "今天";
+			if (diffDays === 1) return "昨天";
+			if (diffDays < 7) return `${diffDays}天前`;
 			return date.toLocaleDateString(undefined, {
 				month: "short",
 				day: "numeric",
@@ -90,7 +100,7 @@
 	<button
 		class="commodity-card"
 		on:click={handleClick}
-		aria-label="View details for {commodity?.symbol || `UNKNOWN_${index}`}"
+		aria-label="查看 {primaryLabel} 详情"
 		type="button"
 	>
 		<div class="card-header">
@@ -99,20 +109,23 @@
 					{#if commodity?.logoUrl}
 						<img
 							src={commodity.logoUrl}
-							alt={commodity.symbol}
+							alt={primaryLabel}
 							class="logo-img"
 							on:error={handleLogoError}
 						/>
 					{:else}
 						<div class="initials-fallback">
-							{getInitials(commodity?.symbol)}
+							{getInitials(primaryLabel)}
 						</div>
 					{/if}
 				</div>
 				<div class="name-box">
 					<span class="symbol-text"
-						>{commodity?.symbol || `UNKNOWN_${index}`}</span
+						>{primaryLabel}</span
 					>
+					{#if secondaryLabel}
+						<span class="display-name">{secondaryLabel}</span>
+					{/if}
 				</div>
 			</div>
 
@@ -139,11 +152,11 @@
 					<span class="value-main">{formatValue(commodity.valueInOperatingCurrency ?? 0)}</span>
 					<span class="value-currency">{operatingCurrency}</span>
 				</div>
-			{:else if commodity?.holdingsRaw && !commodity?.isOperatingCurrency}
+			{:else if displayHoldingsRaw && !commodity?.isOperatingCurrency}
 				<!-- Has holdings but no price to convert — show raw units -->
 				<div class="value-container">
-					<span class="value-main no-price">{commodity.holdingsRaw.split(' ')[0]}</span>
-					<span class="value-currency">{commodity.symbol}</span>
+					<span class="value-main no-price">{displayHoldingsRaw.split(' ')[0]}</span>
+					<span class="value-currency">{primaryLabel}</span>
 				</div>
 			{:else}
 				<div class="value-container">
@@ -156,33 +169,40 @@
 				<!-- Filler block — keeps card height consistent with non-operating cards -->
 				<div class="op-currency-note">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="op-icon"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-					<span>Base currency for all conversions in this ledger</span>
+					<span>当前账本折算基准货币</span>
 				</div>
 			{:else}
 				<!-- Price row -->
 				<div class="data-row">
-					<span class="data-label">Price</span>
+					<span class="data-label">价格</span>
 					{#if commodity?.currentPrice}
 						<span class="data-value">{commodity.currentPrice}</span>
 					{:else}
-						<span class="data-value unavailable">No price available</span>
+						<span class="data-value unavailable">暂无价格</span>
 					{/if}
 				</div>
 
+				{#if (commodity?.pricePoints ?? 0) > 0}
+					<div class="data-row">
+						<span class="data-label">历史</span>
+						<span class="data-value">{commodity.pricePoints} 个点{commodity.firstPriceDate ? `，从 ${commodity.firstPriceDate}` : ""}</span>
+					</div>
+				{/if}
+
 				<!-- Holdings row -->
 				<div class="data-row">
-					<span class="data-label">Holdings</span>
-					{#if commodity?.holdingsRaw}
-						<span class="data-value">{commodity.holdingsRaw}</span>
+					<span class="data-label">持仓</span>
+					{#if displayHoldingsRaw}
+						<span class="data-value">{displayHoldingsRaw}</span>
 					{:else}
-						<span class="data-value unavailable">0 {commodity?.symbol}</span>
+						<span class="data-value unavailable">0 {primaryLabel}</span>
 					{/if}
 				</div>
 			{/if}
 		</div>
 
 		<div class="card-footer">
-			<span class="details-text">View Details</span>
+			<span class="details-text">查看详情</span>
 			<div class="arrow-box">
 				<svg
 					viewBox="0 0 24 24"
@@ -306,7 +326,19 @@
 		font-weight: 700;
 		font-size: 15px;
 		color: var(--text-normal);
-		letter-spacing: 0.5px;
+		letter-spacing: 0;
+	}
+
+	.display-name {
+		display: block;
+		margin-top: 2px;
+		font-size: 12px;
+		line-height: 1.25;
+		color: var(--text-muted);
+		max-width: 180px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	/* STATUS PILL */

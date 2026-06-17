@@ -71,6 +71,10 @@
 	$: logoUrl = commodity?.metadata?.logo || commodity?.logo_url;
 	$: priceSource = commodity?.metadata?.price || commodity?.price_meta;
 	$: currentPrice = commodity?.currentPrice;
+	$: displayCode = commodity?.displayCode;
+	$: displayName = commodity?.displayName;
+	$: pricePoints = commodity?.pricePoints;
+	$: firstPriceDate = commodity?.firstPriceDate;
 	$: otherMeta = Object.entries(commodity?.metadata || {}).filter(
 		([k]) => k !== "logo" && k !== "price",
 	);
@@ -98,7 +102,10 @@
 			{/if}
 		</div>
 		<div class="identity-info">
-			<div class="symbol-name">{symbol}</div>
+			<div class="symbol-name">{displayCode || symbol}</div>
+			{#if displayName}
+				<div class="display-name">{displayName}</div>
+			{/if}
 			{#if currentPrice}
 				<div class="current-price">
 					Current price: <strong>{currentPrice}</strong>
@@ -109,8 +116,14 @@
 
 	<!-- Price Source -->
 	<div class="section">
-		<p class="section-title">Price Source</p>
+		<p class="section-title">价格</p>
 		<div class="section-card">
+			{#if pricePoints}
+				<div class="kv-row">
+					<span class="kv-key">历史价格</span>
+					<span class="kv-value">{pricePoints} 个点{firstPriceDate ? `，从 ${firstPriceDate} 开始` : ""}</span>
+				</div>
+			{/if}
 			{#if !editingPrice}
 				<div class="kv-row">
 					<span class="kv-key">Source</span>
@@ -315,6 +328,12 @@
 	.current-price {
 		margin-top: 4px;
 		font-size: 14px;
+		color: var(--text-muted);
+	}
+
+	.display-name {
+		margin-top: 4px;
+		font-size: 13px;
 		color: var(--text-muted);
 	}
 

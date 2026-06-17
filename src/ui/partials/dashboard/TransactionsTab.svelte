@@ -28,7 +28,7 @@
 	let debouncedTagFilter: string = '';
 	
 	// --- LOCAL UI STATE (Sorting) ---
-	type SortColumn = 'date' | 'payee' | 'narration' | 'amount' | 'balance';
+	type SortColumn = 'date' | 'payee' | 'narration' | 'amount';
 	let sortColumn: SortColumn = 'date';
 	let sortDirection: 'asc' | 'desc' = 'desc';
 	let sortedTransactions: string[][] = [];
@@ -53,7 +53,7 @@
 
 	// --- Sorting logic (remains local) ---
 	function sortTransactions(transactions: string[][]) {
-		const headers = ['date', 'payee', 'narration', 'amount', 'balance']; // Added balance column
+		const headers = ['date', 'payee', 'narration', 'amount'];
 		const columnIndex = headers.indexOf(sortColumn);
 		if (columnIndex === -1) {
 			sortedTransactions = [...transactions]; return;
@@ -168,19 +168,15 @@
 						<th on:click={() => handleSort('amount')} class:active={sortColumn === 'amount'}>
 							金额 {sortColumn === 'amount' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
 						</th>
-						<th on:click={() => handleSort('balance')} class:active={sortColumn === 'balance'}>
-							余额 {sortColumn === 'balance' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
-						</th>
 					</tr>
 				</thead>
 				<tbody>
-					{#each sortedTransactions as [date, payee, narration, position, balance]}
+					{#each sortedTransactions as [date, payee, narration, position]}
 						<tr>
 							<td>{date}</td>
 							<td>{payee}</td>
 							<td>{narration}</td>
 							<td class="align-right">{position}</td>
-							<td class="align-right">{balance}</td>
 						</tr>
 					{/each}
 				</tbody>

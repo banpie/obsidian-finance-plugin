@@ -10,7 +10,8 @@ import {
     parseCombinedCommodityDataCSV,
     validatePriceSource,
     validateLogoUrl,
-    saveCommodityMetadata
+    saveCommodityMetadata,
+    loadFinanceOsCommodityLabels
 } from '../utils/index';
 import { PriceService } from '../services/price.service';
 import { Notice } from 'obsidian';
@@ -31,6 +32,14 @@ export interface CommodityInfo {
     pricemetadata?: string;
     /** Complete metadata dictionary from Beancount. */
     fullMetadata: Record<string, unknown>;
+    /** User-facing FinanceOS asset code, e.g. "US:QQQ" or "HK:07266". */
+    displayCode?: string;
+    /** User-facing FinanceOS asset name. */
+    displayName?: string;
+    /** Number of historical price points in FinanceOS reports, when available. */
+    pricePoints?: number;
+    /** First historical price date in FinanceOS reports, when available. */
+    firstPriceDate?: string;
     /** Latest price information if available. */
     currentPrice?: string;
     /** Alias for fullMetadata for UI compatibility. */
@@ -154,7 +163,11 @@ export class CommoditiesController {
         }
 
         const filtered = commodities.filter(commodity =>
-            commodity.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+            [
+                commodity.symbol,
+                commodity.displayCode,
+                commodity.displayName,
+            ].some(value => value?.toLowerCase().includes(searchTerm.toLowerCase()))
         );
         this.filteredCommodities.set(filtered);
     }
@@ -188,6 +201,7 @@ export class CommoditiesController {
             // Parse CSV results
             const combinedMap = parseCombinedCommodityDataCSV(combinedCSV, operatingCurrency);
             const priceDataMap = parseCommoditiesPriceDataCSV(priceDataCSV);
+            const financeOsLabels = await loadFinanceOsCommodityLabels(this.plugin);
 
             // Build the full symbol set: held commodities + priced commodities
             const allSymbols = new Set([...combinedMap.keys(), ...priceDataMap.keys()]);
@@ -199,6 +213,7 @@ export class CommoditiesController {
             const commodities: CommodityInfo[] = Array.from(allSymbols).map(symbol => {
                 const combined = combinedMap.get(symbol);
                 const priceData = priceDataMap.get(symbol);
+                const label = financeOsLabels.get(symbol);
                 const isOperatingCurrency = symbol === operatingCurrency;
 
                 // Prefer combined query values; fall back to priceDataMap for price/logo
@@ -207,6 +222,10 @@ export class CommoditiesController {
 
                 return {
                     symbol,
+                    displayCode: label?.displayCode,
+                    displayName: label?.displayName,
+                    pricePoints: label?.pricePoints,
+                    firstPriceDate: label?.firstPriceDate,
                     hasPriceMetadata: !!(logoUrl || price),
                     priceMetadata: logoUrl || undefined,
                     fullMetadata: {
@@ -259,6 +278,7 @@ export class CommoditiesController {
     public async loadCommodityDetails(symbol: string): Promise<void> {
         Logger.log('[CommoditiesController] loadCommodityDetails:', symbol);
         try {
+            const existing = this.getCommodityBySymbol(symbol);
             const detailsCSV = await this.plugin.runQuery(queries.getCommodityDetailsQuery(symbol));
             const details = parseCommodityDetailsCSV(detailsCSV);
 
@@ -266,6 +286,10 @@ export class CommoditiesController {
 
             this.selectedCommodity.set({
                 symbol: details.symbol || symbol,
+                displayCode: existing?.displayCode,
+                displayName: existing?.displayName,
+                pricePoints: existing?.pricePoints,
+                firstPriceDate: existing?.firstPriceDate,
                 hasPriceMetadata: !!details.priceMetadata,
                 priceMetadata: details.priceMetadata || undefined,
                 fullMetadata: details.metadata,
