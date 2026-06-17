@@ -27,21 +27,21 @@
 </script>
 
 <div class="beancount-header">
-	<h2>Snapshot</h2>
+	<h2>快照</h2>
 
 	<div class="header-controls">
 		<button
 			type="button" class="beancount-status-button" class:status-ok={fileStatus === 'ok'}
 			class:status-error={fileStatus === 'error'}
 			on:click={handleStatusClick}
-			title={fileStatus === 'error' ? 'Click to see error details' : 'File Status'}
+			title={fileStatus === 'error' ? '点击查看错误详情' : '文件状态'}
 			disabled={fileStatus === 'checking'} >
 			{#if fileStatus === 'checking'}
-				<span>Checking...</span>
+				<span>检查中...</span>
 			{:else if fileStatus === 'ok'}
-				<span>✅ OK</span>
+				<span>✅ 正常</span>
 			{:else if fileStatus === 'error'}
-				<span>❌ {errorCount} Error{errorCount !== 1 ? 's' : ''}</span>
+				<span>❌ {errorCount} 个错误</span>
 			{/if}
 		</button>
 
@@ -50,7 +50,7 @@
 				<svg class="loading-spinner" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<path d="M21 12a9 9 0 11-6.219-8.56"/>
 				</svg>
-				Refreshing...
+				刷新中...
 			{:else}
 				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<path d="M3 12a9 9 0 013.5-7.1"/>
@@ -58,27 +58,27 @@
 					<path d="M3 12a9 9 0 016.5 8.1"/>
 					<path d="M20.5 18.5a9 9 0 01-6.5-5.5"/>
 				</svg>
-				Refresh
+				刷新
 			{/if}
 		</button>
 	</div>
 </div>
 
-<h4>Key Metrics</h4>
+<h4>关键指标</h4>
 <div class="beancount-kpi-container">
 	{#if kpiError}
 		<div class="beancount-error-message">{kpiError}</div>
 	{:else}
 		<div class="kpi-metric">
-			<span class="kpi-label">Net Worth</span>
+			<span class="kpi-label">净资产</span>
 			<span class="kpi-value net-worth">{netWorth}</span>
 		</div>
 		<div class="kpi-metric">
-			<span class="kpi-label">Assets</span>
+			<span class="kpi-label">资产</span>
 			<span class="kpi-value">{assets}</span>
 		</div>
 		<div class="kpi-metric">
-			<span class="kpi-label">Liabilities</span>
+			<span class="kpi-label">负债</span>
 			<span class="kpi-value">{liabilities}</span>
 		</div>
 	{/if}
@@ -86,14 +86,14 @@
 
 {#if !kpiError}
 	<div class="conversion-note">
-		<span>Commodities without price data are excluded from totals</span>
+		<span>没有价格数据的投资品不会计入合计</span>
 	</div>
 {/if}
 
 {#if fileStatus === 'error' && errorList.length > 0}
 	<hr class="error-separator">
 	<div class="error-section">
-		<h4>Errors ({errorCount})</h4>
+		<h4>错误（{errorCount}）</h4>
 		<div class="error-list">
 			{#each errorList as error}
 				<div class="error-item">

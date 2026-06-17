@@ -89,10 +89,10 @@
 		const hours = Math.floor(minutes / 60);
 		const days = Math.floor(hours / 24);
 
-		if (days > 0) return `${days}d ago`;
-		if (hours > 0) return `${hours}h ago`;
-		if (minutes > 0) return `${minutes}m ago`;
-		return "just now";
+		if (days > 0) return `${days} 天前`;
+		if (hours > 0) return `${hours} 小时前`;
+		if (minutes > 0) return `${minutes} 分钟前`;
+		return "刚刚";
 	}
 </script>
 
@@ -100,17 +100,15 @@
 	<!-- Header with search and refresh -->
 	<div class="commodities-header">
 		<div class="header-left">
-			<h3>Commodities & Prices</h3>
+			<h3>投资品与价格</h3>
 			{#if $lastUpdatedStore}
 				<span class="last-updated"
-					>Last updated: {$lastUpdatedStore.toLocaleTimeString()}</span
+					>最后更新：{$lastUpdatedStore.toLocaleTimeString()}</span
 				>
 			{/if}
 			{#if !$hasCommodityDataStore && !$loadingStore}
 				<div class="price-notice">
-					ℹ️ No commodities found in your Beancount file. Add
-					commodity declarations to see price metadata and holdings
-					information.
+					ℹ️ 当前账本没有找到 commodity 声明。添加 commodity 后才能查看价格元数据和持仓信息。
 				</div>
 			{/if}
 		</div>
@@ -120,57 +118,57 @@
 				on:click={handleUpdatePrices}
 				class="update-prices-button"
 				disabled={$loadingStore || $fetchingPricesStore}
-				title="Fetch latest prices for commodities with configured price sources"
+				title="为已配置价格源的投资品拉取最新价格"
 			>
-				{$fetchingPricesStore ? "⟳ Fetching..." : "💰 Update Prices"}
+				{$fetchingPricesStore ? "⟳ 正在更新..." : "💰 更新价格"}
 			</button>
 			<button
 				on:click={handleAddCommodity}
 				class="add-commodity-button"
-				title="Add new commodity"
+				title="新增投资品"
 			>
-				+ Add Commodity
+				+ 新增投资品
 			</button>
 			<input
 				type="text"
-				placeholder="Search commodities..."
+				placeholder="搜索投资品..."
 				value={$searchTermStore}
 				on:input={handleSearchInput}
 				class="search-input"
 			/>
-			<button class="btn btn-primary" on:click={handleRefresh} disabled={$loadingStore}>Refresh</button>
+			<button class="btn btn-primary" on:click={handleRefresh} disabled={$loadingStore}>刷新</button>
 		</div>
 	</div>
 
 	<!-- Filter toggle -->
 	<div class="filter-bar">
-		<div class="filter-toggle" role="group" aria-label="Filter commodities">
+		<div class="filter-toggle" role="group" aria-label="筛选投资品">
 			<button
 				class="filter-btn"
 				class:active={filterMode === 'all'}
 				on:click={() => filterMode = 'all'}
-			>All</button>
+			>全部</button>
 			<button
 				class="filter-btn"
 				class:active={filterMode === 'has_holding'}
 				on:click={() => filterMode = 'has_holding'}
-			>Has Holding</button>
+			>有持仓</button>
 			<button
 				class="filter-btn"
 				class:active={filterMode === 'has_price'}
 				on:click={() => filterMode = 'has_price'}
-			>Has Price</button>
+			>有价格</button>
 			<button
 				class="filter-btn"
 				class:active={filterMode === 'has_both'}
 				on:click={() => filterMode = 'has_both'}
-			>Has Both</button>
+			>持仓和价格都有</button>
 		</div>
-		<span class="filter-count">{displayCommodities.length} shown</span>
+		<span class="filter-count">显示 {displayCommodities.length} 个</span>
 	</div>
 	{#if $lastPriceFetchStore}
 		<div class="price-fetch-info">
-			ℹ️ Last price update: {formatTimeSince($lastPriceFetchStore.date)} —
+			ℹ️ 上次价格更新：{formatTimeSince($lastPriceFetchStore.date)} —
 			{$lastPriceFetchStore.summary}
 		</div>
 	{/if}
@@ -198,10 +196,10 @@
 			{/each}
 		</div>
 	{:else if !$loadingStore}
-		<EmptyState icon="🪙" title="No Commodities Found" description={$searchTermStore ? `No commodities match "${$searchTermStore}"` : filterMode !== 'all' ? `No commodities match the active filter` : 'No commodities found in your Beancount file.'}>
+		<EmptyState icon="🪙" title="没有找到投资品" description={$searchTermStore ? `没有投资品匹配“${$searchTermStore}”` : filterMode !== 'all' ? `没有投资品匹配当前筛选` : '当前 Beancount 账本没有找到 commodity。'}>
 			{#if !$searchTermStore}
 				<p class="empty-hint">
-					Commodities appear when you declare them in your Beancount file:
+					在 Beancount 文件中声明 commodity 后，这里会显示投资品：
 				</p>
 				<ul class="empty-list">
 					<li>• Commodity declarations (e.g., <code>2024-01-01 commodity BTC</code>)</li>

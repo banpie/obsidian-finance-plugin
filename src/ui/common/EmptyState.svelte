@@ -1,8 +1,8 @@
 <!-- src/ui/common/EmptyState.svelte -->
 <script lang="ts">
 	export let icon: string = '🔍';
-	export let title: string = 'No Data Found';
-	export let description: string = 'We couldn\'t find any records matching your criteria.';
+	export let title: string = '没有找到数据';
+	export let description: string = '没有找到匹配当前条件的记录。';
 </script>
 
 <div class="empty-state-container">

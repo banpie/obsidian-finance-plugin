@@ -60,3 +60,4 @@ export type { OperationType } from './structuredLayout';
 
 // Re-export validation utilities (still implemented here until moved)
 export { validatePriceSource, validateLogoUrl } from './validators';
+export { normalizeMoneyCurrencyOptions } from './currencyOptions';

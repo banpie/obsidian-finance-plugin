@@ -108,16 +108,16 @@
 		{#each state.allTags as tag} <option value={tag}></option> {/each}
 	</datalist>
 	{#if state.isLoadingFilters}
-		<p>Loading filters...</p>
+		<p>正在加载筛选项...</p>
 	{:else}
 		<div class="controls">
 			<div>
-				<label for="account-input">Account:</label>
+				<label for="account-input">账户：</label>
 				<input 
 					type="text" 
 					id="account-input" 
 					bind:value={selectedAccount} 
-					placeholder="Type account name..." 
+					placeholder="输入账户名..." 
 					disabled={state.isLoading || state.isLoadingFilters}
 					list="account-list"
 				/>
@@ -128,21 +128,21 @@
 				</datalist>
 			</div>
 			<div class="date-range">
-				<label for="start-date">From:</label>
+				<label for="start-date">开始：</label>
 				<input type="date" id="start-date" bind:value={startDate} disabled={state.isLoading} />
-				<label for="end-date">To:</label>
+				<label for="end-date">结束：</label>
 				<input type="date" id="end-date" bind:value={endDate} disabled={state.isLoading} />
 			</div>
 			<div>
-				<label for="payee-filter">Payee:</label>
-				<input type="text" id="payee-filter" bind:value={payeeFilter} placeholder="Filter by payee..." disabled={state.isLoading} />
+				<label for="payee-filter">交易对象：</label>
+				<input type="text" id="payee-filter" bind:value={payeeFilter} placeholder="按交易对象筛选..." disabled={state.isLoading} />
 			</div>
 			<div>
-				<label for="tag-filter">Tag:</label>
-				<input type="text" id="tag-filter" bind:value={tagFilter} placeholder="Filter by tag..." disabled={state.isLoading} list="beancount-tags" />
+				<label for="tag-filter">标签：</label>
+				<input type="text" id="tag-filter" bind:value={tagFilter} placeholder="按标签筛选..." disabled={state.isLoading} list="beancount-tags" />
 			</div>
 			<div>
-				<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading || state.isLoadingFilters}>Refresh</button>
+				<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading || state.isLoadingFilters}>刷新</button>
 			</div>
 		</div>
 
@@ -151,25 +151,25 @@
 		{:else if state.error}
 			<ErrorBanner message={state.error} on:retry={handleRefresh} />
 		{:else if sortedTransactions.length === 0}
-			<EmptyState icon="💸" title="No Transactions Found" description="Try selecting a different account or adjusting the date range and filters." />
+			<EmptyState icon="💸" title="没有找到交易" description="可以换一个账户、日期范围或筛选条件。" />
 		{:else}
 			<table class="transaction-table sortable">
 				<thead>
 					<tr>
 						<th on:click={() => handleSort('date')} class:active={sortColumn === 'date'}>
-							Date {sortColumn === 'date' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+							日期 {sortColumn === 'date' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
 						</th>
 						<th on:click={() => handleSort('payee')} class:active={sortColumn === 'payee'}>
-							Payee {sortColumn === 'payee' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+							交易对象 {sortColumn === 'payee' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
 						</th>
 						<th on:click={() => handleSort('narration')} class:active={sortColumn === 'narration'}>
-							Narration {sortColumn === 'narration' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+							说明 {sortColumn === 'narration' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
 						</th>
 						<th on:click={() => handleSort('amount')} class:active={sortColumn === 'amount'}>
-							Amount {sortColumn === 'amount' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+							金额 {sortColumn === 'amount' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
 						</th>
 						<th on:click={() => handleSort('balance')} class:active={sortColumn === 'balance'}>
-							Balance {sortColumn === 'balance' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+							余额 {sortColumn === 'balance' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
 						</th>
 					</tr>
 				</thead>

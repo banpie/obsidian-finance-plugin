@@ -158,8 +158,8 @@
 
         new ConfirmModal(
             plugin.app,
-            'Delete Entry',
-            `Are you sure you want to delete this ${entry.type}?`,
+            '删除条目',
+            `确定要删除这条 ${entry.type} 吗？`,
             async () => {
                 try {
                     let result;
@@ -172,19 +172,19 @@
                     } else if (entry.type === 'note') {
                         result = await deleteNote(plugin, entry.id);
                     } else {
-                        new Notice(`Deleting ${entry.type} entries is not supported.`);
+                        new Notice(`暂不支持删除 ${entry.type} 类型条目。`);
                         return;
                     }
                     
                     if (result.success) {
-                        new Notice(`${entry.type.charAt(0).toUpperCase() + entry.type.slice(1)} deleted successfully!`);
+                        new Notice('条目已删除。');
                         await refresh();
                     } else {
-                        new Notice(`Failed to delete ${entry.type}: ${result.error || 'Unknown error'}`);
+                        new Notice(`删除失败：${result.error || '未知错误'}`);
                     }
                 } catch (error) {
                     console.error('Error deleting entry:', error);
-                    new Notice(`Failed to delete ${entry.type}. Check console for details.`);
+                    new Notice('删除失败，请查看控制台详情。');
                 }
             }
         ).open();
@@ -254,21 +254,21 @@
     <div class="filters-container">
         <div class="filter-row">
             <div class="filter-group">
-                <label for="search">Search</label>
-                <input type="text" id="search" bind:value={searchTerm} on:input={updateFiltersDebounced} placeholder="Search (payee, narration, account)..." disabled={isLoading} />
+                <label for="search">搜索</label>
+                <input type="text" id="search" bind:value={searchTerm} on:input={updateFiltersDebounced} placeholder="搜索交易对象、说明或账户..." disabled={isLoading} />
             </div>
             <div class="filter-group">
-                <label for="type">Type</label>
+                <label for="type">类型</label>
                 <select id="type" bind:value={typeFilter} on:change={applyFilters} disabled={isLoading}>
-                    <option value="all">All Types</option>
-                    <option value="transaction">Transactions</option>
-                    <option value="note">Notes</option>
-                    <option value="balance">Balances</option>
+                    <option value="all">全部类型</option>
+                    <option value="transaction">交易</option>
+                    <option value="note">备注</option>
+                    <option value="balance">余额断言</option>
                 </select>
             </div>
              <div class="filter-group">
-                <label for="account">Account</label>
-                <input type="text" id="account" bind:value={selectedAccount} on:input={updateFiltersDebounced} list="account-suggestions" placeholder="Account..." disabled={isLoading} />
+                <label for="account">账户</label>
+                <input type="text" id="account" bind:value={selectedAccount} on:input={updateFiltersDebounced} list="account-suggestions" placeholder="账户..." disabled={isLoading} />
                 <datalist id="account-suggestions">
                     {#each availableAccounts as account}
                         <option value={account} />
@@ -279,16 +279,16 @@
 
         <div class="filter-row">
              <div class="filter-group">
-                <label for="start">From</label>
+                <label for="start">开始</label>
                 <input type="date" id="start" bind:value={startDate} on:change={applyFilters} disabled={isLoading} />
             </div>
              <div class="filter-group">
-                <label for="end">To</label>
+                <label for="end">结束</label>
                 <input type="date" id="end" bind:value={endDate} on:change={applyFilters} disabled={isLoading} />
             </div>
             <div class="filter-group">
-                <label for="payee">Payee</label>
-                <input type="text" id="payee" bind:value={payeeFilter} on:input={updateFiltersDebounced} list="payee-suggestions" placeholder="Payee..." disabled={isLoading} />
+                <label for="payee">交易对象</label>
+                <input type="text" id="payee" bind:value={payeeFilter} on:input={updateFiltersDebounced} list="payee-suggestions" placeholder="交易对象..." disabled={isLoading} />
                 <datalist id="payee-suggestions">
                     {#each availablePayees as payee}
                         <option value={payee} />
@@ -296,8 +296,8 @@
                 </datalist>
             </div>
             <div class="filter-group">
-                <label for="tag">Tag</label>
-                <input type="text" id="tag" bind:value={tagFilter} on:input={updateFiltersDebounced} list="tag-suggestions" placeholder="Tag..." disabled={isLoading} />
+                <label for="tag">标签</label>
+                <input type="text" id="tag" bind:value={tagFilter} on:input={updateFiltersDebounced} list="tag-suggestions" placeholder="标签..." disabled={isLoading} />
                 <datalist id="tag-suggestions">
                     {#each availableTags as tag}
                         <option value={tag} />
@@ -306,8 +306,8 @@
                 <!-- Datalist temporarily removed for debugging -->
             </div>
             <div class="filter-actions">
-                 <button class="btn" on:click={handleClear} disabled={isLoading}>Clear</button>
-                 <button class="btn btn-primary" on:click={() => refresh()} disabled={isLoading}>Refresh</button>
+                 <button class="btn" on:click={handleClear} disabled={isLoading}>清除</button>
+                 <button class="btn btn-primary" on:click={() => refresh()} disabled={isLoading}>刷新</button>
             </div>
         </div>
     </div>
@@ -324,7 +324,7 @@
         {/if}
         
         {#if !isLoading && visibleEntriesArray.length === 0}
-            <EmptyState icon="📓" title="No Entries Found" description="No transactions, notes, or balances match your search criteria or active filters." />
+            <EmptyState icon="📓" title="没有找到条目" description="没有交易、备注或余额断言匹配当前搜索和筛选条件。" />
         {/if}
         
         {#if !isLoading && visibleEntriesArray.length > 0}
@@ -356,14 +356,14 @@
     {#if totalEntries > 0}
     <div class="pagination-container">
         <span class="pagination-info">
-            Showing <span class="font-semibold">{(currentPageNum - 1) * pageSizeNum + 1}</span> to <span class="font-semibold">{Math.min(currentPageNum * pageSizeNum, totalEntries)}</span> of <span class="font-semibold">{totalEntries}</span>
+            显示第 <span class="font-semibold">{(currentPageNum - 1) * pageSizeNum + 1}</span> 到 <span class="font-semibold">{Math.min(currentPageNum * pageSizeNum, totalEntries)}</span> 条，共 <span class="font-semibold">{totalEntries}</span> 条
         </span>
         <div class="pagination-controls">
             <button class="btn-small" on:click={() => setPage(currentPageNum - 1)} disabled={currentPageNum === 1}>
-                Previous
+                上一页
             </button>
             <button class="btn-small" on:click={() => setPage(currentPageNum + 1)} disabled={!hasMorePages}>
-                Next
+                下一页
             </button>
         </div>
     </div>

@@ -56,16 +56,16 @@
 		targetError = '';
 
 		if (!name.trim()) {
-			nameError = 'Name is required';
+			nameError = '请输入名称';
 			valid = false;
 		}
 		if (!accountQuery.trim()) {
-			accountError = 'Account is required';
+			accountError = '请选择资产科目';
 			valid = false;
 		}
 		const t = parseFloat(target);
 		if (!target || isNaN(t) || t <= 0) {
-			targetError = 'Enter a positive number';
+			targetError = '请输入大于 0 的金额';
 			valid = false;
 		}
 		return valid;
@@ -97,29 +97,29 @@
 </script>
 
 <div class="indicator-modal">
-	<h2>{editingIndicator ? 'Edit Target' : 'Add Target'}</h2>
+	<h2>{editingIndicator ? '编辑目标' : '新增目标'}</h2>
 
 	<div class="form-grid">
 		<div class="form-group full-width">
-			<label for="target-name">Name <span class="required">*</span></label>
+			<label for="target-name">名称 <span class="required">*</span></label>
 			<input
 				id="target-name"
 				type="text"
 				bind:value={name}
-				placeholder="e.g. Emergency Fund"
+				placeholder="例如：应急基金"
 				class:error={nameError}
 			/>
 			{#if nameError}<span class="error-msg">{nameError}</span>{/if}
 		</div>
 
 		<div class="form-group full-width">
-			<label for="target-account">Asset Account <span class="required">*</span></label>
+			<label for="target-account">资产科目 <span class="required">*</span></label>
 			<div class="autocomplete-wrapper">
 				<input
 					id="target-account"
 					type="text"
 					bind:value={accountQuery}
-					placeholder="e.g. Assets:Savings"
+					placeholder="例如：Assets:Savings"
 					class:error={accountError}
 					on:focus={() => (showDropdown = true)}
 					on:blur={() => setTimeout(() => (showDropdown = false), 150)}
@@ -138,17 +138,17 @@
 		</div>
 
 		<div class="form-group">
-			<label for="target-cycle">Period</label>
+			<label for="target-cycle">周期</label>
 			<select id="target-cycle" bind:value={cycle}>
-				<option value="Monthly">Monthly</option>
-				<option value="Weekly">Weekly</option>
-				<option value="Quarterly">Quarterly</option>
-				<option value="Yearly">Yearly</option>
+				<option value="Monthly">每月</option>
+				<option value="Weekly">每周</option>
+				<option value="Quarterly">每季度</option>
+				<option value="Yearly">每年</option>
 			</select>
 		</div>
 
 		<div class="form-group">
-			<label for="target-amount">Target Amount <span class="required">*</span></label>
+			<label for="target-amount">目标金额 <span class="required">*</span></label>
 			<input
 				id="target-amount"
 				type="number"
@@ -162,7 +162,7 @@
 		</div>
 
 		<div class="form-group">
-			<label for="target-currency">Currency</label>
+			<label for="target-currency">货币</label>
 			<select id="target-currency" bind:value={currency}>
 				{#each currencies as c}
 					<option value={c}>{c}</option>
@@ -173,32 +173,32 @@
 		<div class="form-group rollover-row">
 			<label class="toggle-label">
 				<input type="checkbox" bind:checked={isRollover} />
-				Roll over
+				结转
 			</label>
 		</div>
 
 		{#if isRollover}
 			<div class="form-group full-width">
-				<label for="target-start">Start Date</label>
+				<label for="target-start">开始日期</label>
 				<input id="target-start" type="date" bind:value={startDate} />
 			</div>
 		{/if}
 
 		<div class="form-group full-width">
-			<label for="target-tag">Tag <span class="optional">(optional)</span></label>
+			<label for="target-tag">标签 <span class="optional">（可选）</span></label>
 			<div class="tag-row">
 				<select id="target-tag-mode" bind:value={tagMode}>
-					<option value="has">Has tag</option>
-					<option value="not_has">Does not have tag</option>
+					<option value="has">包含标签</option>
+					<option value="not_has">不包含标签</option>
 				</select>
-				<input id="target-tag" type="text" bind:value={tag} placeholder="e.g. savings" />
+				<input id="target-tag" type="text" bind:value={tag} placeholder="例如：savings" />
 			</div>
 		</div>
 	</div>
 
 	<div class="modal-footer">
-		<button class="cancel-btn" on:click={handleCancel}>Cancel</button>
-		<button class="save-btn" on:click={handleSave}>{editingIndicator ? 'Save Changes' : 'Save Target'}</button>
+		<button class="cancel-btn" on:click={handleCancel}>取消</button>
+		<button class="save-btn" on:click={handleSave}>{editingIndicator ? '保存修改' : '保存目标'}</button>
 	</div>
 </div>
 

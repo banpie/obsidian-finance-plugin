@@ -157,13 +157,13 @@
 
 	function getStatusBadge(pct: number, isBudget: boolean): { label: string; cls: string } {
 		if (isBudget) {
-			if (pct >= 100) return { label: 'Over Budget', cls: 'status-over' };
-			if (pct >= 75)  return { label: 'Warning',     cls: 'status-warn' };
-			return { label: 'On Track', cls: 'status-good' };
+			if (pct >= 100) return { label: '超预算', cls: 'status-over' };
+			if (pct >= 75)  return { label: '接近上限', cls: 'status-warn' };
+			return { label: '正常', cls: 'status-good' };
 		}
-		if (pct >= 100) return { label: 'Complete',   cls: 'status-good' };
-		if (pct >= 75)  return { label: 'On Track',   cls: 'status-good' };
-		return { label: 'In Progress', cls: 'status-neutral' };
+		if (pct >= 100) return { label: '已完成', cls: 'status-good' };
+		if (pct >= 75)  return { label: '进展正常', cls: 'status-good' };
+		return { label: '进行中', cls: 'status-neutral' };
 	}
 
 	async function loadAll() {
@@ -210,7 +210,7 @@
 		// dispatching queries that can't meaningfully return a status.
 		if (!item.accountString || !item.startDate || item.targetAmount <= 0) {
 			budgets = budgets.map((b, i) => i === index
-				? { ...b, loading: false, error: 'Indicator data incomplete — check the event directive in events.beancount.' }
+				? { ...b, loading: false, error: '指标数据不完整，请检查 events.beancount 中的 event 指令。' }
 				: b);
 			return;
 		}
@@ -305,7 +305,7 @@
 		// Same renderability guard as for budgets — see loadBudgetStatus for rationale.
 		if (!item.accountString || !item.startDate || item.targetAmount <= 0) {
 			targets = targets.map((t, i) => i === index
-				? { ...t, loading: false, error: 'Indicator data incomplete — check the event directive in events.beancount.' }
+				? { ...t, loading: false, error: '指标数据不完整，请检查 events.beancount 中的 event 指令。' }
 				: t);
 			return;
 		}
@@ -380,23 +380,23 @@
 	async function handleDelete(item: IndicatorItem) {
 		if (!plugin) return;
 		if (!item.filename || !item.lineno) {
-			new Notice('Cannot find indicator location in file');
+			new Notice('找不到这个指标在文件中的位置。');
 			return;
 		}
 
-		const confirmed = window.confirm(`Are you sure you want to delete the indicator "${item.name}"?`);
+		const confirmed = window.confirm(`确定要删除指标“${item.name}”吗？`);
 		if (!confirmed) return;
 
 		try {
 			const result = await deleteIndicatorDirective(plugin, item.filename, item.lineno);
 			if (result.success) {
-				new Notice(`Indicator "${item.name}" deleted successfully`);
+				new Notice(`指标“${item.name}”已删除`);
 				await loadAll();
 			} else {
-				new Notice(`Failed to delete indicator: ${result.error || 'Unknown error'}`);
+				new Notice(`删除指标失败：${result.error || '未知错误'}`);
 			}
 		} catch (error) {
-			new Notice(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			new Notice(`错误：${error instanceof Error ? error.message : '未知错误'}`);
 		}
 	}
 </script>
@@ -405,23 +405,23 @@
 	<!-- Header -->
 	<div class="indicators-header">
 		<div class="title-row">
-			<h4>Financial Indicators</h4>
-			<button class="btn btn-primary" on:click={loadAll} disabled={isLoading}>Refresh</button>
+			<h4>预算与目标</h4>
+			<button class="btn btn-primary" on:click={loadAll} disabled={isLoading}>刷新</button>
 		</div>
 		<div class="controls-row">
 			<div class="view-toggle">
 				<button class="toggle-btn" class:active={activeView === 'Budgets'} on:click={() => setView('Budgets')}>
-					Budgets
+					预算
 					<span class="count-badge" class:active={activeView === 'Budgets'}>{budgets.length}</span>
 				</button>
 				<button class="toggle-btn" class:active={activeView === 'Targets'} on:click={() => setView('Targets')}>
-					Targets
+					目标
 					<span class="count-badge" class:active={activeView === 'Targets'}>{targets.length}</span>
 				</button>
 			</div>
 			<button class="add-btn" on:click={activeView === 'Budgets' ? handleAddBudget : handleAddTarget}>
 				<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-				{activeView === 'Budgets' ? 'Add Budget' : 'Add Target'}
+				{activeView === 'Budgets' ? '新增预算' : '新增目标'}
 			</button>
 		</div>
 	</div>
@@ -443,10 +443,10 @@
 				<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3">
 					<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
 				</svg>
-				<p>No {activeView.toLowerCase()} defined yet.</p>
+				<p>还没有定义{activeView === 'Budgets' ? '预算' : '目标'}。</p>
 				<button class="add-btn" on:click={activeView === 'Budgets' ? handleAddBudget : handleAddTarget}>
 					<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-					Add {activeView === 'Budgets' ? 'Budget' : 'Target'}
+					新增{activeView === 'Budgets' ? '预算' : '目标'}
 				</button>
 			</div>
 		{:else}
@@ -466,8 +466,8 @@
 								<div class="card-title-row">
 									<span class="card-name">{item.name}</span>
 									<div class="card-actions">
-										<button class="btn-icon edit-btn" on:click={() => handleEdit(item)} title="Edit">✏️</button>
-										<button class="btn-icon delete-btn" on:click={() => handleDelete(item)} title="Delete">❌</button>
+										<button class="btn-icon edit-btn" on:click={() => handleEdit(item)} title="编辑">✏️</button>
+										<button class="btn-icon delete-btn" on:click={() => handleDelete(item)} title="删除">❌</button>
 									</div>
 								</div>
 								<div class="card-meta">
@@ -483,7 +483,7 @@
 							</div>
 							{#if !item.loading && !item.error}
 								<div class="card-remaining">
-									<span class="remaining-label">{isBudget ? 'Remaining' : 'Still needed'}</span>
+									<span class="remaining-label">{isBudget ? '剩余额度' : '仍需完成'}</span>
 									<span class="remaining-value" style="--bar-color: {barColor};">{formatAmount(Math.max(item.remaining, 0), item.currency)}</span>
 									<span class="status-badge {status.cls}">{status.label}</span>
 								</div>
@@ -502,8 +502,8 @@
 							<!-- Progress section -->
 							<div class="progress-section">
 								<div class="progress-label-row">
-									<span class="progress-label-text">{formatAmount(item.spent, item.currency)} of {effTarget < 0 ? formatSignedAmount(effTarget, item.currency) : formatAmount(effTarget, item.currency)}</span>
-									<span class="pct-text" style="--bar-color: {barColor};">{isFinite(pct) ? `${(Math.round(pct * 10) / 10).toFixed(1)}%` : 'Over'}</span>
+									<span class="progress-label-text">{formatAmount(item.spent, item.currency)} / {effTarget < 0 ? formatSignedAmount(effTarget, item.currency) : formatAmount(effTarget, item.currency)}</span>
+									<span class="pct-text" style="--bar-color: {barColor};">{isFinite(pct) ? `${(Math.round(pct * 10) / 10).toFixed(1)}%` : '已超出'}</span>
 								</div>
 								<div class="progress-track">
 									<div class="progress-fill" style="--pct-width: {Math.min(pct, 100)}%; --bar-color: {barColor};"></div>
@@ -513,7 +513,7 @@
 							<!-- Bottom stats row -->
 							<div class="stats-row">
 								<div class="stat-block">
-									<span class="stat-label">{isBudget ? 'Base Target' : 'Goal'}</span>
+									<span class="stat-label">{isBudget ? '基础预算' : '目标'}</span>
 									<span class="stat-value">{formatAmount(item.targetAmount, item.currency)}</span>
 								</div>
 								{#if item.isRollOver}
@@ -524,21 +524,21 @@
 											{:else}
 												<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
 											{/if}
-											Rollover
+											结转
 										</span>
 										<span class="stat-value rollover-value" class:rollover-negative={rolloverAmt < 0}>{formatSignedAmount(rolloverAmt, item.currency)}</span>
 									</div>
 									<div class="stat-block">
-										<span class="stat-label">Available</span>
+										<span class="stat-label">可用额度</span>
 										<span class="stat-value">{formatSignedAmount(effTarget, item.currency)}</span>
 									</div>
 								{:else}
 									<div class="stat-block">
-										<span class="stat-label">{isBudget ? 'Spent' : 'Saved'}</span>
+										<span class="stat-label">{isBudget ? '已用' : '已存'}</span>
 										<span class="stat-value">{formatAmount(item.spent, item.currency)}</span>
 									</div>
 									<div class="stat-block">
-										<span class="stat-label">{isBudget ? 'Remaining' : 'Still needed'}</span>
+										<span class="stat-label">{isBudget ? '剩余' : '仍需完成'}</span>
 										<span class="stat-value stat-value-colored" style="--bar-color: {barColor};">{formatAmount(Math.max(item.remaining, 0), item.currency)}</span>
 									</div>
 								{/if}

@@ -108,9 +108,9 @@
 <div class="income-statement-container">
 	<!-- Header -->
 	<div class="income-statement-header">
-		<h2>Income Statement</h2>
+		<h2>收支表</h2>
 		<div class="header-controls">
-			<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading}>Refresh</button>
+			<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading}>刷新</button>
 		</div>
 	</div>
 
@@ -130,7 +130,7 @@
 		<!-- Chart Area -->
 		<div class="chart-area">
 			<div class="chart-area-header">
-				<div class="chart-selector" role="group" aria-label="Select chart">
+				<div class="chart-selector" role="group" aria-label="选择图表">
 					<button
 						class="chart-selector-btn"
 						class:active={selectedChart === 'trend'}
@@ -140,7 +140,7 @@
 						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/>
 						</svg>
-						Trends
+						趋势
 					</button>
 					<button
 						class="chart-selector-btn"
@@ -153,7 +153,7 @@
 							<circle cx="12" cy="12" r="7"/>
 							<circle cx="12" cy="12" r="11"/>
 						</svg>
-						Total
+						合计
 					</button>
 				</div>
 
@@ -164,29 +164,29 @@
 								class:active={state.chartTrendType === 'netprofit'}
 								on:click={() => handleTrendTypeChange('netprofit')}
 								disabled={state.chartLoading}
-							>Net Profit</button>
+							>净收入</button>
 							<button
 								class:active={state.chartTrendType === 'income'}
 								on:click={() => handleTrendTypeChange('income')}
 								disabled={state.chartLoading}
-							>Income</button>
+							>收入</button>
 							<button
 								class:active={state.chartTrendType === 'expense'}
 								on:click={() => handleTrendTypeChange('expense')}
 								disabled={state.chartLoading}
-							>Expense</button>
+							>支出</button>
 						</div>
 						<div class="interval-toggle">
 							<button
 								class:active={state.chartInterval === 'month'}
 								on:click={() => handleIntervalChange('month')}
 								disabled={state.chartLoading}
-							>Monthly</button>
+							>每月</button>
 							<button
 								class:active={state.chartInterval === 'week'}
 								on:click={() => handleIntervalChange('week')}
 								disabled={state.chartLoading}
-							>Weekly</button>
+							>每周</button>
 						</div>
 					</div>
 				{:else if selectedChart === 'total'}
@@ -194,11 +194,11 @@
 						<button
 							class:active={selectedTotalSection === 'income'}
 							on:click={() => (selectedTotalSection = 'income')}
-						>Income</button>
+						>收入</button>
 						<button
 							class:active={selectedTotalSection === 'expenses'}
 							on:click={() => (selectedTotalSection = 'expenses')}
-						>Expenses</button>
+						>支出</button>
 					</div>
 				{/if}
 			</div>
@@ -206,20 +206,20 @@
 			{#if selectedChart === 'trend'}
 				<div class="trend-chart-container">
 					{#if state.chartError}
-						<p class="error-message">Chart Error: {state.chartError}</p>
+						<p class="error-message">图表错误：{state.chartError}</p>
 					{:else if state.chartLoading}
-						<p class="chart-loading">Loading chart...</p>
+						<p class="chart-loading">正在加载图表...</p>
 					{:else if state.chartConfig}
 						<ChartComponent config={state.chartConfig} height="300px"/>
 					{:else}
-						<p class="chart-loading">Not enough data to display chart.</p>
+						<p class="chart-loading">数据不足，暂时无法显示图表。</p>
 					{/if}
 				</div>
 			{:else if selectedChart === 'total'}
 				{#if selectedTotalSection === 'income'}
 					<!-- Income: expect negative (credit accounts). Pass as assets→green, with assetsExpectNegative -->
 					<SunburstChart
-						title="Income"
+						title="收入"
 						assets={state.income}
 						liabilities={[]}
 						equity={[]}
@@ -227,13 +227,13 @@
 						totalAssets={state.totalIncome}
 						totalLiabilities={0}
 						totalEquity={0}
-						assetsLabel="Income"
+						assetsLabel="收入"
 						assetsExpectNegative={true}
 					/>
 				{:else}
 					<!-- Expenses: expect positive (debit accounts). Pass as liabilities→red, with liabilitiesExpectNegative=false -->
 					<SunburstChart
-						title="Expenses"
+						title="支出"
 						assets={[]}
 						liabilities={state.expenses}
 						equity={[]}
@@ -241,7 +241,7 @@
 						totalAssets={0}
 						totalLiabilities={state.totalExpenses}
 						totalEquity={0}
-						liabilitiesLabel="Expenses"
+						liabilitiesLabel="支出"
 						liabilitiesExpectNegative={false}
 					/>
 				{/if}
@@ -251,17 +251,17 @@
 		<!-- Income Statement Table -->
 		<div class="income-statement-section">
 			<div class="income-statement-section-header">
-				<h3>Income Statement</h3>
+				<h3>收支表</h3>
 				<div class="valuation-method-selector">
-					<label for="is-valuation-method">Valuation:</label>
+					<label for="is-valuation-method">估值：</label>
 					<select
 						id="is-valuation-method"
 						value={state.valuationMethod || 'convert'}
 						on:change={handleValuationMethodChange}
 					>
-						<option value="convert">Market Value (Convert to {state.currency})</option>
-						<option value="cost">At Cost</option>
-						<option value="units">Units</option>
+						<option value="convert">市值（折算为 {state.currency}）</option>
+						<option value="cost">按成本</option>
+						<option value="units">原始单位</option>
 					</select>
 				</div>
 			</div>
@@ -269,14 +269,14 @@
 			<div class="income-statement-grid">
 				<!-- Income Column -->
 				<div class="column">
-					<h4>Income</h4>
+					<h4>收入</h4>
 					<table class="beancount-table">
 						<thead>
 							<tr class="header-row">
-								<th class="account-header">Account</th>
+								<th class="account-header">账户</th>
 								<th class="amount-header">{state.currency}</th>
 								{#if showOtherCurrenciesColumn}
-									<th class="other-currencies-header">Other Currencies</th>
+									<th class="other-currencies-header">其它币种/标的</th>
 								{/if}
 							</tr>
 						</thead>
@@ -303,21 +303,21 @@
 						</tbody>
 					</table>
 					<div class="section-total">
-						<span>Total Income</span>
+						<span>收入合计</span>
 						<span class="total-amount">{state.totalIncome.toFixed(2)} {state.currency}</span>
 					</div>
 				</div>
 
 				<!-- Expenses Column -->
 				<div class="column">
-					<h4>Expenses</h4>
+					<h4>支出</h4>
 					<table class="beancount-table">
 						<thead>
 							<tr class="header-row">
-								<th class="account-header">Account</th>
+								<th class="account-header">账户</th>
 								<th class="amount-header">{state.currency}</th>
 								{#if showOtherCurrenciesColumn}
-									<th class="other-currencies-header">Other Currencies</th>
+									<th class="other-currencies-header">其它币种/标的</th>
 								{/if}
 							</tr>
 						</thead>
@@ -344,7 +344,7 @@
 						</tbody>
 					</table>
 					<div class="section-total">
-						<span>Total Expenses</span>
+						<span>支出合计</span>
 						<span class="total-amount">{state.totalExpenses.toFixed(2)} {state.currency}</span>
 					</div>
 				</div>
@@ -352,7 +352,7 @@
 
 			<!-- Net Profit Summary -->
 			<div class="net-profit-row">
-				<span class="net-profit-label">Net Profit</span>
+				<span class="net-profit-label">净收入</span>
 				<span class="net-profit-value {netProfitClass(state.netProfit)}">
 					{state.netProfit.toFixed(2)} {state.currency}
 				</span>

@@ -54,8 +54,8 @@
 </script>
 <div class="beancount-overview">
 	<div class="overview-header">
-		<h3>Financial Overview</h3>
-		<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading}>Refresh</button>
+		<h3>财务总览</h3>
+		<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading}>刷新</button>
 	</div>
 
 	{#if state.isLoading}
@@ -69,14 +69,14 @@
 				<line x1="12" y1="9" x2="12" y2="13"/>
 				<line x1="12" y1="17" x2="12.01" y2="17"/>
 			</svg>
-			<span>Only commodities with conversion prices to {state.currency} are included in Net Worth calculations</span>
+			<span>净资产只包含可按价格折算为 {state.currency} 的货币和投资品。</span>
 		</div>
 		
 		<div class="kpi-grid">
-			<CardComponent label="Total Balance" value={state.netWorth} comparison="Assets minus liabilities" />
-			<CardComponent label="Monthly Income" value={state.monthlyIncome} comparison="Current month earnings" />
-			<CardComponent label="Monthly Expenses" value={state.monthlyExpenses} comparison="Current month spending" />
-			<CardComponent label="Savings Rate" value={state.savingsRate} comparison="Income minus expenses" />
+			<CardComponent label="净资产" value={state.netWorth} comparison="资产减负债" />
+			<CardComponent label="本月收入" value={state.monthlyIncome} comparison="当前月份收入" />
+			<CardComponent label="本月支出" value={state.monthlyExpenses} comparison="当前月份支出" />
+			<CardComponent label="储蓄率" value={state.savingsRate} comparison="收入减支出" />
 		</div>
 
 		<IndicatorsSection

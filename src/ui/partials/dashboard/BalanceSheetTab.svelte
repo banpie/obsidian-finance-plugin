@@ -62,10 +62,10 @@
 	// Get display label for the current valuation method
 	function getValuationMethodLabel(method: string): string {
 		switch (method) {
-			case 'convert': return 'Market Value';
-			case 'cost': return 'At Cost';
-			case 'units': return 'Units';
-			default: return 'Market Value';
+			case 'convert': return '市值';
+			case 'cost': return '成本';
+			case 'units': return '原始单位';
+			default: return '市值';
 		}
 	}
 
@@ -156,17 +156,17 @@
 <div class="balance-sheet-container">
 	<!-- Header: Title + Account Management buttons + Refresh -->
 	<div class="balance-sheet-header">
-		<h2>Accounts and Balances</h2>
+		<h2>账户与余额</h2>
 		<div class="header-controls">
 			<div class="account-management-section">
 				<button class="account-action-btn open-account-btn" on:click={handleOpenAccount}>
-					➕ Open Account
+					➕ 开启账户
 				</button>
 				<button class="account-action-btn close-account-btn" on:click={handleCloseAccount}>
-					❌ Close Account
+					❌ 关闭账户
 				</button>
 			</div>
-			<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading}>Refresh</button>
+			<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading}>刷新</button>
 		</div>
 	</div>
 
@@ -186,7 +186,7 @@
 		<!-- Chart Area -->
 		<div class="chart-area">
 			<div class="chart-area-header">
-				<div class="chart-selector" role="group" aria-label="Select chart">
+				<div class="chart-selector" role="group" aria-label="选择图表">
 					<button
 						class="chart-selector-btn"
 						class:active={selectedChart === 'trend'}
@@ -196,7 +196,7 @@
 						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
 						</svg>
-						Net Worth Trend
+						净资产趋势
 					</button>
 					<button
 						class="chart-selector-btn"
@@ -209,7 +209,7 @@
 							<circle cx="12" cy="12" r="7"/>
 							<circle cx="12" cy="12" r="11"/>
 						</svg>
-						Balances
+						余额结构
 					</button>
 				</div>
 				{#if selectedChart === 'trend'}
@@ -218,27 +218,27 @@
 							class:active={state.chartInterval === 'month'}
 							on:click={() => handleIntervalChange('month')}
 							disabled={state.chartLoading}
-						>Monthly</button>
+						>每月</button>
 						<button
 							class:active={state.chartInterval === 'week'}
 							on:click={() => handleIntervalChange('week')}
 							disabled={state.chartLoading}
-						>Weekly</button>
+						>每周</button>
 					</div>
 				{:else if selectedChart === 'balances'}
 					<div class="balance-section-toggle">
 						<button
 							class:active={selectedBalanceSection === 'assets'}
 							on:click={() => (selectedBalanceSection = 'assets')}
-						>Assets</button>
+						>资产</button>
 						<button
 							class:active={selectedBalanceSection === 'liabilities'}
 							on:click={() => (selectedBalanceSection = 'liabilities')}
-						>Liabilities</button>
+						>负债</button>
 						<button
 							class:active={selectedBalanceSection === 'equity'}
 							on:click={() => (selectedBalanceSection = 'equity')}
-						>Equity</button>
+						>权益</button>
 					</div>
 				{/if}
 			</div>
@@ -246,19 +246,19 @@
 			{#if selectedChart === 'trend'}
 				<div class="trend-chart-container">
 					{#if state.chartError}
-						<p class="error-message">Chart Error: {state.chartError}</p>
+						<p class="error-message">图表错误：{state.chartError}</p>
 					{:else if state.chartLoading}
-						<p class="chart-loading">Loading chart...</p>
+						<p class="chart-loading">正在加载图表...</p>
 					{:else if state.chartConfig}
 						<ChartComponent config={state.chartConfig} height="300px"/>
 					{:else}
-						<p class="chart-loading">Not enough data to display chart.</p>
+						<p class="chart-loading">数据不足，暂时无法显示图表。</p>
 					{/if}
 				</div>
 			{:else if selectedChart === 'balances'}
 				{#if selectedBalanceSection === 'assets'}
 					<SunburstChart
-						title="Assets"
+						title="资产"
 						assets={state.assets}
 						liabilities={[]}
 						equity={[]}
@@ -269,7 +269,7 @@
 					/>
 				{:else if selectedBalanceSection === 'liabilities'}
 					<SunburstChart
-						title="Liabilities"
+						title="负债"
 						assets={[]}
 						liabilities={state.liabilities}
 						equity={[]}
@@ -280,7 +280,7 @@
 					/>
 				{:else}
 					<SunburstChart
-						title="Equity"
+						title="权益"
 						assets={[]}
 						liabilities={[]}
 						equity={state.equity}
@@ -296,31 +296,31 @@
 		<!-- Balance Sheet (always visible) -->
 		<div class="balance-sheet-section">
 			<div class="balance-sheet-section-header">
-				<h3>Balance Sheet</h3>
+				<h3>资产负债表</h3>
 				<div class="valuation-method-selector">
-					<label for="valuation-method">Valuation:</label>
+					<label for="valuation-method">估值：</label>
 					<select
 						id="valuation-method"
 						value={state.valuationMethod || 'convert'}
 						on:change={handleValuationMethodChange}
 					>
-						<option value="convert">Market Value (Convert to {state.currency})</option>
-						<option value="cost">At Cost</option>
-						<option value="units">Units</option>
+						<option value="convert">市值（折算为 {state.currency}）</option>
+						<option value="cost">按成本</option>
+						<option value="units">原始单位</option>
 					</select>
 				</div>
 			</div>
 
 		<div class="balance-sheet-grid">
 			<div class="column">
-				<h4>Assets</h4>
+				<h4>资产</h4>
 				<table class="beancount-table">
 					<thead>
 						<tr class="header-row">
-							<th class="account-header">Account</th>
+							<th class="account-header">账户</th>
 							<th class="amount-header">{state.currency}</th>
 							{#if showOtherCurrenciesColumn}
-								<th class="other-currencies-header">Other Currencies</th>
+								<th class="other-currencies-header">其它币种/标的</th>
 							{/if}
 						</tr>
 					</thead>
@@ -349,14 +349,14 @@
 			</div>
 
 			<div class="column">
-				<h4>Liabilities</h4>
+				<h4>负债</h4>
 				<table class="beancount-table">
 					<thead>
 						<tr class="header-row">
-							<th class="account-header">Account</th>
+							<th class="account-header">账户</th>
 							<th class="amount-header">{state.currency}</th>
 							{#if showOtherCurrenciesColumn}
-								<th class="other-currencies-header">Other Currencies</th>
+								<th class="other-currencies-header">其它币种/标的</th>
 							{/if}
 						</tr>
 					</thead>
@@ -385,14 +385,14 @@
 			</div>
 
 			<div class="column">
-				<h4 class="section-spacer">Equity</h4>
+				<h4 class="section-spacer">权益</h4>
 				<table class="beancount-table">
 					<thead>
 						<tr class="header-row">
-							<th class="account-header">Account</th>
+							<th class="account-header">账户</th>
 							<th class="amount-header">{state.currency}</th>
 							{#if showOtherCurrenciesColumn}
-								<th class="other-currencies-header">Other Currencies</th>
+								<th class="other-currencies-header">其它币种/标的</th>
 							{/if}
 						</tr>
 					</thead>

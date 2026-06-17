@@ -1,9 +1,9 @@
 {
 	"id": "beancount-finance",
-	"name": "Beancount Ledger",
+	"name": "Beancount 账本",
 	"version": "2.1.8",
 	"minAppVersion": "1.7.2",
-	"description": "Manage your Beancount ledger from your vault. Supports live BQL queries, transaction management, net worth tracking, balance sheets, income statements, and automated price fetching.",
+	"description": "在 Obsidian 中查看和管理 Beancount 账本，支持 BQL 查询、交易管理、净资产、资产负债表、收支表和价格更新。",
 	"author": "Mukund Shelake",
 	"authorUrl": "https://mukundshelake.me",
 	"fundingUrl": "https://buymeacoffee.com/mkshp",

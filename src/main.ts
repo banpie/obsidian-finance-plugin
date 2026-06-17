@@ -89,44 +89,44 @@ export default class BeancountPlugin extends Plugin {
 		this.registerExtensions(['beancount', 'bean'], BEANCOUNT_FILE_VIEW_TYPE);
 
 		// Add Ribbon Icons
-		this.addRibbonIcon('plus-circle', 'Add transaction', () => {
+		this.addRibbonIcon('plus-circle', '新增交易', () => {
 			new UnifiedTransactionModal(this.app, this, null, this.getDashboardRefreshCallback()).open();
 		});
-		this.addRibbonIcon('layout-dashboard', 'Open Beancount dashboard', () => {
+		this.addRibbonIcon('layout-dashboard', '打开 Beancount 看板', () => {
 			void this.activateView(UNIFIED_DASHBOARD_VIEW_TYPE, 'tab'); // Open the NEW view
 		});
 
 		// Add Commands
 		this.addCommand({
 			id: 'add-beancount-transaction',
-			name: 'Add Beancount transaction',
+			name: '新增 Beancount 交易',
 			callback: () => { new UnifiedTransactionModal(this.app, this, null, this.getDashboardRefreshCallback()).open(); }
 		});
 		// 'Insert BQL Query Block' command removed — use manual insertion or BQL templates instead
 		this.addCommand({
 			id: 'open-beancount-unified-dashboard', // This ID now opens the new unified view
-			name: 'Open Beancount unified dashboard',
+			name: '打开 Beancount 综合看板',
 			callback: () => { void this.activateView(UNIFIED_DASHBOARD_VIEW_TYPE, 'tab'); }
 		});
 		this.addCommand({
 			id: 'open-beancount-snapshot',
-			name: 'Open Beancount snapshot',
+			name: '打开 Beancount 快照',
 			callback: () => { void this.activateView(BEANCOUNT_VIEW_TYPE, 'right'); }
 		});
 		this.addCommand({
 			id: 'run-beancount-onboarding',
-			name: 'Run setup/onboarding',
+			name: '运行设置向导',
 			callback: () => { new OnboardingModal(this.app, this).open(); }
 		});
 		this.addCommand({
 			id: 'format-beancount-document',
-			name: 'Format Beancount document',
+			name: '格式化 Beancount 文档',
 			callback: () => {
 				const active = this.app.workspace.getActiveViewOfType(BeancountFileView);
 				if (active) {
 					formatBeancountCommand((active as unknown as { editorView: EditorView }).editorView);
 				} else {
-					new Notice('Open a .beancount file first.');
+					new Notice('请先打开一个 .beancount 文件。');
 				}
 			}
 		});
@@ -134,7 +134,7 @@ export default class BeancountPlugin extends Plugin {
 		// Add Fetch Commodity Prices command
 		this.addCommand({
 			id: 'fetch-commodity-prices',
-			name: 'Fetch commodity prices',
+			name: '拉取投资品价格',
 			callback: async () => {
 				// Find the unified dashboard view and call fetchPrices on commodities controller
 				const leaves = this.app.workspace.getLeavesOfType(UNIFIED_DASHBOARD_VIEW_TYPE);
@@ -148,9 +148,9 @@ export default class BeancountPlugin extends Plugin {
 				Logger.log('[Main] Fetching prices via command (dashboard not open)');
 				const result = await this.priceService.fetchAndSavePrices();
 				if (result.savedCount > 0) {
-					new Notice(`✓ Fetched and saved ${result.savedCount} price(s)`);
+					new Notice(`✓ 已拉取并保存 ${result.savedCount} 条价格`);
 				} else {
-					new Notice('No prices fetched. Check commodity price sources.');
+					new Notice('没有拉取到价格，请检查投资品价格源配置。');
 				}
 			}
 		});
@@ -186,7 +186,7 @@ export default class BeancountPlugin extends Plugin {
 						// Only show notice on errors (don't spam on success)
 						if (result.failed.length > 0) {
 							const failedSymbols = result.failed.map(f => f.commodity).join(', ');
-							new Notice(`⚠ Automatic price fetch: Failed for ${failedSymbols}`);
+							new Notice(`⚠ 自动价格更新失败：${failedSymbols}`);
 						}
 
 						Logger.log(`[Main] Automatic price fetch complete: ${result.savedCount} saved, ${result.failed.length} failed`);

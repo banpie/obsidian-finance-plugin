@@ -28,12 +28,12 @@
     let activeTab = 'overview';
 
     const tabs = [
-        { id: 'overview', label: 'Overview' },
-        { id: 'transactions', label: 'Transactions' },
-        { id: 'journal', label: 'Journal' },
-        { id: 'balancesheet', label: 'Accounts & Balances' },
-        { id: 'incomestatement', label: 'Income Statement' },
-        { id: 'commodities', label: 'Commodities' }
+        { id: 'overview', label: '总览' },
+        { id: 'transactions', label: '交易流水' },
+        { id: 'journal', label: '日记账' },
+        { id: 'balancesheet', label: '账户与余额' },
+        { id: 'incomestatement', label: '收支表' },
+        { id: 'commodities', label: '投资品与价格' }
     ];
 </script>
 
