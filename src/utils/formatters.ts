@@ -3,6 +3,27 @@
 
 import { Logger } from './logger';
 
+const FIAT_CURRENCY_CODES = new Set([
+    'AED', 'AFN', 'ALL', 'AMD', 'ANG', 'AOA', 'ARS', 'AUD', 'AWG', 'AZN',
+    'BAM', 'BBD', 'BDT', 'BGN', 'BHD', 'BIF', 'BMD', 'BND', 'BOB', 'BRL',
+    'BSD', 'BTN', 'BWP', 'BYN', 'BZD', 'CAD', 'CDF', 'CHF', 'CLP', 'CNY',
+    'COP', 'CRC', 'CUP', 'CVE', 'CZK', 'DJF', 'DKK', 'DOP', 'DZD', 'EGP',
+    'ERN', 'ETB', 'EUR', 'FJD', 'FKP', 'GBP', 'GEL', 'GHS', 'GIP', 'GMD',
+    'GNF', 'GTQ', 'GYD', 'HKD', 'HNL', 'HTG', 'HUF', 'IDR', 'ILS', 'INR',
+    'IQD', 'IRR', 'ISK', 'JMD', 'JOD', 'JPY', 'KES', 'KGS', 'KHR', 'KMF',
+    'KPW', 'KRW', 'KWD', 'KYD', 'KZT', 'LAK', 'LBP', 'LKR', 'LRD', 'LSL',
+    'LYD', 'MAD', 'MDL', 'MGA', 'MKD', 'MMK', 'MNT', 'MOP', 'MRU', 'MUR',
+    'MVR', 'MWK', 'MXN', 'MYR', 'MZN', 'NAD', 'NGN', 'NIO', 'NOK', 'NPR',
+    'NZD', 'OMR', 'PAB', 'PEN', 'PGK', 'PHP', 'PKR', 'PLN', 'PYG', 'QAR',
+    'RON', 'RSD', 'RUB', 'RWF', 'SAR', 'SBD', 'SCR', 'SDG', 'SEK', 'SGD',
+    'SHP', 'SLE', 'SOS', 'SRD', 'SSP', 'STN', 'SYP', 'SZL', 'THB', 'TJS',
+    'TMT', 'TND', 'TOP', 'TRY', 'TTD', 'TWD', 'TZS', 'UAH', 'UGX', 'USD',
+    'UYU', 'UZS', 'VES', 'VND', 'VUV', 'WST', 'XAF', 'XCD', 'XOF', 'XPF',
+    'YER', 'ZAR', 'ZMW', 'ZWL',
+    // Common Beancount symbols for offshore/onshore variants that are not ISO 4217 codes.
+    'CNH',
+]);
+
 // --- AMOUNT PARSERS ---
 
 /**
@@ -36,6 +57,21 @@ export function extractNonReportingCurrencies(inventoryString: string, operating
         }
     }
     return matches.join('\n');
+}
+
+export function isFiatCurrencyCode(code: string): boolean {
+    return FIAT_CURRENCY_CODES.has(code.trim().toUpperCase());
+}
+
+export function filterFiatCurrencyOptions(currencies: string[], alwaysInclude: Array<string | undefined | null> = []): string[] {
+    const forced = new Set(alwaysInclude.filter((value): value is string => Boolean(value)).map(value => value.trim()).filter(Boolean));
+    const options = [...currencies, ...forced];
+    const filtered = options
+        .map(currency => currency.trim())
+        .filter(Boolean)
+        .filter(currency => isFiatCurrencyCode(currency) || forced.has(currency));
+
+    return [...new Set(filtered)];
 }
 
 

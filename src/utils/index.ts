@@ -19,6 +19,8 @@ export { convertWindowsPathToWsl, convertWslPathToWindows, atomicFileWrite, crea
 export {
 	extractConvertedAmountNumber,
 	extractNonReportingCurrencies,
+	filterFiatCurrencyOptions,
+	isFiatCurrencyCode,
 	parseMetadataString,
 	debounce,
 } from './formatters';
