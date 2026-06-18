@@ -305,7 +305,7 @@ export class BalanceSheetController {
 				}
 			}
 
-			const xAxisTitle = interval === 'month' ? 'Month' : 'Week ending (Sunday)';
+			const xAxisTitle = interval === 'month' ? '月份' : '周结束日（周日）';
 			this.state.update(s => ({ ...s, chartConfig: this._buildChartConfig(labels, dataPoints, reportingCurrency, xAxisTitle), chartError: null, chartLoading: false }));
 		} catch (err) {
 			Logger.error('Error processing chart data:', err);
@@ -323,7 +323,7 @@ export class BalanceSheetController {
 			data: {
 				labels,
 				datasets: [{
-					label: `Net Worth (${currency})`,
+					label: `净资产（${currency}）`,
 					data: dataPoints,
 					borderColor: 'rgb(75, 192, 192)',
 					backgroundColor: 'rgba(75, 192, 192, 0.1)',
@@ -340,7 +340,7 @@ export class BalanceSheetController {
 				plugins: {
 					title: {
 						display: false,
-						text: `Net Worth (${currency})`,
+						text: `净资产（${currency}）`,
 						font: { size: 16 }
 					},
 					legend: { display: true, position: 'top' },
@@ -348,7 +348,7 @@ export class BalanceSheetController {
 						mode: 'index',
 						intersect: false,
 						callbacks: {
-							label: (context: { parsed: { y: number | null } }) => `Net Worth: ${context.parsed.y !== null ? context.parsed.y.toLocaleString() : 0} ${currency}`
+							label: (context: { parsed: { y: number | null } }) => `净资产：${context.parsed.y !== null ? context.parsed.y.toLocaleString() : 0} ${currency}`
 						}
 					}
 				},
@@ -360,7 +360,7 @@ export class BalanceSheetController {
 					},
 					y: {
 						display: true,
-						title: { display: true, text: `Amount (${currency})` },
+						title: { display: true, text: `金额（${currency}）` },
 						grid: { display: true, color: 'rgba(0, 0, 0, 0.1)' },
 						ticks: { callback: (value: number | string) => typeof value === 'number' ? value.toLocaleString() : value }
 					}
@@ -447,7 +447,7 @@ export class BalanceSheetController {
 			// Create warning message
 			let unconvertedWarning = null;
 			if (hasUnconvertedCommodities) {
-				unconvertedWarning = `Multi-currency accounts detected. ${reportingCurrency} amounts are shown in the first column, other currencies are displayed separately in the second column. Only ${reportingCurrency} amounts are included in totals.`;
+				unconvertedWarning = `检测到多币种或未完全折算的账户。当前合计只纳入可折算为 ${reportingCurrency} 的金额；未折算的币种或标的会在账户明细中单独显示，不进入合计。`;
 			}
 
 			const currentState = get(this.state);

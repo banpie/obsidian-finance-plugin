@@ -311,7 +311,7 @@ export class IncomeStatementController {
 				}
 			}
 
-			const xAxisTitle = interval === 'month' ? 'Month' : 'Week ending (Sunday)';
+			const xAxisTitle = interval === 'month' ? '月份' : '周结束日（周日）';
 			this.state.update(s => ({
 				...s,
 				chartConfig: this._buildBarChartConfig(labels, dataPoints, reportingCurrency, xAxisTitle, trendType),
@@ -329,7 +329,7 @@ export class IncomeStatementController {
 	 * Builds a Chart.js bar chart configuration for the Trends chart.
 	 */
 	private _buildBarChartConfig(labels: string[], dataPoints: (number | null)[], currency: string, xAxisTitle: string, trendType: 'netprofit' | 'income' | 'expense' = 'netprofit'): ChartConfiguration {
-		const labelMap = { netprofit: 'Net Profit', income: 'Income', expense: 'Expense' };
+		const labelMap = { netprofit: '净收益', income: '收入', expense: '支出' };
 		const displayLabel = labelMap[trendType];
 		const bgColor = trendType === 'income'
 			? (v: number | null) => v === null ? 'rgba(180,180,180,0.4)' : 'rgba(75, 192, 130, 0.7)'
@@ -359,7 +359,7 @@ export class IncomeStatementController {
 				plugins: {
 					title: {
 						display: true,
-						text: `${displayLabel} Trend (${currency})`,
+						text: `${displayLabel}趋势（${currency}）`,
 						font: { size: 16 },
 					},
 					legend: { display: false },
@@ -367,7 +367,7 @@ export class IncomeStatementController {
 						mode: 'index',
 						intersect: false,
 						callbacks: {
-							label: (context: { parsed: { y: number | null } }) => `${displayLabel}: ${context.parsed.y !== null ? context.parsed.y.toLocaleString() : 0} ${currency}`,
+							label: (context: { parsed: { y: number | null } }) => `${displayLabel}：${context.parsed.y !== null ? context.parsed.y.toLocaleString() : 0} ${currency}`,
 						},
 					},
 				},
@@ -379,7 +379,7 @@ export class IncomeStatementController {
 					},
 					y: {
 						display: true,
-						title: { display: true, text: `Amount (${currency})` },
+						title: { display: true, text: `金额（${currency}）` },
 						grid: { display: true, color: 'rgba(0, 0, 0, 0.1)' },
 						ticks: { callback: (value: number | string) => typeof value === 'number' ? value.toLocaleString() : value },
 					},
@@ -454,7 +454,7 @@ export class IncomeStatementController {
 
 			let unconvertedWarning: string | null = null;
 			if (hasUnconvertedCommodities) {
-				unconvertedWarning = `Multi-currency accounts detected. ${reportingCurrency} amounts are shown in the first column, other currencies are displayed separately. Only ${reportingCurrency} amounts are included in totals.`;
+				unconvertedWarning = `检测到多币种或未完全折算的收支。当前合计只纳入可折算为 ${reportingCurrency} 的金额；未折算的币种或标的会在明细中单独显示，不进入合计。`;
 			}
 
 			const currentState = get(this.state);
