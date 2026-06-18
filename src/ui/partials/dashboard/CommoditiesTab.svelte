@@ -26,13 +26,19 @@
 	$: lastPriceFetchStore = controller.lastPriceFetch;
 
 	// UI state
-	type FilterMode = 'all' | 'has_holding' | 'has_price' | 'has_both';
+	type FilterMode = 'all' | 'has_holding' | 'has_price' | 'needs_price' | 'has_both';
 	let filterMode: FilterMode = 'all';
+
+	$: priceGaps = $filteredCommoditiesStore.filter(c => c.needsPriceCompletion);
+	$: fxGaps = priceGaps.filter(c => /^[A-Z]{3}$/.test(c.symbol || ""));
+	$: assetPriceGaps = priceGaps.filter(c => !/^[A-Z]{3}$/.test(c.symbol || ""));
+	$: priceGapPreview = priceGaps.slice(0, 6).map(c => c.displayCode || c.symbol).join("、");
 
 	$: displayCommodities = (() => {
 		const list = $filteredCommoditiesStore;
 		if (filterMode === 'has_holding') return list.filter(c => c.isOperatingCurrency || (c.holdings ?? 0) > 0);
 		if (filterMode === 'has_price')   return list.filter(c => c.isOperatingCurrency || !!c.currentPrice);
+		if (filterMode === 'needs_price') return list.filter(c => c.needsPriceCompletion);
 		if (filterMode === 'has_both')    return list.filter(c => c.isOperatingCurrency || ((c.holdings ?? 0) > 0 && !!c.currentPrice));
 		return list;
 	})();
@@ -160,6 +166,11 @@
 			>有价格</button>
 			<button
 				class="filter-btn"
+				class:active={filterMode === 'needs_price'}
+				on:click={() => filterMode = 'needs_price'}
+			>待补价格/汇率</button>
+			<button
+				class="filter-btn"
 				class:active={filterMode === 'has_both'}
 				on:click={() => filterMode = 'has_both'}
 			>持仓和价格都有</button>
@@ -170,6 +181,20 @@
 		<div class="price-fetch-info">
 			ℹ️ 上次价格更新：{formatTimeSince($lastPriceFetchStore.date)} —
 			{$lastPriceFetchStore.summary}
+		</div>
+	{/if}
+	{#if priceGaps.length > 0}
+		<div class="price-gap-banner">
+			<div class="gap-copy">
+				<strong>待补价格/汇率：{priceGaps.length} 项</strong>
+				<span>
+					{#if fxGaps.length > 0}汇率 {fxGaps.length} 项{/if}
+					{#if fxGaps.length > 0 && assetPriceGaps.length > 0}，{/if}
+					{#if assetPriceGaps.length > 0}投资品价格 {assetPriceGaps.length} 项{/if}
+					{#if priceGapPreview}：{priceGapPreview}{priceGaps.length > 6 ? "…" : ""}{/if}
+				</span>
+			</div>
+			<button class="gap-action" on:click={() => filterMode = 'needs_price'}>查看待补</button>
 		</div>
 	{/if}
 
@@ -388,6 +413,47 @@
 		border: 1px solid var(--background-modifier-border);
 		margin-bottom: 16px;
 		font-size: 13px;
+	}
+
+	.price-gap-banner {
+		margin-bottom: 16px;
+		padding: 10px 12px;
+		background: var(--background-secondary);
+		border: 1px solid var(--background-modifier-border);
+		border-left: 3px solid var(--text-warning);
+		border-radius: 6px;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 12px;
+	}
+
+	.gap-copy {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		min-width: 0;
+		font-size: 13px;
+	}
+
+	.gap-copy span {
+		color: var(--text-muted);
+		overflow-wrap: anywhere;
+	}
+
+	.gap-action {
+		flex-shrink: 0;
+		padding: 6px 10px;
+		border-radius: 5px;
+		border: 1px solid var(--background-modifier-border);
+		background: var(--background-primary);
+		color: var(--text-normal);
+		cursor: pointer;
+		font-size: 12px;
+	}
+
+	.gap-action:hover {
+		background: var(--background-secondary-alt);
 	}
 
 	.error-message {

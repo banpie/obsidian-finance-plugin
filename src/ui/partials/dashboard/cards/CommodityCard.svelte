@@ -21,6 +21,8 @@
 
 	$: primaryLabel = commodity?.displayCode || commodity?.symbol || `UNKNOWN_${index}`;
 	$: secondaryLabel = commodity?.displayName || "";
+	$: isMoneyCurrency = /^[A-Z]{3}$/.test(commodity?.symbol || "");
+	$: priceGapLabel = isMoneyCurrency ? "待补汇率" : "待补价格";
 	$: displayHoldingsRaw = commodity?.holdingsRaw && commodity?.symbol
 		? commodity.holdingsRaw.replace(new RegExp(`\\b${escapeRegex(commodity.symbol)}\\b`, "g"), primaryLabel)
 		: commodity?.holdingsRaw;
@@ -142,6 +144,11 @@
 							: formatStatusTime(commodity?.priceDate)}
 					</span>
 				</div>
+			{:else if commodity?.needsPriceCompletion}
+				<div class="status-pill missing">
+					<span class="status-dot"></span>
+					<span class="status-label">{priceGapLabel}</span>
+				</div>
 			{/if}
 		</div>
 
@@ -177,6 +184,8 @@
 					<span class="data-label">价格</span>
 					{#if commodity?.currentPrice}
 						<span class="data-value">{commodity.currentPrice}</span>
+					{:else if commodity?.needsPriceCompletion}
+						<span class="data-value unavailable">{priceGapLabel}</span>
 					{:else}
 						<span class="data-value unavailable">暂无价格</span>
 					{/if}
@@ -365,6 +374,13 @@
 		color: var(--text-warning);
 		border: 1px solid
 			color-mix(in srgb, var(--text-warning), transparent 70%);
+	}
+
+	.status-pill.missing {
+		background: color-mix(in srgb, var(--text-error), transparent 88%);
+		color: var(--text-error);
+		border: 1px solid
+			color-mix(in srgb, var(--text-error), transparent 72%);
 	}
 
 	.status-dot {

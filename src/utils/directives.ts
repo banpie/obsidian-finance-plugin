@@ -542,7 +542,8 @@ export async function createPriceDirective(
         if (!currency || !/^[A-Z]{3,}$/i.test(currency)) return { success: false, error: 'Invalid currency code.' };
 
         const normalizedPath = convertWslPathToWindows(filePath);
-        const directiveText = `${date} price ${commodity.toUpperCase()} ${amount.toFixed(2)} ${currency.toUpperCase()}`;
+        const normalizedAmount = Number.isInteger(amount) ? amount.toFixed(2) : String(amount);
+        const directiveText = `${date} price ${commodity.toUpperCase()} ${normalizedAmount} ${currency.toUpperCase()}`;
 
         await createBackupFile(plugin, normalizedPath, createBackup, 'createPriceDirective');
         const content = await readFileContent(plugin, normalizedPath);

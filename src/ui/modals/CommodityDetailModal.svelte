@@ -15,6 +15,10 @@
 	let editingPrice = false;
 	let logoInput = "";
 	let priceInput = "";
+	let manualPriceDate = new Date().toISOString().slice(0, 10);
+	let manualPriceAmount = "";
+	let manualPriceCurrency = "";
+	let manualPriceError = "";
 
 	let priceInputRef: HTMLInputElement | null = null;
 	let logoInputRef: HTMLInputElement | null = null;
@@ -25,6 +29,7 @@
 	onMount(() => {
 		logoInput = commodity?.metadata?.logo || commodity?.logo_url || "";
 		priceInput = commodity?.metadata?.price || commodity?.price_meta || "";
+		manualPriceCurrency = commodity?.suggestedPriceCurrency || "CNY";
 	});
 
 	function toggleEditLogo() {
@@ -50,6 +55,25 @@
 	}
 	function testLogo() {
 		dispatch("test-logo", { symbol, url: logoInput });
+	}
+	function createPrice() {
+		manualPriceError = "";
+		const amount = Number(manualPriceAmount);
+		const currency = manualPriceCurrency.trim().toUpperCase();
+		if (!manualPriceDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+			manualPriceError = "日期格式应为 YYYY-MM-DD";
+			return;
+		}
+		if (!Number.isFinite(amount) || amount <= 0) {
+			manualPriceError = "请输入大于 0 的价格或汇率";
+			return;
+		}
+		if (!currency.match(/^[A-Z]{3,}$/)) {
+			manualPriceError = "目标货币应为大写货币代码，例如 CNY 或 USD";
+			return;
+		}
+		dispatch("create-price", { symbol, date: manualPriceDate, amount, currency });
+		manualPriceAmount = "";
 	}
 	function close() {
 		dispatch("close");
@@ -84,6 +108,11 @@
 	$: fallbackPriceSource = isMoneyCurrency && !isBaseCurrency && (currentPrice || pricePoints)
 		? "prices.beancount / price 指令"
 		: "—";
+	$: needsPriceCompletion = !!commodity?.needsPriceCompletion;
+	$: priceCompletionLabel = commodity?.priceCompletionLabel;
+	$: manualDirectivePreview = manualPriceDate && manualPriceAmount && manualPriceCurrency
+		? `${manualPriceDate} price ${symbol} ${manualPriceAmount} ${manualPriceCurrency.trim().toUpperCase()}`
+		: "";
 	$: otherMeta = Object.entries(commodity?.metadata || {}).filter(
 		([k]) => k !== "logo" && k !== "price",
 	);
@@ -139,6 +168,14 @@
 				</div>
 			{/if}
 			{#if !isBaseCurrency}
+				{#if needsPriceCompletion}
+					<div class="completion-alert">
+						<div>
+							<strong>{isMoneyCurrency ? "待补汇率" : "待补价格"}</strong>
+							<span>{priceCompletionLabel}</span>
+						</div>
+					</div>
+				{/if}
 				{#if !editingPrice}
 					<div class="kv-row">
 						<span class="kv-key">{sourceLabel}</span>
@@ -179,6 +216,42 @@
 						</div>
 					</div>
 				{/if}
+				<div class="manual-price">
+					<div class="manual-title">手动补一条 price 指令</div>
+					<div class="manual-grid">
+						<label>
+							<span>日期</span>
+							<input type="date" bind:value={manualPriceDate} />
+						</label>
+						<label>
+							<span>{isMoneyCurrency ? "汇率" : "价格"}</span>
+							<input
+								type="number"
+								min="0"
+								step="any"
+								bind:value={manualPriceAmount}
+								placeholder={isMoneyCurrency ? "例如 7.18" : "例如 526.20"}
+							/>
+						</label>
+						<label>
+							<span>目标货币</span>
+							<input
+								type="text"
+								bind:value={manualPriceCurrency}
+								placeholder="CNY"
+							/>
+						</label>
+					</div>
+					{#if manualDirectivePreview}
+						<div class="directive-preview">{manualDirectivePreview}</div>
+					{/if}
+					{#if manualPriceError}
+						<div class="manual-error">{manualPriceError}</div>
+					{/if}
+					<div class="manual-actions">
+						<button class="btn btn-primary" on:click={createPrice}>写入 prices.beancount</button>
+					</div>
+				</div>
 			{/if}
 		</div>
 	</div>
@@ -449,6 +522,81 @@
 	.edit-buttons {
 		display: flex;
 		gap: 6px;
+	}
+
+	.completion-alert {
+		padding: 10px 14px;
+		border-bottom: 1px solid var(--background-modifier-border);
+		background: var(--background-modifier-error);
+		color: var(--text-normal);
+		font-size: 12px;
+	}
+
+	.completion-alert div {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+	}
+
+	.manual-price {
+		padding: 12px 14px;
+		border-top: 1px solid var(--background-modifier-border);
+		display: flex;
+		flex-direction: column;
+		gap: 9px;
+	}
+
+	.manual-title {
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--text-normal);
+	}
+
+	.manual-grid {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 8px;
+	}
+
+	.manual-grid label {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		font-size: 11px;
+		color: var(--text-muted);
+	}
+
+	.manual-grid input {
+		width: 100%;
+		box-sizing: border-box;
+		padding: 7px 8px;
+		border: 1px solid var(--background-modifier-border);
+		border-radius: 6px;
+		background: var(--background-primary);
+		color: var(--text-normal);
+		font-family: var(--font-monospace);
+		font-size: 12px;
+	}
+
+	.directive-preview {
+		padding: 7px 9px;
+		border-radius: 6px;
+		background: var(--background-primary);
+		border: 1px solid var(--background-modifier-border);
+		color: var(--text-muted);
+		font-family: var(--font-monospace);
+		font-size: 11px;
+		word-break: break-all;
+	}
+
+	.manual-error {
+		color: var(--text-error);
+		font-size: 12px;
+	}
+
+	.manual-actions {
+		display: flex;
+		justify-content: flex-end;
 	}
 
 	/* ── Buttons ──────────────────────────────────────── */

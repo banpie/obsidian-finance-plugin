@@ -92,6 +92,21 @@ export class CommodityDetailModal extends Modal {
             })();
         });
 
+        this.component.$on('create-price', (e: CustomEvent<{ symbol: string; date: string; amount: number; currency: string }>) => {
+            void (async () => {
+                const { symbol, date, amount, currency } = e.detail;
+                console.debug('[CommodityDetailModal] create-price event', { symbol, date, amount, currency });
+                const result = await this.controller.createManualPrice(symbol, date, amount, currency);
+                if (result && result.success) {
+                    new Notice(`已写入 ${symbol} 价格/汇率`);
+                    const updated = get(ctrl.selectedCommodity) || { symbol, metadata: {} };
+                    this.component!.$set({ commodity: updated });
+                } else {
+                    new Notice(`写入失败：${result?.error || 'unknown error'}`);
+                }
+            })();
+        });
+
         this.component.$on('close', () => this.close());
 
         this.component.$on('delete', (e: CustomEvent<{ symbol: string }>) => {

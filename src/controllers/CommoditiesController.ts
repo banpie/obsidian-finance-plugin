@@ -50,7 +50,13 @@ export interface CommodityInfo {
     isPriceLatest?: boolean;
     /** The date of the last price record. */
     priceDate?: string | null;
-    /** Numeric quantity held in Asset accounts (always non-negative). */
+    /** Whether this held commodity needs a price or FX rate for conversion. */
+    needsPriceCompletion?: boolean;
+    /** User-facing price/FX completion prompt. */
+    priceCompletionLabel?: string;
+    /** Suggested target currency when manually adding a price directive. */
+    suggestedPriceCurrency?: string;
+    /** Numeric quantity held in Asset accounts. */
     holdings?: number;
     /** Display string for holdings, e.g. "11.80 USD" or "30949 UYU". */
     holdingsRaw?: string;
@@ -219,6 +225,10 @@ export class CommoditiesController {
                 // Prefer combined query values; fall back to priceDataMap for price/logo
                 const logoUrl = combined?.logo || priceData?.logo || null;
                 const price = combined?.price ?? priceData?.price ?? null;
+                const holdings = combined?.holdings ?? 0;
+                const isMoneyCurrency = /^[A-Z]{3}$/.test(symbol);
+                const needsPriceCompletion = !isOperatingCurrency && holdings > 0 && !price;
+                const displayLabel = label?.displayCode || symbol;
 
                 return {
                     symbol,
@@ -238,7 +248,14 @@ export class CommoditiesController {
                     logoUrl,
                     priceDate: priceData?.date || null,
                     isPriceLatest: priceData?.isLatest || false,
-                    holdings: combined?.holdings ?? 0,
+                    needsPriceCompletion,
+                    priceCompletionLabel: needsPriceCompletion
+                        ? (isMoneyCurrency
+                            ? `缺少 ${symbol} 到 ${operatingCurrency} 的汇率`
+                            : `缺少 ${displayLabel} 到 ${operatingCurrency} 的价格`)
+                        : undefined,
+                    suggestedPriceCurrency: operatingCurrency,
+                    holdings,
                     holdingsRaw: combined?.holdingsRaw || '',
                     valueInOperatingCurrency: combined?.valueOp ?? 0,
                     isOperatingCurrency,
@@ -294,7 +311,17 @@ export class CommoditiesController {
                 priceMetadata: details.priceMetadata || undefined,
                 fullMetadata: details.metadata,
                 metadata: details.metadata,
-                currentPrice: undefined,  // Detail query doesn't include current price
+                currentPrice: existing?.currentPrice,
+                logoUrl: existing?.logoUrl,
+                priceDate: existing?.priceDate,
+                isPriceLatest: existing?.isPriceLatest,
+                needsPriceCompletion: existing?.needsPriceCompletion,
+                priceCompletionLabel: existing?.priceCompletionLabel,
+                suggestedPriceCurrency: existing?.suggestedPriceCurrency,
+                holdings: existing?.holdings,
+                holdingsRaw: existing?.holdingsRaw,
+                valueInOperatingCurrency: existing?.valueInOperatingCurrency,
+                isOperatingCurrency: existing?.isOperatingCurrency,
                 filename: details.filename || undefined,
                 lineno: details.lineno || undefined
             });
@@ -401,6 +428,34 @@ export class CommoditiesController {
         } catch (error) {
             Logger.error('Error testing logo URL:', error);
             return { success: false, error: String(error) };
+        }
+    }
+
+    public async createManualPrice(
+        symbol: string,
+        date: string,
+        amount: number,
+        currency: string
+    ): Promise<{ success: boolean; filePath?: string; error?: string }> {
+        this.loading.set(true);
+        this.error.set(null);
+        try {
+            const { createPriceDirective } = await import('../utils/index');
+            const createBackup = this.plugin.settings.createBackups ?? true;
+            const result = await createPriceDirective(this.plugin, date, symbol, amount, currency, createBackup);
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to create price directive');
+            }
+            await this.loadData();
+            await this.loadCommodityDetails(symbol);
+            return result;
+        } catch (error) {
+            Logger.error('[CommoditiesController] createManualPrice error:', error);
+            const errorMsg = error instanceof Error ? error.message : 'Failed to create price directive';
+            this.error.set(errorMsg);
+            return { success: false, error: errorMsg };
+        } finally {
+            this.loading.set(false);
         }
     }
 
