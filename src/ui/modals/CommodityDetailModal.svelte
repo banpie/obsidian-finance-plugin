@@ -75,6 +75,15 @@
 	$: displayName = commodity?.displayName;
 	$: pricePoints = commodity?.pricePoints;
 	$: firstPriceDate = commodity?.firstPriceDate;
+	$: isMoneyCurrency = /^[A-Z]{3}$/.test(symbol || "");
+	$: isBaseCurrency = symbol === "CNY";
+	$: priceSectionTitle = isMoneyCurrency ? "汇率" : "价格";
+	$: currentPriceLabel = isMoneyCurrency ? "当前汇率" : "当前价格";
+	$: historyLabel = isMoneyCurrency ? "历史汇率" : "历史价格";
+	$: sourceLabel = isMoneyCurrency ? "汇率来源" : "价格来源";
+	$: fallbackPriceSource = isMoneyCurrency && !isBaseCurrency && (currentPrice || pricePoints)
+		? "prices.beancount / price 指令"
+		: "—";
 	$: otherMeta = Object.entries(commodity?.metadata || {}).filter(
 		([k]) => k !== "logo" && k !== "price",
 	);
@@ -108,7 +117,7 @@
 			{/if}
 			{#if currentPrice}
 				<div class="current-price">
-					Current price: <strong>{currentPrice}</strong>
+					{currentPriceLabel}: <strong>{currentPrice}</strong>
 				</div>
 			{/if}
 		</div>
@@ -116,75 +125,82 @@
 
 	<!-- Price Source -->
 	<div class="section">
-		<p class="section-title">价格</p>
+		<p class="section-title">{priceSectionTitle}</p>
 		<div class="section-card">
-			{#if pricePoints}
+			{#if isBaseCurrency}
 				<div class="kv-row">
-					<span class="kv-key">历史价格</span>
+					<span class="kv-key">说明</span>
+					<span class="kv-value">CNY 是当前折算基准货币，不需要维护汇率来源。</span>
+				</div>
+			{:else if pricePoints}
+				<div class="kv-row">
+					<span class="kv-key">{historyLabel}</span>
 					<span class="kv-value">{pricePoints} 个点{firstPriceDate ? `，从 ${firstPriceDate} 开始` : ""}</span>
 				</div>
 			{/if}
-			{#if !editingPrice}
-				<div class="kv-row">
-					<span class="kv-key">Source</span>
-					<span class="kv-value">{priceSource || "—"}</span>
-					<div class="kv-actions">
-						<button
-							class="btn btn-ghost"
-							on:click={testPrice}
-							title="Test this price source">Test</button
-						>
-						<button class="btn" on:click={toggleEditPrice}
-							>{priceSource ? "Edit" : "Add"}</button
-						>
+			{#if !isBaseCurrency}
+				{#if !editingPrice}
+					<div class="kv-row">
+						<span class="kv-key">{sourceLabel}</span>
+						<span class="kv-value">{priceSource || fallbackPriceSource}</span>
+						<div class="kv-actions">
+							<button
+								class="btn btn-ghost"
+								on:click={testPrice}
+								title={isMoneyCurrency ? "测试汇率来源" : "测试价格源"}>测试</button
+							>
+							<button class="btn" on:click={toggleEditPrice}
+								>{priceSource ? "编辑" : "添加"}</button
+							>
+						</div>
 					</div>
-				</div>
-			{:else}
-				<div class="edit-area">
-					<input
-						type="text"
-						bind:value={priceInput}
-						bind:this={priceInputRef}
-						placeholder="e.g. yahoo/BTC-USD or crypto:coingecko/bitcoin"
-					/>
-					<span class="edit-hint"
-						>Format: provider/symbol — e.g. <code>yahoo/AAPL</code>
-						or <code>crypto:coingecko/bitcoin</code></span
-					>
-					<div class="edit-buttons">
-						<button class="btn btn-primary" on:click={saveMetadata}
-							>Save</button
+				{:else}
+					<div class="edit-area">
+						<input
+							type="text"
+							bind:value={priceInput}
+							bind:this={priceInputRef}
+							placeholder="例如 yahoo/AAPL 或 crypto:coingecko/bitcoin"
+						/>
+						<span class="edit-hint"
+							>格式：provider/symbol，例如 <code>yahoo/AAPL</code>
+							或 <code>crypto:coingecko/bitcoin</code></span
 						>
-						<button class="btn btn-ghost" on:click={testPrice}
-							>Test</button
-						>
-						<button class="btn btn-ghost" on:click={toggleEditPrice}
-							>Cancel</button
-						>
+						<div class="edit-buttons">
+							<button class="btn btn-primary" on:click={saveMetadata}
+								>保存</button
+							>
+							<button class="btn btn-ghost" on:click={testPrice}
+								>测试</button
+							>
+							<button class="btn btn-ghost" on:click={toggleEditPrice}
+								>取消</button
+							>
+						</div>
 					</div>
-				</div>
+				{/if}
 			{/if}
 		</div>
 	</div>
 
 	<!-- Logo -->
 	<div class="section">
-		<p class="section-title">Logo</p>
+		<p class="section-title">图标</p>
 		<div class="section-card">
 			{#if !editingLogo}
 				<div class="kv-row">
-					<span class="kv-key">URL</span>
+					<span class="kv-key">地址</span>
 					<span class="kv-value">{logoUrl || "—"}</span>
 					<div class="kv-actions">
 						{#if logoUrl}
 							<button
 								class="btn btn-ghost"
 								on:click={testLogo}
-								title="Verify logo URL">Test</button
+								title="验证图标地址">测试</button
 							>
 						{/if}
 						<button class="btn" on:click={toggleEditLogo}
-							>{logoUrl ? "Edit" : "Add"}</button
+							>{logoUrl ? "编辑" : "添加"}</button
 						>
 					</div>
 				</div>
@@ -197,17 +213,17 @@
 						placeholder="https://example.com/logo.png"
 					/>
 					<span class="edit-hint"
-						>Direct image URL (PNG, SVG, or JPG)</span
+						>直接图片地址，支持 PNG、SVG 或 JPG</span
 					>
 					<div class="edit-buttons">
 						<button class="btn btn-primary" on:click={saveMetadata}
-							>Save</button
+							>保存</button
 						>
 						<button class="btn btn-ghost" on:click={testLogo}
-							>Test URL</button
+							>测试地址</button
 						>
 						<button class="btn btn-ghost" on:click={toggleEditLogo}
-							>Cancel</button
+							>取消</button
 						>
 					</div>
 				</div>
@@ -218,7 +234,7 @@
 	<!-- Other Metadata -->
 	{#if otherMeta.length > 0}
 		<div class="section">
-			<p class="section-title">Other Metadata</p>
+			<p class="section-title">其他元数据</p>
 			<div class="section-card">
 				{#each otherMeta as [key, value]}
 					<div class="kv-row">
@@ -236,10 +252,12 @@
 
 	<!-- Footer -->
 	<div class="footer">
-		<button class="btn btn-danger" on:click={requestDelete}
-			>Delete Commodity</button
-		>
-		<button class="btn btn-primary" on:click={close}>Done</button>
+		{#if !isBaseCurrency}
+			<button class="btn btn-danger" on:click={requestDelete}
+				>{isMoneyCurrency ? "删除货币" : "删除投资品"}</button
+			>
+		{/if}
+		<button class="btn btn-primary" on:click={close}>完成</button>
 	</div>
 </div>
 
@@ -252,19 +270,17 @@
 	>
 		<button class="confirm-backdrop" type="button" on:click={cancelDelete} aria-label="Close dialog"></button>
 		<div class="confirm-dialog" role="dialog" aria-modal="true" tabindex="-1">
-			<h4>Delete {symbol}</h4>
+			<h4>删除 {symbol}</h4>
 			<p>
-				Are you sure you want to delete the <strong>{symbol}</strong>
-				commodity directive? This removes the declaration from your ledger
-				file. Existing transactions that use <strong>{symbol}</strong> will
-				not be affected.
+				确定要删除 <strong>{symbol}</strong> 的 commodity 声明吗？这会从账本文件删除声明，已经使用
+				<strong>{symbol}</strong> 的交易不会被自动删除。
 			</p>
 			<div class="confirm-actions">
 				<button class="btn btn-ghost" on:click={cancelDelete}
-					>Cancel</button
+					>取消</button
 				>
 				<button class="btn btn-danger" on:click={confirmDelete}
-					>Delete</button
+					>删除</button
 				>
 			</div>
 		</div>

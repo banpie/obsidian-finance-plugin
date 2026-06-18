@@ -3,7 +3,7 @@
 import { App, Modal, Notice } from 'obsidian';
 import type BeancountPlugin from '../../main';
 import AddTargetModalComponent from './AddTargetModal.svelte';
-import { getOpenAccounts, runQuery, createIndicatorDirective, updateIndicatorDirective, normalizeMoneyCurrencyOptions } from '../../utils';
+import { getOpenAccounts, runQuery, createIndicatorDirective, updateIndicatorDirective, normalizeMoneyCurrencyOptions, loadFinanceOsMoneyCurrencies } from '../../utils';
 import { getAllCurrenciesQuery } from '../../queries';
 import { parse as parseCsv } from 'csv-parse/sync';
 import { Logger } from '../../utils/logger';
@@ -39,16 +39,20 @@ export class AddTargetModal extends Modal {
         let accounts: string[] = [];
         let currencies: string[] = [operatingCurrency];
         try {
-            const [accs, csvResult] = await Promise.all([
+            const [accs, csvResult, financeOsCurrencies] = await Promise.all([
                 getOpenAccounts(this.plugin),
                 runQuery(this.plugin, getAllCurrenciesQuery()).catch(() => ''),
+                loadFinanceOsMoneyCurrencies(this.plugin).catch(() => []),
             ]);
             accounts = accs;
+            const mergedCurrencies = new Set<string>(currencies);
             if (csvResult) {
                 const rows = parseCsv(csvResult, { columns: true, skip_empty_lines: true, trim: true }) as unknown as CurrencyRow[];
                 const fetched = rows.map((r) => r.currency_).filter(Boolean);
-                if (fetched.length > 0) currencies = fetched;
+                for (const currency of fetched) mergedCurrencies.add(currency);
             }
+            for (const currency of financeOsCurrencies) mergedCurrencies.add(currency);
+            currencies = Array.from(mergedCurrencies);
             currencies = normalizeMoneyCurrencyOptions(currencies, operatingCurrency);
         } catch (err) {
             Logger.log('[AddTargetModal] Could not prefetch accounts/currencies:', err);

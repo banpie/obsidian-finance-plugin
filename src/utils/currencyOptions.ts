@@ -18,6 +18,7 @@ const MONEY_CURRENCY_CODES = new Set([
 	'NZD',
 	'SGD',
 	'THB',
+	'TRY',
 	'TWD',
 	'USD',
 	'VND',

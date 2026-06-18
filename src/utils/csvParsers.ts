@@ -130,6 +130,10 @@ export function parseCommodityDetailsCSV(csv: string): {
  * Parses CSV from getCombinedCommodityDataQuery into a Map keyed by currency symbol.
  * Format: [currency_, units_, valueOp_, price_, logo_]
  *
+ * `holdings` and `valueOp` keep their sign. Negative balances are not active
+ * long holdings; this prevents closed residuals from passing the "has holding"
+ * filter.
+ *
  * When bean-query's convert() cannot convert to the operating currency (no price
  * directive exists), it returns the original inventory unchanged (e.g. "0.016 ETHW"
  * instead of "1234 INR"). We detect this by checking whether the currency token in
@@ -175,14 +179,14 @@ export function parseCombinedCommodityDataCSV(
             const priceCell = row[3]?.trim() || null;
             const logoCell = row[4]?.trim() || null;
 
-            const holdings = Math.abs(extractNumber(unitsCell));
+            const holdings = extractNumber(unitsCell);
 
             // If convert() couldn't convert, valueCell still contains the original
             // currency unit. Detect this and zero out the value to avoid mislabeling.
             const valueCurrencyToken = extractCurrencyToken(valueCell);
             const valueOp = (valueCurrencyToken && valueCurrencyToken !== operatingCurrency)
                 ? 0
-                : Math.abs(extractNumber(valueCell));
+                : extractNumber(valueCell);
 
             const holdingsRaw = unitsCell
                 .split(',')
@@ -201,4 +205,3 @@ export function parseCombinedCommodityDataCSV(
         return map;
     }
 }
-

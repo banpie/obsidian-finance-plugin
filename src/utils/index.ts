@@ -62,3 +62,4 @@ export type { OperationType } from './structuredLayout';
 export { validatePriceSource, validateLogoUrl } from './validators';
 export { normalizeMoneyCurrencyOptions } from './currencyOptions';
 export { loadFinanceOsCommodityLabels, type FinanceOsCommodityLabel } from './financeOsCommodityLabels';
+export { loadFinanceOsMoneyCurrencies } from './financeOsMoneyCurrencies';
