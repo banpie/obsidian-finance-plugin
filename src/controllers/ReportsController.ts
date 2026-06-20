@@ -27,6 +27,14 @@ export interface ReportTransaction {
 	amount: number;
 }
 
+export interface ReportInvestmentTransaction {
+	date: string;
+	payee: string;
+	narration: string;
+	account: string;
+	position: string;
+}
+
 export interface ReportsState {
 	isLoading: boolean;
 	error: string | null;
@@ -132,6 +140,12 @@ export class ReportsController {
 
 	setActiveView(activeView: ReportsView) {
 		this.state.update(s => ({ ...s, activeView }));
+	}
+
+	async loadInvestmentTransactions(row: ReportRow, endDate: string): Promise<ReportInvestmentTransaction[]> {
+		if (!row.account || !row.commodity || !endDate) return [];
+		const csv = await this.plugin.runQuery(queries.getInvestmentTransactionsQuery(row.account, row.commodity, endDate));
+		return this.parseInvestmentTransactionRows(csv);
 	}
 
 	async setPeriodMode(periodMode: ReportsPeriodMode) {
@@ -339,6 +353,19 @@ export class ReportsController {
 				amount: this.parseNumber(row[4]),
 			}))
 			.filter(row => row.date && row.account && Math.abs(row.amount) >= 0.01);
+	}
+
+	private parseInvestmentTransactionRows(rawCsv: string): ReportInvestmentTransaction[] {
+		return this.parseRows(rawCsv)
+			.filter(row => row.length >= 5 && /^\d{4}-\d{2}-\d{2}$/.test(row[0]))
+			.map(row => ({
+				date: row[0],
+				payee: row[1],
+				narration: row[2],
+				account: row[3],
+				position: row[4],
+			}))
+			.filter(row => row.position);
 	}
 
 	private parseCounterpartRows(rawCsv: string): Map<string, string[]> {

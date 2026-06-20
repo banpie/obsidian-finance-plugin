@@ -101,6 +101,12 @@ export function getInvestmentAllocationQuery(currency: string, rounding: number,
 	return `SELECT account, currency, currency_meta(currency, 'name') AS _commodityName, round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding}) AS _value WHERE account ~ '^Assets:Investments'${asOfDateClause(asOfDate)}${openAccountClause(asOfDate)} GROUP BY account, currency, currency_meta(currency, 'name') ORDER BY account, currency`;
 }
 
+export function getInvestmentTransactionsQuery(account: string, commodity: string, endDate: string, limit = 500): string {
+	const escapedAccount = account.replace(/'/g, "''");
+	const escapedCommodity = commodity.replace(/'/g, "''");
+	return `SELECT date, payee, narration, account, position WHERE account = '${escapedAccount}' AND currency = '${escapedCommodity}' AND date < ${endDate} ORDER BY date DESC, lineno DESC LIMIT ${limit}`;
+}
+
 export function getBalanceSheetQuery(currency: string): string {
 	return `SELECT account, convert(sum(position), '${currency}') WHERE account ~ '^(Assets|Liabilities|Equity)' AND NOT close_date(account) GROUP BY account ORDER BY account`;
 }

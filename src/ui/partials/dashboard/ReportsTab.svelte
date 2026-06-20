@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { writable, type Writable } from 'svelte/store';
-	import type { ReportsController, ReportsState, ReportRow, ReportTransaction, ReportsPeriodPreset, ReportsView } from '../../../controllers/ReportsController';
+	import type { ReportsController, ReportsState, ReportRow, ReportTransaction, ReportInvestmentTransaction, ReportsPeriodPreset, ReportsView } from '../../../controllers/ReportsController';
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
@@ -61,6 +61,10 @@
 	});
 
 	let detailSelection: DetailSelection | null = null;
+	let holdingSelection: ReportRow | null = null;
+	let holdingTransactions: ReportInvestmentTransaction[] = [];
+	let holdingTransactionsLoading = false;
+	let holdingTransactionsError: string | null = null;
 	const months = [
 		{ value: 1, label: 'January' },
 		{ value: 2, label: 'February' },
@@ -219,8 +223,34 @@
 		detailSelection = null;
 	}
 
+	async function openHoldingTransactions(row: ReportRow) {
+		holdingSelection = row;
+		holdingTransactions = [];
+		holdingTransactionsError = null;
+		holdingTransactionsLoading = true;
+		try {
+			holdingTransactions = controller ? await controller.loadInvestmentTransactions(row, state.endDate) : [];
+		} catch (error) {
+			holdingTransactionsError = error instanceof Error ? error.message : String(error);
+		} finally {
+			holdingTransactionsLoading = false;
+		}
+	}
+
+	function closeHoldingTransactions() {
+		holdingSelection = null;
+		holdingTransactions = [];
+		holdingTransactionsError = null;
+		holdingTransactionsLoading = false;
+	}
+
 	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape' && detailSelection) closeDetails();
+		if (event.key !== 'Escape') return;
+		if (holdingSelection) {
+			closeHoldingTransactions();
+		} else if (detailSelection) {
+			closeDetails();
+		}
 	}
 
 	$: investmentTotal = state.investmentsByType.reduce((sum, row) => sum + row.amount, 0);
@@ -519,7 +549,11 @@
 					<tbody>
 						{#each state.topInvestments as row}
 							<tr>
-								<td title={row.commodityName || row.label}>{commodityNameLabel(row)}</td>
+								<td title={row.commodityName || row.label}>
+									<button type="button" class="table-link" on:click={() => openHoldingTransactions(row)}>
+										{commodityNameLabel(row)}
+									</button>
+								</td>
 								<td>{row.commodity || ''}</td>
 								<td title={row.account || row.label}>{row.label}</td>
 								<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
@@ -573,7 +607,11 @@
 										<tr class="child-row">
 											<td title={row.account || row.label}>{detailRowLabel(row)}</td>
 											{#if detailSelection.kind === 'investment'}
-												<td title={row.commodityName || row.label}>{commodityNameLabel(row)}</td>
+												<td title={row.commodityName || row.label}>
+													<button type="button" class="table-link" on:click={() => openHoldingTransactions(row)}>
+														{commodityNameLabel(row)}
+													</button>
+												</td>
 												<td>{row.commodity || ''}</td>
 											{/if}
 											<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
@@ -586,7 +624,11 @@
 									<tr>
 										<td title={row.account || row.label}>{detailRowLabel(row)}</td>
 										{#if detailSelection.kind === 'investment'}
-											<td title={row.commodityName || row.label}>{commodityNameLabel(row)}</td>
+											<td title={row.commodityName || row.label}>
+												<button type="button" class="table-link" on:click={() => openHoldingTransactions(row)}>
+													{commodityNameLabel(row)}
+												</button>
+											</td>
 											<td>{row.commodity || ''}</td>
 										{/if}
 										<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
@@ -625,6 +667,56 @@
 						</table>
 					</div>
 				{/if}
+			</div>
+		</section>
+	{/if}
+
+	{#if holdingSelection}
+		<button type="button" class="detail-modal-backdrop" on:click={closeHoldingTransactions} aria-label="Close holding transactions"></button>
+		<section class="detail-modal" role="dialog" aria-modal="true" aria-label="Holding transactions">
+			<header class="detail-modal-header">
+				<div>
+					<h3>{commodityNameLabel(holdingSelection)}</h3>
+					<div class="period-label">{holdingSelection.commodity || ''} · {holdingSelection.label}</div>
+				</div>
+				<div class="detail-modal-actions">
+					<strong class={amountClass(holdingSelection.amount)}>{formatCurrency(holdingSelection.amount)}</strong>
+					<button type="button" class="close-button" on:click={closeHoldingTransactions} aria-label="Close holding transactions">Close</button>
+				</div>
+			</header>
+
+			<div class="detail-modal-body">
+				<div class="detail-table-wrap">
+					<h4>Transactions</h4>
+					{#if holdingTransactionsLoading}
+						<SkeletonLoader rows={4} />
+					{:else if holdingTransactionsError}
+						<ErrorBanner message={holdingTransactionsError} />
+					{:else if holdingTransactions.length}
+						<table class="reports-table transaction-table">
+							<thead>
+								<tr>
+									<th>Date</th>
+									<th>Transaction</th>
+									<th>Ledger Account</th>
+									<th class="align-right">Position</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each holdingTransactions as transaction}
+									<tr>
+										<td>{transaction.date}</td>
+										<td title={transaction.payee}>{transaction.narration || transaction.payee || ''}</td>
+										<td title={transaction.account}>{detailAccountLabel(transaction.account)}</td>
+										<td class="align-right">{transaction.position}</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					{:else}
+						<div class="empty-state">No transactions found for this holding.</div>
+					{/if}
+				</div>
 			</div>
 		</section>
 	{/if}
@@ -950,8 +1042,43 @@
 		overflow-wrap: anywhere;
 	}
 
+	.table-link {
+		display: inline;
+		width: auto;
+		height: auto;
+		min-height: 0;
+		padding: 0;
+		border: none;
+		border-radius: 0;
+		background: transparent;
+		box-shadow: none;
+		color: var(--text-accent);
+		font: inherit;
+		line-height: inherit;
+		text-align: left;
+		white-space: normal;
+		overflow-wrap: anywhere;
+		cursor: pointer;
+	}
+
+	.table-link:hover,
+	.table-link:focus-visible {
+		background: transparent;
+		color: var(--text-accent-hover);
+		text-decoration: underline;
+	}
+
 	.transaction-table {
 		margin-top: var(--size-4-3);
+	}
+
+	.empty-state {
+		margin-top: var(--size-4-3);
+		padding: var(--size-4-3);
+		border: 1px dashed var(--background-modifier-border);
+		border-radius: var(--radius-s);
+		color: var(--text-muted);
+		font-size: var(--font-ui-small);
 	}
 
 	.detail-modal-backdrop {
