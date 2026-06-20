@@ -77,6 +77,10 @@ export function getAssetAllocationQuery(currency: string, rounding: number): str
 	return `SELECT account, round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _value WHERE account ~ '^Assets' AND NOT close_date(account) GROUP BY account ORDER BY account`;
 }
 
+export function getLiabilityAllocationQuery(currency: string, rounding: number): string {
+	return `SELECT account, neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _value WHERE account ~ '^Liabilities' AND NOT close_date(account) GROUP BY account ORDER BY account`;
+}
+
 export function getInvestmentAllocationQuery(currency: string, rounding: number): string {
 	return `SELECT account, currency, round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _value WHERE account ~ '^Assets:Investments' AND NOT close_date(account) GROUP BY account, currency ORDER BY account, currency`;
 }
