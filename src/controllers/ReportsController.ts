@@ -6,6 +6,7 @@ import * as queries from '../queries/index';
 import { Logger } from '../utils/logger';
 
 export type ReportsPeriodMode = 'month' | 'year';
+export type ReportsPeriodPreset = 'this-month' | 'last-month' | 'this-year' | 'last-year' | 'custom-month' | 'custom-year';
 export type ReportsView = 'cashflow' | 'assets';
 
 export interface ReportRow {
@@ -29,6 +30,7 @@ export interface ReportsState {
 	isLoading: boolean;
 	error: string | null;
 	currency: string;
+	periodPreset: ReportsPeriodPreset;
 	periodMode: ReportsPeriodMode;
 	year: number;
 	month: number;
@@ -92,6 +94,7 @@ export class ReportsController {
 			isLoading: true,
 			error: null,
 			currency: plugin.settings.operatingCurrency || 'USD',
+			periodPreset: 'this-month',
 			periodMode: 'month',
 			year,
 			month,
@@ -126,20 +129,24 @@ export class ReportsController {
 
 	async setPeriodMode(periodMode: ReportsPeriodMode) {
 		const current = get(this.state);
-		this.state.update(s => ({ ...s, periodMode }));
-		await this.loadData(periodMode, current.year, current.month);
+		await this.loadData(periodMode, current.year, current.month, periodMode === 'year' ? 'custom-year' : 'custom-month');
+	}
+
+	async setPeriodPreset(periodPreset: ReportsPeriodPreset) {
+		const selected = this.resolvePresetDate(periodPreset, new Date());
+		await this.loadData(selected.mode, selected.year, selected.month, periodPreset);
 	}
 
 	async setMonth(month: number) {
 		const current = get(this.state);
-		this.state.update(s => ({ ...s, month }));
-		await this.loadData(current.periodMode, current.year, month);
+		const normalizedMonth = Math.min(12, Math.max(1, Math.trunc(month)));
+		await this.loadData('month', current.year, normalizedMonth, 'custom-month');
 	}
 
 	async setYear(year: number) {
 		const current = get(this.state);
-		this.state.update(s => ({ ...s, year }));
-		await this.loadData(current.periodMode, year, current.month);
+		const normalizedYear = Number.isFinite(year) ? Math.max(1, Math.trunc(year)) : new Date().getFullYear();
+		await this.loadData(current.periodMode, normalizedYear, current.month, current.periodMode === 'year' ? 'custom-year' : 'custom-month');
 	}
 
 	async movePeriod(delta: -1 | 1) {
@@ -157,26 +164,33 @@ export class ReportsController {
 		} else {
 			year += delta;
 		}
-		this.state.update(s => ({ ...s, year, month }));
-		await this.loadData(current.periodMode, year, month);
+		await this.loadData(current.periodMode, year, month, current.periodMode === 'year' ? 'custom-year' : 'custom-month');
 	}
 
-	async loadData(periodMode = get(this.state).periodMode, year = get(this.state).year, month = get(this.state).month) {
+	async loadData(
+		periodMode = get(this.state).periodMode,
+		year = get(this.state).year,
+		month = get(this.state).month,
+		periodPreset = get(this.state).periodPreset
+	) {
 		const currency = this.plugin.settings.operatingCurrency;
 		if (!currency) {
 			this.state.update(s => ({ ...s, isLoading: false, error: 'Operating currency not set.' }));
 			return;
 		}
 
-		const range = this.getPeriodRange(periodMode, year, month);
+		const normalizedYear = Number.isFinite(year) ? Math.max(1, Math.trunc(year)) : new Date().getFullYear();
+		const normalizedMonth = Number.isFinite(month) ? Math.min(12, Math.max(1, Math.trunc(month))) : new Date().getMonth() + 1;
+		const range = this.getPeriodRange(periodMode, normalizedYear, normalizedMonth);
 		this.state.update(s => ({
 			...s,
 			isLoading: true,
 			error: null,
 			currency,
+			periodPreset,
 			periodMode,
-			year,
-			month,
+			year: normalizedYear,
+			month: normalizedMonth,
 			periodLabel: range.label,
 			startDate: range.startDate,
 			endDate: range.endDate,
@@ -394,6 +408,27 @@ export class ReportsController {
 			endDate: this.formatDate(end),
 			label: start.toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
 		};
+	}
+
+	private resolvePresetDate(periodPreset: ReportsPeriodPreset, now: Date): { mode: ReportsPeriodMode; year: number; month: number } {
+		const current = get(this.state);
+		switch (periodPreset) {
+			case 'last-month': {
+				const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+				return { mode: 'month', year: previousMonth.getFullYear(), month: previousMonth.getMonth() + 1 };
+			}
+			case 'this-year':
+				return { mode: 'year', year: now.getFullYear(), month: now.getMonth() + 1 };
+			case 'last-year':
+				return { mode: 'year', year: now.getFullYear() - 1, month: now.getMonth() + 1 };
+			case 'custom-month':
+				return { mode: 'month', year: current.year, month: current.month };
+			case 'custom-year':
+				return { mode: 'year', year: current.year, month: current.month };
+			case 'this-month':
+			default:
+				return { mode: 'month', year: now.getFullYear(), month: now.getMonth() + 1 };
+		}
 	}
 
 	private formatDate(date: Date): string {

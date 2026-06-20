@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { writable, type Writable } from 'svelte/store';
-	import type { ReportsController, ReportsState, ReportRow, ReportTransaction, ReportsPeriodMode, ReportsView } from '../../../controllers/ReportsController';
+	import type { ReportsController, ReportsState, ReportRow, ReportTransaction, ReportsPeriodPreset, ReportsView } from '../../../controllers/ReportsController';
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
@@ -27,6 +27,7 @@
 		isLoading: true,
 		error: null,
 		currency: 'USD',
+		periodPreset: 'this-month',
 		periodMode: 'month',
 		year: new Date().getFullYear(),
 		month: new Date().getMonth() + 1,
@@ -73,6 +74,14 @@
 		{ value: 10, label: 'October' },
 		{ value: 11, label: 'November' },
 		{ value: 12, label: 'December' },
+	];
+	const periodPresets = [
+		{ value: 'this-month', label: 'This Month' },
+		{ value: 'last-month', label: 'Last Month' },
+		{ value: 'this-year', label: 'This Year' },
+		{ value: 'last-year', label: 'Last Year' },
+		{ value: 'custom-month', label: 'Custom Month' },
+		{ value: 'custom-year', label: 'Custom Year' },
 	];
 
 	$: stateStore = controller ? controller.state : placeholderState;
@@ -241,8 +250,9 @@
 				: []
 		: [];
 
-	async function handlePeriodModeChange(mode: ReportsPeriodMode) {
-		if (controller && mode !== state.periodMode) await controller.setPeriodMode(mode);
+	async function handlePeriodPresetChange(event: Event) {
+		const preset = (event.currentTarget as HTMLSelectElement).value as ReportsPeriodPreset;
+		if (controller) await controller.setPeriodPreset(preset);
 	}
 
 	async function handleMonthChange(event: Event) {
@@ -253,10 +263,6 @@
 	async function handleYearChange(event: Event) {
 		const value = Number((event.target as HTMLInputElement).value);
 		if (controller && Number.isFinite(value)) await controller.setYear(value);
-	}
-
-	async function handleMove(delta: -1 | 1) {
-		if (controller) await controller.movePeriod(delta);
 	}
 
 	async function handleRefresh() {
@@ -281,24 +287,32 @@
 				</div>
 			</div>
 			<div class="period-controls">
-				<button class="icon-button" on:click={() => handleMove(-1)} disabled={state.isLoading} aria-label="Previous period">‹</button>
-				<div class="toolbar-group">
-					<div class="segmented-control" aria-label="Period mode">
-						<button class:active={state.periodMode === 'month'} on:click={() => handlePeriodModeChange('month')} disabled={state.isLoading}>Month</button>
-						<button class:active={state.periodMode === 'year'} on:click={() => handlePeriodModeChange('year')} disabled={state.isLoading}>Year</button>
-					</div>
-					<div class="date-fields">
-						{#if state.periodMode === 'month'}
-							<select value={state.month} on:change={handleMonthChange} disabled={state.isLoading} aria-label="Month">
+				<div class="toolbar-group period-picker">
+					<label>
+						<span>Period</span>
+						<select value={state.periodPreset} on:change={handlePeriodPresetChange} disabled={state.isLoading}>
+							{#each periodPresets as preset}
+								<option value={preset.value}>{preset.label}</option>
+							{/each}
+						</select>
+					</label>
+					{#if state.periodPreset === 'custom-month' || state.periodPreset === 'custom-year'}
+						<label>
+							<span>Year</span>
+							<input type="number" min="1970" max="9999" step="1" value={state.year} on:change={handleYearChange} disabled={state.isLoading} />
+						</label>
+					{/if}
+					{#if state.periodPreset === 'custom-month'}
+						<label>
+							<span>Month</span>
+							<select value={state.month} on:change={handleMonthChange} disabled={state.isLoading}>
 								{#each months as month}
 									<option value={month.value}>{month.label}</option>
 								{/each}
 							</select>
-						{/if}
-						<input type="number" min="1970" max="9999" value={state.year} on:change={handleYearChange} disabled={state.isLoading} aria-label="Year" />
-					</div>
+						</label>
+					{/if}
 				</div>
-				<button class="icon-button" on:click={() => handleMove(1)} disabled={state.isLoading} aria-label="Next period">›</button>
 				<button class="refresh-button" on:click={handleRefresh} disabled={state.isLoading}>Refresh</button>
 			</div>
 		</div>
@@ -662,10 +676,22 @@
 		background: var(--background-secondary);
 	}
 
-	.date-fields {
+	.period-picker {
+		align-items: center;
+		flex-wrap: wrap;
+	}
+
+	.period-picker label {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--size-4-2);
+		gap: var(--size-4-1);
+		color: var(--text-muted);
+		font-size: var(--font-ui-smaller);
+	}
+
+	.period-picker select,
+	.period-picker input {
+		min-height: 30px;
 	}
 
 	.segmented-control {
@@ -677,7 +703,6 @@
 	}
 
 	.segmented-control button,
-	.icon-button,
 	.refresh-button {
 		border: none;
 		border-radius: 0;
@@ -698,14 +723,6 @@
 
 	.primary-switch button {
 		min-width: 86px;
-	}
-
-	.icon-button {
-		border: 1px solid var(--background-modifier-border);
-		border-radius: var(--radius-s);
-		font-size: 18px;
-		min-width: 30px;
-		padding: 0 8px;
 	}
 
 	.refresh-button {
