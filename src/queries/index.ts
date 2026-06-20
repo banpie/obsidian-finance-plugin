@@ -98,7 +98,7 @@ export function getLiabilityAllocationQuery(currency: string, rounding: number, 
 }
 
 export function getInvestmentAllocationQuery(currency: string, rounding: number, asOfDate?: string): string {
-	return `SELECT account, currency, round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding}) AS _value WHERE account ~ '^Assets:Investments'${asOfDateClause(asOfDate)}${openAccountClause(asOfDate)} GROUP BY account, currency ORDER BY account, currency`;
+	return `SELECT account, currency, currency_meta(currency, 'name') AS _commodityName, round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding}) AS _value WHERE account ~ '^Assets:Investments'${asOfDateClause(asOfDate)}${openAccountClause(asOfDate)} GROUP BY account, currency, currency_meta(currency, 'name') ORDER BY account, currency`;
 }
 
 export function getBalanceSheetQuery(currency: string): string {
