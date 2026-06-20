@@ -17,6 +17,12 @@
 		summary?: boolean;
 	}
 
+	interface DetailGroup {
+		label: string;
+		amount: number;
+		rows: ReportRow[];
+	}
+
 	const placeholderState: Writable<ReportsState> = writable({
 		isLoading: true,
 		error: null,
@@ -115,6 +121,18 @@
 		return rows.filter(row => majorCategory(row.account) === category);
 	}
 
+	function rowsForInvestmentType(rows: ReportRow[], type: string | null): ReportRow[] {
+		if (!type) return rows;
+		return rows.filter(row => investmentType(row.account) === type);
+	}
+
+	function asNetWorthLiabilityRow(row: ReportRow): ReportRow {
+		return {
+			...row,
+			amount: -row.amount,
+		};
+	}
+
 	function transactionLabel(transaction: ReportTransaction): string {
 		return transaction.narration || transaction.payee || '';
 	}
@@ -124,25 +142,57 @@
 	}
 
 	function detailSectionTitle(kind: DetailKind): string {
-		if (kind === 'investment') return detailSelection?.summary ? 'Summary by Type' : 'Current Holdings';
-		if (kind === 'asset' || kind === 'liability' || kind === 'networth') return detailSelection?.summary ? 'Summary by Category' : 'Current Balances';
+		if (kind === 'investment') return detailSelection?.summary ? 'Holdings by Type' : 'Current Holdings';
+		if (kind === 'asset' || kind === 'liability' || kind === 'networth') return detailSelection?.summary ? 'Balances by Category' : 'Current Balances';
 		return 'Category Breakdown';
-	}
-
-	function netWorthRows(): ReportRow[] {
-		return [
-			...state.assetsByCategory,
-			...state.liabilitiesByCategory.map(row => ({
-				...row,
-				label: `Liabilities:${row.label}`,
-				account: `Liabilities:${row.label}`,
-				amount: -row.amount,
-			})),
-		];
 	}
 
 	function detailRowLabel(row: ReportRow): string {
 		return row.account ? detailAccountLabel(row.account) : row.label;
+	}
+
+	function assetDetailGroups(): DetailGroup[] {
+		return state.assetsByCategory.map(group => ({
+			label: group.label,
+			amount: group.amount,
+			rows: rowsForCategory(state.assetsByAccount, group.label),
+		}));
+	}
+
+	function liabilityDetailGroups(): DetailGroup[] {
+		return state.liabilitiesByCategory.map(group => ({
+			label: group.label,
+			amount: group.amount,
+			rows: rowsForCategory(state.liabilitiesByAccount, group.label),
+		}));
+	}
+
+	function netWorthDetailGroups(): DetailGroup[] {
+		return [
+			...assetDetailGroups(),
+			...state.liabilitiesByCategory.map(group => ({
+				label: `Liabilities / ${group.label}`,
+				amount: -group.amount,
+				rows: rowsForCategory(state.liabilitiesByAccount, group.label).map(asNetWorthLiabilityRow),
+			})),
+		];
+	}
+
+	function investmentDetailGroups(): DetailGroup[] {
+		return state.investmentsByType.map(group => ({
+			label: group.label,
+			amount: group.amount,
+			rows: rowsForInvestmentType(state.investmentsByAccount, group.label),
+		}));
+	}
+
+	function summaryGroups(): DetailGroup[] {
+		if (!detailSelection?.summary) return [];
+		if (detailSelection.kind === 'asset') return assetDetailGroups();
+		if (detailSelection.kind === 'liability') return liabilityDetailGroups();
+		if (detailSelection.kind === 'networth') return netWorthDetailGroups();
+		if (detailSelection.kind === 'investment') return investmentDetailGroups();
+		return [];
 	}
 
 	function openDetails(kind: DetailKind, title: string, amount: number, category: string | null = null, summary = false) {
@@ -164,13 +214,14 @@
 			: detailSelection.kind === 'expense'
 				? rowsForCategory(state.expensesByAccount, detailSelection.category)
 				: detailSelection.kind === 'asset'
-					? detailSelection.summary ? state.assetsByCategory : rowsForCategory(state.assetsByAccount, detailSelection.category)
+					? detailSelection.summary ? [] : rowsForCategory(state.assetsByAccount, detailSelection.category)
 					: detailSelection.kind === 'liability'
-						? detailSelection.summary ? state.liabilitiesByCategory : rowsForCategory(state.liabilitiesByAccount, detailSelection.category)
+						? detailSelection.summary ? [] : rowsForCategory(state.liabilitiesByAccount, detailSelection.category)
 						: detailSelection.kind === 'investment'
-							? detailSelection.summary ? state.investmentsByType : state.investmentsByAccount.filter(row => !detailSelection?.category || investmentType(row.account) === detailSelection.category)
-							: netWorthRows()
+							? detailSelection.summary ? [] : rowsForInvestmentType(state.investmentsByAccount, detailSelection.category)
+							: []
 		: [];
+	$: detailGroups = summaryGroups();
 	$: detailTransactions = detailSelection
 		? detailSelection.kind === 'income'
 			? rowsForCategory(state.incomeTransactions, detailSelection.category)
@@ -468,16 +519,36 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each detailAccounts as row}
-								<tr>
-									<td title={row.account || row.label}>{detailRowLabel(row)}</td>
-									{#if detailSelection.kind === 'investment'}
-										<td>{row.commodity || ''}</td>
-									{/if}
-									<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
-									<td class="align-right">{detailPercent(row.amount, detailSelection.amount)}</td>
-								</tr>
-							{/each}
+							{#if detailGroups.length}
+								{#each detailGroups as group}
+									<tr class="group-row">
+										<td colspan={detailSelection.kind === 'investment' ? 2 : 1}>{group.label}</td>
+										<td class={`align-right ${amountClass(group.amount)}`}>{formatCurrency(group.amount)}</td>
+										<td class="align-right">{detailPercent(group.amount, detailSelection.amount)}</td>
+									</tr>
+									{#each group.rows as row}
+										<tr class="child-row">
+											<td title={row.account || row.label}>{detailRowLabel(row)}</td>
+											{#if detailSelection.kind === 'investment'}
+												<td>{row.commodity || ''}</td>
+											{/if}
+											<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
+											<td class="align-right">{detailPercent(row.amount, detailSelection.amount)}</td>
+										</tr>
+									{/each}
+								{/each}
+							{:else}
+								{#each detailAccounts as row}
+									<tr>
+										<td title={row.account || row.label}>{detailRowLabel(row)}</td>
+										{#if detailSelection.kind === 'investment'}
+											<td>{row.commodity || ''}</td>
+										{/if}
+										<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
+										<td class="align-right">{detailPercent(row.amount, detailSelection.amount)}</td>
+									</tr>
+								{/each}
+							{/if}
 						</tbody>
 					</table>
 				</div>
@@ -786,6 +857,16 @@
 		text-align: left;
 		font-weight: 600;
 		background: var(--background-secondary);
+	}
+
+	.reports-table .group-row td {
+		background: var(--background-secondary);
+		color: var(--text-normal);
+		font-weight: 650;
+	}
+
+	.reports-table .child-row td:first-child {
+		padding-left: 24px;
 	}
 
 	.reports-table td:first-child {
