@@ -19,8 +19,11 @@ export { convertWindowsPathToWsl, convertWslPathToWindows, atomicFileWrite, crea
 export {
 	extractConvertedAmountNumber,
 	extractNonReportingCurrencies,
+	groupCurrencyOptions,
+	isFiatCurrencyCode,
 	parseMetadataString,
 	debounce,
+	type CurrencyOptionGroup,
 } from './formatters';
 export { parseCommoditiesListCSV, parseCommoditiesPriceDataCSV, parseCommodityDetailsCSV, parseCombinedCommodityDataCSV } from './csvParsers';
 export { buildAccountTree, getOpenAccounts, getPayees, getTags, getCommodities } from './accounts';

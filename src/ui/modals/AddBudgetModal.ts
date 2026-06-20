@@ -49,8 +49,6 @@ export class AddBudgetModal extends Modal {
                 const fetched = rows.map((r) => r.currency_).filter(Boolean);
                 if (fetched.length > 0) currencies = fetched;
             }
-            // Always include the operating currency
-            if (!currencies.includes(operatingCurrency)) currencies.unshift(operatingCurrency);
         } catch (err) {
             Logger.log('[AddBudgetModal] Could not prefetch accounts/currencies:', err);
         }

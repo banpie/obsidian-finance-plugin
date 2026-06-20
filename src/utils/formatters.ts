@@ -3,6 +3,27 @@
 
 import { Logger } from './logger';
 
+const FIAT_CURRENCY_CODES = new Set([
+    'AED', 'AFN', 'ALL', 'AMD', 'ANG', 'AOA', 'ARS', 'AUD', 'AWG', 'AZN',
+    'BAM', 'BBD', 'BDT', 'BGN', 'BHD', 'BIF', 'BMD', 'BND', 'BOB', 'BRL',
+    'BSD', 'BTN', 'BWP', 'BYN', 'BZD', 'CAD', 'CDF', 'CHF', 'CLP', 'CNY',
+    'COP', 'CRC', 'CUP', 'CVE', 'CZK', 'DJF', 'DKK', 'DOP', 'DZD', 'EGP',
+    'ERN', 'ETB', 'EUR', 'FJD', 'FKP', 'GBP', 'GEL', 'GHS', 'GIP', 'GMD',
+    'GNF', 'GTQ', 'GYD', 'HKD', 'HNL', 'HTG', 'HUF', 'IDR', 'ILS', 'INR',
+    'IQD', 'IRR', 'ISK', 'JMD', 'JOD', 'JPY', 'KES', 'KGS', 'KHR', 'KMF',
+    'KPW', 'KRW', 'KWD', 'KYD', 'KZT', 'LAK', 'LBP', 'LKR', 'LRD', 'LSL',
+    'LYD', 'MAD', 'MDL', 'MGA', 'MKD', 'MMK', 'MNT', 'MOP', 'MRU', 'MUR',
+    'MVR', 'MWK', 'MXN', 'MYR', 'MZN', 'NAD', 'NGN', 'NIO', 'NOK', 'NPR',
+    'NZD', 'OMR', 'PAB', 'PEN', 'PGK', 'PHP', 'PKR', 'PLN', 'PYG', 'QAR',
+    'RON', 'RSD', 'RUB', 'RWF', 'SAR', 'SBD', 'SCR', 'SDG', 'SEK', 'SGD',
+    'SHP', 'SLE', 'SOS', 'SRD', 'SSP', 'STN', 'SYP', 'SZL', 'THB', 'TJS',
+    'TMT', 'TND', 'TOP', 'TRY', 'TTD', 'TWD', 'TZS', 'UAH', 'UGX', 'USD',
+    'UYU', 'UZS', 'VES', 'VND', 'VUV', 'WST', 'XAF', 'XCD', 'XOF', 'XPF',
+    'YER', 'ZAR', 'ZMW', 'ZWL',
+    // Common Beancount symbols for offshore/onshore variants that are not ISO 4217 codes.
+    'CNH',
+]);
+
 // --- AMOUNT PARSERS ---
 
 /**
@@ -36,6 +57,48 @@ export function extractNonReportingCurrencies(inventoryString: string, operating
         }
     }
     return matches.join('\n');
+}
+
+export function isFiatCurrencyCode(code: string): boolean {
+    return FIAT_CURRENCY_CODES.has(code.trim().toUpperCase());
+}
+
+export interface CurrencyOptionGroup {
+    label: string;
+    options: string[];
+}
+
+function normalizeCurrencyOptions(currencies: Array<string | undefined | null>): string[] {
+    return currencies
+        .filter((currency): currency is string => Boolean(currency))
+        .map(currency => currency.trim())
+        .filter(Boolean);
+}
+
+function sortCurrencyOptions(currencies: string[], preferredOrder: Map<string, number>): string[] {
+    return [...currencies].sort((a, b) => {
+        const aPreferred = preferredOrder.get(a);
+        const bPreferred = preferredOrder.get(b);
+        if (aPreferred !== undefined && bPreferred !== undefined) return aPreferred - bPreferred;
+        if (aPreferred !== undefined) return -1;
+        if (bPreferred !== undefined) return 1;
+        return a.localeCompare(b);
+    });
+}
+
+export function groupCurrencyOptions(currencies: string[], preferred: Array<string | undefined | null> = []): CurrencyOptionGroup[] {
+    const preferredOptions = normalizeCurrencyOptions(preferred);
+    const options = [...new Set([...preferredOptions, ...normalizeCurrencyOptions(currencies)])];
+    const preferredOrder = new Map(preferredOptions.map((currency, index) => [currency, index]));
+
+    const fiat = sortCurrencyOptions(options.filter(isFiatCurrencyCode), preferredOrder);
+    const other = sortCurrencyOptions(options.filter(currency => !isFiatCurrencyCode(currency)), preferredOrder);
+    const groups: CurrencyOptionGroup[] = [];
+
+    if (fiat.length > 0) groups.push({ label: 'Fiat currencies', options: fiat });
+    if (other.length > 0) groups.push({ label: 'Other commodities', options: other });
+
+    return groups;
 }
 
 
