@@ -30,6 +30,7 @@ export interface ReportsState {
 	isLoading: boolean;
 	error: string | null;
 	currency: string;
+	activeView: ReportsView;
 	periodPreset: ReportsPeriodPreset;
 	periodMode: ReportsPeriodMode;
 	year: number;
@@ -94,6 +95,7 @@ export class ReportsController {
 			isLoading: true,
 			error: null,
 			currency: plugin.settings.operatingCurrency || 'USD',
+			activeView: 'cashflow',
 			periodPreset: 'this-month',
 			periodMode: 'month',
 			year,
@@ -125,6 +127,10 @@ export class ReportsController {
 			assetsChartConfig: null,
 			investmentsChartConfig: null,
 		});
+	}
+
+	setActiveView(activeView: ReportsView) {
+		this.state.update(s => ({ ...s, activeView }));
 	}
 
 	async setPeriodMode(periodMode: ReportsPeriodMode) {
