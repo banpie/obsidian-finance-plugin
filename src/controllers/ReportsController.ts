@@ -16,6 +16,14 @@ export interface ReportRow {
 	percent: number;
 }
 
+export interface ReportTransaction {
+	date: string;
+	payee: string;
+	narration: string;
+	account: string;
+	amount: number;
+}
+
 export interface ReportsState {
 	isLoading: boolean;
 	error: string | null;
@@ -36,6 +44,8 @@ export interface ReportsState {
 	expensesByCategory: ReportRow[];
 	incomeByAccount: ReportRow[];
 	expensesByAccount: ReportRow[];
+	incomeTransactions: ReportTransaction[];
+	expenseTransactions: ReportTransaction[];
 	assetsByCategory: ReportRow[];
 	investmentsByType: ReportRow[];
 	topInvestments: ReportRow[];
@@ -93,6 +103,8 @@ export class ReportsController {
 			expensesByCategory: [],
 			incomeByAccount: [],
 			expensesByAccount: [],
+			incomeTransactions: [],
+			expenseTransactions: [],
 			assetsByCategory: [],
 			investmentsByType: [],
 			topInvestments: [],
@@ -168,6 +180,8 @@ export class ReportsController {
 				totalAssetsCsv,
 				totalLiabilitiesCsv,
 				netWorthCsv,
+				incomeTransactionsCsv,
+				expenseTransactionsCsv,
 				assetsCsv,
 				investmentsCsv,
 			] = await Promise.all([
@@ -176,6 +190,8 @@ export class ReportsController {
 				this.plugin.runQuery(queries.getTotalAssetsQuery(currency, 2)),
 				this.plugin.runQuery(queries.getTotalLiabilitiesQuery(currency, 2)),
 				this.plugin.runQuery(queries.getTotalWorthQuery(currency, 2)),
+				this.plugin.runQuery(queries.getPeriodIncomeTransactionsQuery(currency, 2, range.startDate, range.endDate)),
+				this.plugin.runQuery(queries.getPeriodExpenseTransactionsQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getAssetAllocationQuery(currency, 2)),
 				this.plugin.runQuery(queries.getInvestmentAllocationQuery(currency, 2)),
 			]);
@@ -215,6 +231,8 @@ export class ReportsController {
 				expensesByCategory: this.withPercent(expensesByCategory, totalExpenses),
 				incomeByAccount: this.withPercent(incomeByAccount, totalIncome),
 				expensesByAccount: this.withPercent(expensesByAccount, totalExpenses),
+				incomeTransactions: this.parseTransactionRows(incomeTransactionsCsv),
+				expenseTransactions: this.parseTransactionRows(expenseTransactionsCsv),
 				assetsByCategory: this.withPercent(assetsByCategory, totalAssets),
 				investmentsByType: this.withPercent(investmentsByType, investmentRows.reduce((sum, row) => sum + row.amount, 0)),
 				topInvestments,
@@ -264,6 +282,19 @@ export class ReportsController {
 			}))
 			.filter(row => Math.abs(row.amount) >= 0.01)
 			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+	}
+
+	private parseTransactionRows(rawCsv: string): ReportTransaction[] {
+		return this.parseRows(rawCsv)
+			.filter(row => row.length >= 5)
+			.map(row => ({
+				date: row[0],
+				payee: row[1],
+				narration: row[2],
+				account: row[3],
+				amount: this.parseNumber(row[4]),
+			}))
+			.filter(row => row.date && row.account && Math.abs(row.amount) >= 0.01);
 	}
 
 	private parseSingleNumber(rawCsv: string): number {

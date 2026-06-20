@@ -65,6 +65,14 @@ export function getPeriodExpenseBreakdownQuery(currency: string, rounding: numbe
 	return `SELECT account, round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _expenses WHERE account ~ '^Expenses' AND date >= ${startDate} AND date < ${endDate} GROUP BY account ORDER BY account`;
 }
 
+export function getPeriodIncomeTransactionsQuery(currency: string, rounding: number, startDate: string, endDate: string): string {
+	return `SELECT date, payee, narration, account, neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _amount WHERE account ~ '^Income' AND date >= ${startDate} AND date < ${endDate} GROUP BY date, payee, narration, account ORDER BY date DESC`;
+}
+
+export function getPeriodExpenseTransactionsQuery(currency: string, rounding: number, startDate: string, endDate: string): string {
+	return `SELECT date, payee, narration, account, round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _amount WHERE account ~ '^Expenses' AND date >= ${startDate} AND date < ${endDate} GROUP BY date, payee, narration, account ORDER BY date DESC`;
+}
+
 export function getAssetAllocationQuery(currency: string, rounding: number): string {
 	return `SELECT account, round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _value WHERE account ~ '^Assets' AND NOT close_date(account) GROUP BY account ORDER BY account`;
 }

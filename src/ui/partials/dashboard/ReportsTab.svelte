@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { writable, type Writable } from 'svelte/store';
-	import type { ReportsController, ReportsState, ReportRow, ReportsPeriodMode, ReportsView } from '../../../controllers/ReportsController';
+	import type { ReportsController, ReportsState, ReportRow, ReportTransaction, ReportsPeriodMode, ReportsView } from '../../../controllers/ReportsController';
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
@@ -27,6 +27,8 @@
 		expensesByCategory: [],
 		incomeByAccount: [],
 		expensesByAccount: [],
+		incomeTransactions: [],
+		expenseTransactions: [],
 		assetsByCategory: [],
 		investmentsByType: [],
 		topInvestments: [],
@@ -37,6 +39,8 @@
 	});
 
 	let activeView: ReportsView = 'cashflow';
+	let selectedIncomeCategory: string | null = null;
+	let selectedExpenseCategory: string | null = null;
 	const months = [
 		{ value: 1, label: 'January' },
 		{ value: 2, label: 'February' },
@@ -72,6 +76,30 @@
 		if (value < 0) return 'negative';
 		return '';
 	}
+
+	function majorCategory(account: string | undefined): string {
+		const parts = (account || '').split(':');
+		return parts[1] || account || 'Other';
+	}
+
+	function detailAccountLabel(account: string | undefined): string {
+		const parts = (account || '').split(':');
+		return parts.slice(2).join(':') || parts[1] || account || 'Other';
+	}
+
+	function rowsForCategory<T extends { account?: string }>(rows: T[], category: string | null): T[] {
+		if (!category) return [];
+		return rows.filter(row => majorCategory(row.account) === category);
+	}
+
+	function transactionLabel(transaction: ReportTransaction): string {
+		return transaction.narration || transaction.payee || '';
+	}
+
+	$: selectedIncomeAccounts = rowsForCategory(state.incomeByAccount, selectedIncomeCategory);
+	$: selectedExpenseAccounts = rowsForCategory(state.expensesByAccount, selectedExpenseCategory);
+	$: selectedIncomeTransactions = rowsForCategory(state.incomeTransactions, selectedIncomeCategory);
+	$: selectedExpenseTransactions = rowsForCategory(state.expenseTransactions, selectedExpenseCategory);
 
 	async function handlePeriodModeChange(mode: ReportsPeriodMode) {
 		if (controller && mode !== state.periodMode) await controller.setPeriodMode(mode);
@@ -163,7 +191,13 @@
 				{/if}
 				<div class="breakdown-list">
 					{#each state.incomeByCategory as row}
-						<div class="breakdown-row">
+						<button
+							type="button"
+							class="breakdown-row"
+							class:active={selectedIncomeCategory === row.label}
+							on:click={() => (selectedIncomeCategory = selectedIncomeCategory === row.label ? null : row.label)}
+							title="View details"
+						>
 							<div class="breakdown-main">
 								<span class="row-label">{row.label}</span>
 								<span class="row-value">{formatCurrency(row.amount)}</span>
@@ -174,7 +208,7 @@
 							<div class="row-meta">
 								<span>{formatPercent(row.percent)}</span>
 							</div>
-						</div>
+						</button>
 					{/each}
 				</div>
 			</section>
@@ -188,7 +222,13 @@
 				{/if}
 				<div class="breakdown-list">
 					{#each state.expensesByCategory as row}
-						<div class="breakdown-row">
+						<button
+							type="button"
+							class="breakdown-row"
+							class:active={selectedExpenseCategory === row.label}
+							on:click={() => (selectedExpenseCategory = selectedExpenseCategory === row.label ? null : row.label)}
+							title="View details"
+						>
 							<div class="breakdown-main">
 								<span class="row-label">{row.label}</span>
 								<span class="row-value">{formatCurrency(row.amount)}</span>
@@ -199,61 +239,105 @@
 							<div class="row-meta">
 								<span>{formatPercent(row.percent)}</span>
 							</div>
-						</div>
+						</button>
 					{/each}
 				</div>
 			</section>
 		</div>
 
-		<section class="report-section">
-			<div class="section-header">
-				<h3>Account Detail</h3>
-			</div>
-			<div class="detail-grid">
-				<div class="detail-table-wrap">
-					<h4>Income Accounts</h4>
-					<table class="reports-table">
-						<thead>
-							<tr>
-								<th>Account</th>
-								<th class="align-right">Amount</th>
-								<th class="align-right">Share</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each state.incomeByAccount as row}
-								<tr>
-									<td title={row.account || row.label}>{row.label}</td>
-									<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
-									<td class="align-right">{formatPercent(row.percent)}</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
+		{#if selectedIncomeCategory || selectedExpenseCategory}
+			<section class="report-section">
+				<div class="section-header">
+					<h3>Details</h3>
 				</div>
 				<div class="detail-table-wrap">
-					<h4>Expense Accounts</h4>
-					<table class="reports-table">
-						<thead>
-							<tr>
-								<th>Account</th>
-								<th class="align-right">Amount</th>
-								<th class="align-right">Share</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each state.expensesByAccount as row}
+					{#if selectedIncomeCategory}
+						<h4>{selectedIncomeCategory}</h4>
+						<table class="reports-table">
+							<thead>
 								<tr>
-									<td title={row.account || row.label}>{row.label}</td>
-									<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
-									<td class="align-right">{formatPercent(row.percent)}</td>
+									<th>Account</th>
+									<th class="align-right">Amount</th>
+									<th class="align-right">Share</th>
 								</tr>
-							{/each}
-						</tbody>
-					</table>
+							</thead>
+							<tbody>
+								{#each selectedIncomeAccounts as row}
+									<tr>
+										<td title={row.account || row.label}>{detailAccountLabel(row.account)}</td>
+										<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
+										<td class="align-right">{formatPercent(row.percent)}</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+						<table class="reports-table transaction-table">
+							<thead>
+								<tr>
+									<th>Date</th>
+									<th>Transaction</th>
+									<th>Account</th>
+									<th class="align-right">Amount</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each selectedIncomeTransactions as transaction}
+									<tr>
+										<td>{transaction.date}</td>
+										<td title={transaction.payee}>{transactionLabel(transaction)}</td>
+										<td title={transaction.account}>{detailAccountLabel(transaction.account)}</td>
+										<td class={`align-right ${amountClass(transaction.amount)}`}>{formatCurrency(transaction.amount)}</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					{/if}
 				</div>
-			</div>
-		</section>
+				<div class="detail-table-wrap">
+					{#if selectedExpenseCategory}
+						<h4>{selectedExpenseCategory}</h4>
+						<table class="reports-table">
+							<thead>
+								<tr>
+									<th>Account</th>
+									<th class="align-right">Amount</th>
+									<th class="align-right">Share</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each selectedExpenseAccounts as row}
+									<tr>
+										<td title={row.account || row.label}>{detailAccountLabel(row.account)}</td>
+										<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
+										<td class="align-right">{formatPercent(row.percent)}</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+						<table class="reports-table transaction-table">
+							<thead>
+								<tr>
+									<th>Date</th>
+									<th>Transaction</th>
+									<th>Account</th>
+									<th class="align-right">Amount</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each selectedExpenseTransactions as transaction}
+									<tr>
+										<td>{transaction.date}</td>
+										<td title={transaction.payee}>{transactionLabel(transaction)}</td>
+										<td title={transaction.account}>{detailAccountLabel(transaction.account)}</td>
+										<td class={`align-right ${amountClass(transaction.amount)}`}>{formatCurrency(transaction.amount)}</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					{/if}
+				</div>
+			</section>
+		{/if}
 	{:else}
 		<div class="metric-grid">
 			<div class="metric-card">
@@ -525,6 +609,20 @@
 		display: grid;
 		grid-template-columns: 1fr;
 		gap: 4px;
+		width: 100%;
+		padding: var(--size-4-2);
+		border: 1px solid transparent;
+		border-radius: var(--radius-s);
+		background: transparent;
+		color: inherit;
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.breakdown-row:hover,
+	.breakdown-row.active {
+		background: var(--background-secondary);
+		border-color: var(--background-modifier-border);
 	}
 
 	.breakdown-main,
@@ -566,6 +664,10 @@
 		overflow-x: auto;
 	}
 
+	.detail-table-wrap + .detail-table-wrap {
+		margin-top: var(--size-4-4);
+	}
+
 	.reports-table {
 		width: 100%;
 		border-collapse: collapse;
@@ -589,6 +691,10 @@
 	.reports-table td:first-child {
 		max-width: 360px;
 		overflow-wrap: anywhere;
+	}
+
+	.transaction-table {
+		margin-top: var(--size-4-3);
 	}
 
 	.align-right {

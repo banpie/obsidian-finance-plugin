@@ -32,11 +32,11 @@
 
     const tabs = [
         { id: 'overview', label: 'Overview' },
+        { id: 'reports', label: 'Reports' },
         { id: 'transactions', label: 'Transactions' },
         { id: 'journal', label: 'Journal' },
         { id: 'balancesheet', label: 'Accounts & Balances' },
         { id: 'incomestatement', label: 'Income Statement' },
-        { id: 'reports', label: 'Reports' },
         { id: 'commodities', label: 'Commodities' }
     ];
 </script>
@@ -56,6 +56,8 @@
     <div class="tab-content">
         {#if activeTab === 'overview'}
             <OverviewTab controller={overviewController} {plugin} />
+        {:else if activeTab === 'reports'}
+            <ReportsTab controller={reportsController} />
         {:else if activeTab === 'transactions'}
             <TransactionsTab 
                 controller={transactionController}
@@ -67,8 +69,6 @@
             <BalanceSheetTab controller={balanceSheetController} />
         {:else if activeTab === 'incomestatement'}
             <IncomeStatementTab controller={incomeStatementController} />
-        {:else if activeTab === 'reports'}
-            <ReportsTab controller={reportsController} />
         {:else if activeTab === 'commodities'}
             <CommoditiesTab controller={commoditiesController} on:openCommodity on:addCommodity />
         {/if}
