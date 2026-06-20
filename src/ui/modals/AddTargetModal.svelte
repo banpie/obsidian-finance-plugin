@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { groupCurrencyOptions } from '../../utils';
+	import { nativeDatePicker } from '../actions/nativeDatePicker';
 
 	const dispatch = createEventDispatcher();
 
@@ -186,7 +187,7 @@
 		{#if isRollover}
 			<div class="form-group full-width">
 				<label for="target-start">Start Date</label>
-				<input id="target-start" type="date" bind:value={startDate} />
+				<input id="target-start" type="date" bind:value={startDate} use:nativeDatePicker />
 			</div>
 		{/if}
 
