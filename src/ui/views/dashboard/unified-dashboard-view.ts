@@ -13,6 +13,7 @@ import { TransactionController } from '../../../controllers/TransactionControlle
 import { BalanceSheetController } from '../../../controllers/BalanceSheetController';
 import { CommoditiesController } from '../../../controllers/CommoditiesController';
 import { IncomeStatementController } from '../../../controllers/IncomeStatementController';
+import { ReportsController } from '../../../controllers/ReportsController';
 // JournalController is replaced by plugin.journalStore
 // -----------------------------
 
@@ -28,6 +29,7 @@ export class UnifiedDashboardView extends ItemView {
 	balanceSheetController: BalanceSheetController;
 	commoditiesController: CommoditiesController;
 	incomeStatementController: IncomeStatementController;
+	reportsController: ReportsController;
 
 	constructor(leaf: WorkspaceLeaf, plugin: BeancountPlugin) {
 		super(leaf);
@@ -38,6 +40,7 @@ export class UnifiedDashboardView extends ItemView {
 		this.balanceSheetController = new BalanceSheetController(this.plugin);
 		this.commoditiesController = new CommoditiesController(this.plugin);
 		this.incomeStatementController = new IncomeStatementController(this.plugin);
+		this.reportsController = new ReportsController(this.plugin);
 	}
 
 	getViewType(): string { return UNIFIED_DASHBOARD_VIEW_TYPE; }
@@ -52,6 +55,7 @@ export class UnifiedDashboardView extends ItemView {
 				this.transactionController.loadFilterData(),
 				this.balanceSheetController.loadData(),
 				this.incomeStatementController.loadData(),
+				this.reportsController.loadData(),
 				this.commoditiesController.loadData(),
 				this.plugin.journalStore.refresh() // Use new store
 			]);
@@ -72,6 +76,7 @@ export class UnifiedDashboardView extends ItemView {
 				transactionController: this.transactionController,
 				balanceSheetController: this.balanceSheetController,
 				incomeStatementController: this.incomeStatementController,
+				reportsController: this.reportsController,
 				commoditiesController: this.commoditiesController,
 				journalStore: this.plugin.journalStore, // Pass store instead of controller
 				plugin: this.plugin // Pass plugin instance
@@ -101,6 +106,7 @@ export class UnifiedDashboardView extends ItemView {
 		void this.transactionController.handleFilterChange({}); // Load initial transactions
 		void this.balanceSheetController.loadData();
 		void this.incomeStatementController.loadData();
+		void this.reportsController.loadData();
 	}
 
 	async onClose() {
