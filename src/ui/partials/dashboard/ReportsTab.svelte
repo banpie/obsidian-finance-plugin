@@ -7,7 +7,7 @@
 
 	export let controller: ReportsController;
 
-	type DetailKind = 'income' | 'expense';
+	type DetailKind = 'income' | 'expense' | 'asset' | 'liability' | 'networth' | 'investment';
 
 	interface DetailSelection {
 		kind: DetailKind;
@@ -39,7 +39,11 @@
 		incomeTransactions: [],
 		expenseTransactions: [],
 		assetsByCategory: [],
+		assetsByAccount: [],
+		liabilitiesByCategory: [],
+		liabilitiesByAccount: [],
 		investmentsByType: [],
+		investmentsByAccount: [],
 		topInvestments: [],
 		incomeChartConfig: null,
 		expensesChartConfig: null,
@@ -95,6 +99,11 @@
 		return parts[1] || account || 'Other';
 	}
 
+	function investmentType(account: string | undefined): string {
+		const segment = (account || '').split(':')[2] || account || 'Other';
+		return segment.split('-', 1)[0] || segment;
+	}
+
 	function detailAccountLabel(account: string | undefined): string {
 		const parts = (account || '').split(':');
 		return parts.slice(2).join(':') || parts[1] || account || 'Other';
@@ -109,6 +118,28 @@
 		return transaction.narration || transaction.payee || '';
 	}
 
+	function isCashFlowDetail(kind: DetailKind): boolean {
+		return kind === 'income' || kind === 'expense';
+	}
+
+	function detailSectionTitle(kind: DetailKind): string {
+		if (kind === 'investment') return 'Current Holdings';
+		if (kind === 'asset' || kind === 'liability' || kind === 'networth') return 'Current Balances';
+		return 'Category Breakdown';
+	}
+
+	function netWorthRows(): ReportRow[] {
+		return [
+			...state.assetsByCategory,
+			...state.liabilitiesByCategory.map(row => ({
+				...row,
+				label: `Liabilities:${row.label}`,
+				account: `Liabilities:${row.label}`,
+				amount: -row.amount,
+			})),
+		];
+	}
+
 	function openDetails(kind: DetailKind, title: string, amount: number, category: string | null = null) {
 		detailSelection = { kind, title, amount, category };
 	}
@@ -121,17 +152,26 @@
 		if (event.key === 'Escape' && detailSelection) closeDetails();
 	}
 
+	$: investmentTotal = state.investmentsByType.reduce((sum, row) => sum + row.amount, 0);
 	$: detailAccounts = detailSelection
-		? rowsForCategory(
-			detailSelection.kind === 'income' ? state.incomeByAccount : state.expensesByAccount,
-			detailSelection.category
-		)
+		? detailSelection.kind === 'income'
+			? rowsForCategory(state.incomeByAccount, detailSelection.category)
+			: detailSelection.kind === 'expense'
+				? rowsForCategory(state.expensesByAccount, detailSelection.category)
+				: detailSelection.kind === 'asset'
+					? rowsForCategory(state.assetsByAccount, detailSelection.category)
+					: detailSelection.kind === 'liability'
+						? rowsForCategory(state.liabilitiesByAccount, detailSelection.category)
+						: detailSelection.kind === 'investment'
+							? state.investmentsByAccount.filter(row => !detailSelection?.category || investmentType(row.account) === detailSelection.category)
+							: netWorthRows()
 		: [];
 	$: detailTransactions = detailSelection
-		? rowsForCategory(
-			detailSelection.kind === 'income' ? state.incomeTransactions : state.expenseTransactions,
-			detailSelection.category
-		)
+		? detailSelection.kind === 'income'
+			? rowsForCategory(state.incomeTransactions, detailSelection.category)
+			: detailSelection.kind === 'expense'
+				? rowsForCategory(state.expenseTransactions, detailSelection.category)
+				: []
 		: [];
 
 	async function handlePeriodModeChange(mode: ReportsPeriodMode) {
@@ -282,22 +322,22 @@
 
 	{:else}
 		<div class="metric-grid">
-			<div class="metric-card">
+			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('asset', 'Total Assets', state.totalAssets)}>
 				<span>Total Assets</span>
 				<strong>{formatCurrency(state.totalAssets)}</strong>
-			</div>
-			<div class="metric-card">
+			</button>
+			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('liability', 'Liabilities', state.totalLiabilities)}>
 				<span>Liabilities</span>
 				<strong>{formatCurrency(state.totalLiabilities)}</strong>
-			</div>
-			<div class="metric-card">
+			</button>
+			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('networth', 'Net Worth', state.netWorth)}>
 				<span>Net Worth</span>
 				<strong>{formatCurrency(state.netWorth)}</strong>
-			</div>
-			<div class="metric-card">
+			</button>
+			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('investment', 'Investment Assets', investmentTotal)}>
 				<span>Investment Assets</span>
-				<strong>{formatCurrency(state.investmentsByType.reduce((sum, row) => sum + row.amount, 0))}</strong>
-			</div>
+				<strong>{formatCurrency(investmentTotal)}</strong>
+			</button>
 		</div>
 
 		<div class="two-column">
@@ -310,7 +350,13 @@
 				{/if}
 				<div class="breakdown-list">
 					{#each state.assetsByCategory as row}
-						<div class="breakdown-row">
+						<button
+							type="button"
+							class="breakdown-row interactive"
+							class:active={detailSelection?.kind === 'asset' && detailSelection?.category === row.label}
+							on:click={() => openDetails('asset', row.label, row.amount, row.label)}
+							title="View details"
+						>
 							<div class="breakdown-main">
 								<span class="row-label">{row.label}</span>
 								<span class="row-value">{formatCurrency(row.amount)}</span>
@@ -321,7 +367,7 @@
 							<div class="row-meta">
 								<span>{formatPercent(row.percent)}</span>
 							</div>
-						</div>
+						</button>
 					{/each}
 				</div>
 			</section>
@@ -335,7 +381,13 @@
 				{/if}
 				<div class="breakdown-list">
 					{#each state.investmentsByType as row}
-						<div class="breakdown-row">
+						<button
+							type="button"
+							class="breakdown-row interactive"
+							class:active={detailSelection?.kind === 'investment' && detailSelection?.category === row.label}
+							on:click={() => openDetails('investment', row.label, row.amount, row.label)}
+							title="View details"
+						>
 							<div class="breakdown-main">
 								<span class="row-label">{row.label}</span>
 								<span class="row-value">{formatCurrency(row.amount)}</span>
@@ -346,7 +398,7 @@
 							<div class="row-meta">
 								<span>{formatPercent(row.percent)}</span>
 							</div>
-						</div>
+						</button>
 					{/each}
 				</div>
 			</section>
@@ -398,11 +450,14 @@
 
 			<div class="detail-modal-body">
 				<div class="detail-table-wrap">
-					<h4>Category Breakdown</h4>
+					<h4>{detailSectionTitle(detailSelection.kind)}</h4>
 					<table class="reports-table">
 						<thead>
 							<tr>
 								<th>Category</th>
+								{#if detailSelection.kind === 'investment'}
+									<th>Commodity</th>
+								{/if}
 								<th class="align-right">Amount</th>
 								<th class="align-right">Share</th>
 							</tr>
@@ -411,6 +466,9 @@
 							{#each detailAccounts as row}
 								<tr>
 									<td title={row.account || row.label}>{detailAccountLabel(row.account)}</td>
+									{#if detailSelection.kind === 'investment'}
+										<td>{row.commodity || ''}</td>
+									{/if}
 									<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
 									<td class="align-right">{detailPercent(row.amount, detailSelection.amount)}</td>
 								</tr>
@@ -419,29 +477,31 @@
 					</table>
 				</div>
 
-				<div class="detail-table-wrap">
-					<h4>Transactions</h4>
-					<table class="reports-table transaction-table">
-						<thead>
-							<tr>
-								<th>Date</th>
-								<th>Transaction</th>
-								<th>Category</th>
-								<th class="align-right">Amount</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each detailTransactions as transaction}
+				{#if isCashFlowDetail(detailSelection.kind)}
+					<div class="detail-table-wrap">
+						<h4>Transactions</h4>
+						<table class="reports-table transaction-table">
+							<thead>
 								<tr>
-									<td>{transaction.date}</td>
-									<td title={transaction.payee}>{transactionLabel(transaction)}</td>
-									<td title={transaction.account}>{detailAccountLabel(transaction.account)}</td>
-									<td class={`align-right ${amountClass(transaction.amount)}`}>{formatCurrency(transaction.amount)}</td>
+									<th>Date</th>
+									<th>Transaction</th>
+									<th>Category</th>
+									<th class="align-right">Amount</th>
 								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
+							</thead>
+							<tbody>
+								{#each detailTransactions as transaction}
+									<tr>
+										<td>{transaction.date}</td>
+										<td title={transaction.payee}>{transactionLabel(transaction)}</td>
+										<td title={transaction.account}>{detailAccountLabel(transaction.account)}</td>
+										<td class={`align-right ${amountClass(transaction.amount)}`}>{formatCurrency(transaction.amount)}</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				{/if}
 			</div>
 		</section>
 	{/if}

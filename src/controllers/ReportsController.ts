@@ -47,7 +47,11 @@ export interface ReportsState {
 	incomeTransactions: ReportTransaction[];
 	expenseTransactions: ReportTransaction[];
 	assetsByCategory: ReportRow[];
+	assetsByAccount: ReportRow[];
+	liabilitiesByCategory: ReportRow[];
+	liabilitiesByAccount: ReportRow[];
 	investmentsByType: ReportRow[];
+	investmentsByAccount: ReportRow[];
 	topInvestments: ReportRow[];
 	incomeChartConfig: ChartConfiguration | null;
 	expensesChartConfig: ChartConfiguration | null;
@@ -106,7 +110,11 @@ export class ReportsController {
 			incomeTransactions: [],
 			expenseTransactions: [],
 			assetsByCategory: [],
+			assetsByAccount: [],
+			liabilitiesByCategory: [],
+			liabilitiesByAccount: [],
 			investmentsByType: [],
+			investmentsByAccount: [],
 			topInvestments: [],
 			incomeChartConfig: null,
 			expensesChartConfig: null,
@@ -183,6 +191,7 @@ export class ReportsController {
 				incomeTransactionsCsv,
 				expenseTransactionsCsv,
 				assetsCsv,
+				liabilitiesCsv,
 				investmentsCsv,
 			] = await Promise.all([
 				this.plugin.runQuery(queries.getPeriodIncomeBreakdownQuery(currency, 2, range.startDate, range.endDate)),
@@ -193,6 +202,7 @@ export class ReportsController {
 				this.plugin.runQuery(queries.getPeriodIncomeTransactionsQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodExpenseTransactionsQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getAssetAllocationQuery(currency, 2)),
+				this.plugin.runQuery(queries.getLiabilityAllocationQuery(currency, 2)),
 				this.plugin.runQuery(queries.getInvestmentAllocationQuery(currency, 2)),
 			]);
 
@@ -200,7 +210,10 @@ export class ReportsController {
 			const expensesByAccount = this.parseAccountRows(expensesCsv);
 			const incomeByCategory = this.groupRows(incomeByAccount, row => this.accountSegment(row.account, 1));
 			const expensesByCategory = this.groupRows(expensesByAccount, row => this.accountSegment(row.account, 1));
-			const assetsByCategory = this.groupRows(this.parseAccountRows(assetsCsv), row => this.accountSegment(row.account, 1), true);
+			const assetsByAccount = this.parseAccountRows(assetsCsv).filter(row => row.amount > 0);
+			const liabilitiesByAccount = this.parseAccountRows(liabilitiesCsv).filter(row => row.amount > 0);
+			const assetsByCategory = this.groupRows(assetsByAccount, row => this.accountSegment(row.account, 1), true);
+			const liabilitiesByCategory = this.groupRows(liabilitiesByAccount, row => this.accountSegment(row.account, 1), true);
 			const investmentRows = this.parseInvestmentRows(investmentsCsv);
 			const investmentsByType = this.groupRows(investmentRows, row => this.investmentType(row.account), true);
 			const topInvestments = this.withPercent(
@@ -234,7 +247,11 @@ export class ReportsController {
 				incomeTransactions: this.parseTransactionRows(incomeTransactionsCsv),
 				expenseTransactions: this.parseTransactionRows(expenseTransactionsCsv),
 				assetsByCategory: this.withPercent(assetsByCategory, totalAssets),
+				assetsByAccount: this.withPercent(assetsByAccount, totalAssets),
+				liabilitiesByCategory: this.withPercent(liabilitiesByCategory, totalLiabilities),
+				liabilitiesByAccount: this.withPercent(liabilitiesByAccount, totalLiabilities),
 				investmentsByType: this.withPercent(investmentsByType, investmentRows.reduce((sum, row) => sum + row.amount, 0)),
+				investmentsByAccount: this.withPercent(investmentRows, investmentRows.reduce((sum, row) => sum + row.amount, 0)),
 				topInvestments,
 				incomeChartConfig: this.buildDoughnutConfig('Income', incomeByCategory, totalIncome, currency),
 				expensesChartConfig: this.buildDoughnutConfig('Expenses', expensesByCategory, totalExpenses, currency),
