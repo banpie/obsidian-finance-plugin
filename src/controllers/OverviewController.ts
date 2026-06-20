@@ -98,7 +98,7 @@ export class OverviewController {
 		try {
 			const period = this.getPeriodRange();
 			const [netWorthResult, periodIncomeResult, periodExpensesResult, periodSavingsResult] = await Promise.all([
-				this.plugin.runQuery(queries.getTotalWorthQuery(reportingCurrency, 2)),
+				this.plugin.runQuery(queries.getTotalWorthQuery(reportingCurrency, 2, period.endDate)),
 				this.plugin.runQuery(queries.getPeriodIncomeQuery(reportingCurrency, 2, period.startDate, period.endDate)),
 				this.plugin.runQuery(queries.getPeriodExpensesQuery(reportingCurrency, 2, period.startDate, period.endDate)),
 				this.plugin.runQuery(queries.getPeriodSavingsQuery(reportingCurrency, 2, period.startDate, period.endDate)),

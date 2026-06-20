@@ -20,16 +20,24 @@ export interface TransactionFilters {
 // --- Query Functions ---
 
 
-export function getTotalAssetsQuery(currency: string, rounding: number): string {
-	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _totalAssets WHERE account ~ '^Assets'`;
+function valuationDateArgument(asOfDate?: string): string {
+	return asOfDate ? `, ${asOfDate}` : '';
 }
 
-export function getTotalLiabilitiesQuery(currency: string, rounding: number): string {
-	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _totalLiabilities WHERE account ~ '^Liabilities'`;
+function asOfDateClause(asOfDate?: string): string {
+	return asOfDate ? ` AND date < ${asOfDate}` : '';
 }
 
-export function getTotalWorthQuery(currency: string, rounding: number): string {
-	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _totalWorth WHERE account ~ '^(Assets|Liabilities)'`;
+export function getTotalAssetsQuery(currency: string, rounding: number, asOfDate?: string): string {
+	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding}) AS _totalAssets WHERE account ~ '^Assets'${asOfDateClause(asOfDate)}`;
+}
+
+export function getTotalLiabilitiesQuery(currency: string, rounding: number, asOfDate?: string): string {
+	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding})) AS _totalLiabilities WHERE account ~ '^Liabilities'${asOfDateClause(asOfDate)}`;
+}
+
+export function getTotalWorthQuery(currency: string, rounding: number, asOfDate?: string): string {
+	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding}) AS _totalWorth WHERE account ~ '^(Assets|Liabilities)'${asOfDateClause(asOfDate)}`;
 }
 
 // This Month Queries
