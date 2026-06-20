@@ -13,6 +13,7 @@ export interface ReportRow {
 	label: string;
 	account?: string;
 	commodity?: string;
+	commodityName?: string;
 	amount: number;
 	percent: number;
 }
@@ -318,7 +319,8 @@ export class ReportsController {
 				label: this.accountLabel(row[0]),
 				account: row[0],
 				commodity: row[1],
-				amount: this.parseNumber(row[2]),
+				commodityName: row.length >= 4 ? row[2] : undefined,
+				amount: this.parseNumber(row.length >= 4 ? row[3] : row[2]),
 				percent: 0,
 			}))
 			.filter(row => Math.abs(row.amount) >= 0.01)

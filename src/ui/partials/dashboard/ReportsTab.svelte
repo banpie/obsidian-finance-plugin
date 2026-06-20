@@ -170,6 +170,12 @@
 		return row.account ? detailAccountLabel(row.account) : row.label;
 	}
 
+	function commodityNameLabel(row: ReportRow): string {
+		const name = (row.commodityName || '').trim();
+		if (name && row.commodity !== state.currency) return name;
+		return row.label || row.commodity || '';
+	}
+
 	function assetDetailGroups(): DetailGroup[] {
 		return state.assetsByCategory.map(group => ({
 			label: group.label,
@@ -496,15 +502,16 @@
 
 		<section class="report-section">
 			<div class="section-header">
-				<h3>Top Investments</h3>
+				<h3>Top Holdings</h3>
 			</div>
 			<div class="detail-table-wrap">
 				<h4>Current Holdings</h4>
 				<table class="reports-table">
 					<thead>
 						<tr>
-							<th>Account</th>
+							<th>Commodity Name</th>
 							<th>Commodity</th>
+							<th>Ledger Account</th>
 							<th class="align-right">Amount</th>
 							<th class="align-right">Share</th>
 						</tr>
@@ -512,8 +519,9 @@
 					<tbody>
 						{#each state.topInvestments as row}
 							<tr>
-								<td title={row.account || row.label}>{row.label}</td>
+								<td title={row.commodityName || row.label}>{commodityNameLabel(row)}</td>
 								<td>{row.commodity || ''}</td>
+								<td title={row.account || row.label}>{row.label}</td>
 								<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
 								<td class="align-right">{formatPercent(row.percent)}</td>
 							</tr>
@@ -546,6 +554,7 @@
 							<tr>
 								<th>Category</th>
 								{#if detailSelection.kind === 'investment'}
+									<th>Commodity Name</th>
 									<th>Commodity</th>
 								{/if}
 								<th class="align-right">Amount</th>
@@ -556,7 +565,7 @@
 							{#if detailGroups.length}
 								{#each detailGroups as group}
 									<tr class="group-row">
-										<td colspan={detailSelection.kind === 'investment' ? 2 : 1}>{group.label}</td>
+										<td colspan={detailSelection.kind === 'investment' ? 3 : 1}>{group.label}</td>
 										<td class={`align-right ${amountClass(group.amount)}`}>{formatCurrency(group.amount)}</td>
 										<td class="align-right">{detailPercent(group.amount, detailSelection.amount)}</td>
 									</tr>
@@ -564,6 +573,7 @@
 										<tr class="child-row">
 											<td title={row.account || row.label}>{detailRowLabel(row)}</td>
 											{#if detailSelection.kind === 'investment'}
+												<td title={row.commodityName || row.label}>{commodityNameLabel(row)}</td>
 												<td>{row.commodity || ''}</td>
 											{/if}
 											<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
@@ -576,6 +586,7 @@
 									<tr>
 										<td title={row.account || row.label}>{detailRowLabel(row)}</td>
 										{#if detailSelection.kind === 'investment'}
+											<td title={row.commodityName || row.label}>{commodityNameLabel(row)}</td>
 											<td>{row.commodity || ''}</td>
 										{/if}
 										<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
