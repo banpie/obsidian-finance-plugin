@@ -1,6 +1,7 @@
 <!-- src/ui/modals/AddBudgetModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
+	import { groupCurrencyOptions } from '../../utils';
 
 	const dispatch = createEventDispatcher();
 
@@ -32,6 +33,7 @@
 		? expenseAccounts.filter(a => a.toLowerCase().includes(accountQuery.toLowerCase()))
 		: expenseAccounts;
 	let showDropdown = false;
+	$: currencyGroups = groupCurrencyOptions(currencies, [defaultCurrency, editingIndicator?.currency]);
 
 	onMount(() => {
 		if (editingIndicator) {
@@ -164,8 +166,12 @@
 		<div class="form-group">
 			<label for="budget-currency">Currency</label>
 			<select id="budget-currency" bind:value={currency}>
-				{#each currencies as c}
-					<option value={c}>{c}</option>
+				{#each currencyGroups as group}
+					<optgroup label={group.label}>
+						{#each group.options as c}
+							<option value={c}>{c}</option>
+						{/each}
+					</optgroup>
 				{/each}
 			</select>
 		</div>

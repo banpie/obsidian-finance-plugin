@@ -3,7 +3,7 @@
 import { App, Modal, Notice } from 'obsidian';
 import type BeancountPlugin from '../../main';
 import AddTargetModalComponent from './AddTargetModal.svelte';
-import { getOpenAccounts, runQuery, createIndicatorDirective, updateIndicatorDirective, filterFiatCurrencyOptions } from '../../utils';
+import { getOpenAccounts, runQuery, createIndicatorDirective, updateIndicatorDirective } from '../../utils';
 import { getAllCurrenciesQuery } from '../../queries';
 import { parse as parseCsv } from 'csv-parse/sync';
 import { Logger } from '../../utils/logger';
@@ -49,7 +49,6 @@ export class AddTargetModal extends Modal {
                 const fetched = rows.map((r) => r.currency_).filter(Boolean);
                 if (fetched.length > 0) currencies = fetched;
             }
-            currencies = filterFiatCurrencyOptions(currencies, [operatingCurrency, this.editingIndicator?.currency]);
         } catch (err) {
             Logger.log('[AddTargetModal] Could not prefetch accounts/currencies:', err);
         }

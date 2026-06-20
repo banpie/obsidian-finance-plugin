@@ -63,15 +63,42 @@ export function isFiatCurrencyCode(code: string): boolean {
     return FIAT_CURRENCY_CODES.has(code.trim().toUpperCase());
 }
 
-export function filterFiatCurrencyOptions(currencies: string[], alwaysInclude: Array<string | undefined | null> = []): string[] {
-    const forced = new Set(alwaysInclude.filter((value): value is string => Boolean(value)).map(value => value.trim()).filter(Boolean));
-    const options = [...currencies, ...forced];
-    const filtered = options
-        .map(currency => currency.trim())
-        .filter(Boolean)
-        .filter(currency => isFiatCurrencyCode(currency) || forced.has(currency));
+export interface CurrencyOptionGroup {
+    label: string;
+    options: string[];
+}
 
-    return [...new Set(filtered)];
+function normalizeCurrencyOptions(currencies: Array<string | undefined | null>): string[] {
+    return currencies
+        .filter((currency): currency is string => Boolean(currency))
+        .map(currency => currency.trim())
+        .filter(Boolean);
+}
+
+function sortCurrencyOptions(currencies: string[], preferredOrder: Map<string, number>): string[] {
+    return [...currencies].sort((a, b) => {
+        const aPreferred = preferredOrder.get(a);
+        const bPreferred = preferredOrder.get(b);
+        if (aPreferred !== undefined && bPreferred !== undefined) return aPreferred - bPreferred;
+        if (aPreferred !== undefined) return -1;
+        if (bPreferred !== undefined) return 1;
+        return a.localeCompare(b);
+    });
+}
+
+export function groupCurrencyOptions(currencies: string[], preferred: Array<string | undefined | null> = []): CurrencyOptionGroup[] {
+    const preferredOptions = normalizeCurrencyOptions(preferred);
+    const options = [...new Set([...preferredOptions, ...normalizeCurrencyOptions(currencies)])];
+    const preferredOrder = new Map(preferredOptions.map((currency, index) => [currency, index]));
+
+    const fiat = sortCurrencyOptions(options.filter(isFiatCurrencyCode), preferredOrder);
+    const other = sortCurrencyOptions(options.filter(currency => !isFiatCurrencyCode(currency)), preferredOrder);
+    const groups: CurrencyOptionGroup[] = [];
+
+    if (fiat.length > 0) groups.push({ label: 'Fiat currencies', options: fiat });
+    if (other.length > 0) groups.push({ label: 'Other commodities', options: other });
+
+    return groups;
 }
 
 
