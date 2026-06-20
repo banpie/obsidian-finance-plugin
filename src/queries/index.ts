@@ -57,6 +57,22 @@ export function getPeriodSavingsQuery(currency: string, rounding: number, startD
 	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _periodNetIncome WHERE account ~ '^(Income|Expenses)' AND date >= ${startDate} AND date < ${endDate}`;
 }
 
+export function getPeriodIncomeBreakdownQuery(currency: string, rounding: number, startDate: string, endDate: string): string {
+	return `SELECT account, neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _income WHERE account ~ '^Income' AND date >= ${startDate} AND date < ${endDate} GROUP BY account ORDER BY account`;
+}
+
+export function getPeriodExpenseBreakdownQuery(currency: string, rounding: number, startDate: string, endDate: string): string {
+	return `SELECT account, round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _expenses WHERE account ~ '^Expenses' AND date >= ${startDate} AND date < ${endDate} GROUP BY account ORDER BY account`;
+}
+
+export function getAssetAllocationQuery(currency: string, rounding: number): string {
+	return `SELECT account, round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _value WHERE account ~ '^Assets' AND NOT close_date(account) GROUP BY account ORDER BY account`;
+}
+
+export function getInvestmentAllocationQuery(currency: string, rounding: number): string {
+	return `SELECT account, currency, round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _value WHERE account ~ '^Assets:Investments' AND NOT close_date(account) GROUP BY account, currency ORDER BY account, currency`;
+}
+
 export function getBalanceSheetQuery(currency: string): string {
 	return `SELECT account, convert(sum(position), '${currency}') WHERE account ~ '^(Assets|Liabilities|Equity)' AND NOT close_date(account) GROUP BY account ORDER BY account`;
 }

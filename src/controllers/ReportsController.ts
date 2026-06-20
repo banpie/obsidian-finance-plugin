@@ -1,0 +1,372 @@
+import { writable, type Writable, get } from 'svelte/store';
+import { parse as parseCsv } from 'csv-parse/sync';
+import type { ChartConfiguration } from 'chart.js/auto';
+import type BeancountPlugin from '../main';
+import * as queries from '../queries/index';
+import { Logger } from '../utils/logger';
+
+export type ReportsPeriodMode = 'month' | 'year';
+export type ReportsView = 'cashflow' | 'assets';
+
+export interface ReportRow {
+	label: string;
+	account?: string;
+	commodity?: string;
+	amount: number;
+	percent: number;
+}
+
+export interface ReportsState {
+	isLoading: boolean;
+	error: string | null;
+	currency: string;
+	periodMode: ReportsPeriodMode;
+	year: number;
+	month: number;
+	periodLabel: string;
+	startDate: string;
+	endDate: string;
+	totalIncome: number;
+	totalExpenses: number;
+	netIncome: number;
+	totalAssets: number;
+	totalLiabilities: number;
+	netWorth: number;
+	incomeByCategory: ReportRow[];
+	expensesByCategory: ReportRow[];
+	incomeByAccount: ReportRow[];
+	expensesByAccount: ReportRow[];
+	assetsByCategory: ReportRow[];
+	investmentsByType: ReportRow[];
+	topInvestments: ReportRow[];
+	incomeChartConfig: ChartConfiguration | null;
+	expensesChartConfig: ChartConfiguration | null;
+	assetsChartConfig: ChartConfiguration | null;
+	investmentsChartConfig: ChartConfiguration | null;
+}
+
+type CsvRow = string[];
+
+const CHART_COLORS = [
+	'#2563eb',
+	'#16a34a',
+	'#dc2626',
+	'#9333ea',
+	'#ca8a04',
+	'#0891b2',
+	'#ea580c',
+	'#4f46e5',
+	'#65a30d',
+	'#be123c',
+	'#0d9488',
+	'#7c3aed',
+];
+
+export class ReportsController {
+	private plugin: BeancountPlugin;
+	public state: Writable<ReportsState>;
+
+	constructor(plugin: BeancountPlugin) {
+		this.plugin = plugin;
+		const today = new Date();
+		const year = today.getFullYear();
+		const month = today.getMonth() + 1;
+		const range = this.getPeriodRange('month', year, month);
+
+		this.state = writable({
+			isLoading: true,
+			error: null,
+			currency: plugin.settings.operatingCurrency || 'USD',
+			periodMode: 'month',
+			year,
+			month,
+			periodLabel: range.label,
+			startDate: range.startDate,
+			endDate: range.endDate,
+			totalIncome: 0,
+			totalExpenses: 0,
+			netIncome: 0,
+			totalAssets: 0,
+			totalLiabilities: 0,
+			netWorth: 0,
+			incomeByCategory: [],
+			expensesByCategory: [],
+			incomeByAccount: [],
+			expensesByAccount: [],
+			assetsByCategory: [],
+			investmentsByType: [],
+			topInvestments: [],
+			incomeChartConfig: null,
+			expensesChartConfig: null,
+			assetsChartConfig: null,
+			investmentsChartConfig: null,
+		});
+	}
+
+	async setPeriodMode(periodMode: ReportsPeriodMode) {
+		const current = get(this.state);
+		this.state.update(s => ({ ...s, periodMode }));
+		await this.loadData(periodMode, current.year, current.month);
+	}
+
+	async setMonth(month: number) {
+		const current = get(this.state);
+		this.state.update(s => ({ ...s, month }));
+		await this.loadData(current.periodMode, current.year, month);
+	}
+
+	async setYear(year: number) {
+		const current = get(this.state);
+		this.state.update(s => ({ ...s, year }));
+		await this.loadData(current.periodMode, year, current.month);
+	}
+
+	async movePeriod(delta: -1 | 1) {
+		const current = get(this.state);
+		let { year, month } = current;
+		if (current.periodMode === 'month') {
+			month += delta;
+			if (month < 1) {
+				month = 12;
+				year -= 1;
+			} else if (month > 12) {
+				month = 1;
+				year += 1;
+			}
+		} else {
+			year += delta;
+		}
+		this.state.update(s => ({ ...s, year, month }));
+		await this.loadData(current.periodMode, year, month);
+	}
+
+	async loadData(periodMode = get(this.state).periodMode, year = get(this.state).year, month = get(this.state).month) {
+		const currency = this.plugin.settings.operatingCurrency;
+		if (!currency) {
+			this.state.update(s => ({ ...s, isLoading: false, error: 'Operating currency not set.' }));
+			return;
+		}
+
+		const range = this.getPeriodRange(periodMode, year, month);
+		this.state.update(s => ({
+			...s,
+			isLoading: true,
+			error: null,
+			currency,
+			periodMode,
+			year,
+			month,
+			periodLabel: range.label,
+			startDate: range.startDate,
+			endDate: range.endDate,
+		}));
+
+		try {
+			const [
+				incomeCsv,
+				expensesCsv,
+				totalAssetsCsv,
+				totalLiabilitiesCsv,
+				netWorthCsv,
+				assetsCsv,
+				investmentsCsv,
+			] = await Promise.all([
+				this.plugin.runQuery(queries.getPeriodIncomeBreakdownQuery(currency, 2, range.startDate, range.endDate)),
+				this.plugin.runQuery(queries.getPeriodExpenseBreakdownQuery(currency, 2, range.startDate, range.endDate)),
+				this.plugin.runQuery(queries.getTotalAssetsQuery(currency, 2)),
+				this.plugin.runQuery(queries.getTotalLiabilitiesQuery(currency, 2)),
+				this.plugin.runQuery(queries.getTotalWorthQuery(currency, 2)),
+				this.plugin.runQuery(queries.getAssetAllocationQuery(currency, 2)),
+				this.plugin.runQuery(queries.getInvestmentAllocationQuery(currency, 2)),
+			]);
+
+			const incomeByAccount = this.parseAccountRows(incomeCsv);
+			const expensesByAccount = this.parseAccountRows(expensesCsv);
+			const incomeByCategory = this.groupRows(incomeByAccount, row => this.accountSegment(row.account, 1));
+			const expensesByCategory = this.groupRows(expensesByAccount, row => this.accountSegment(row.account, 1));
+			const assetsByCategory = this.groupRows(this.parseAccountRows(assetsCsv), row => this.accountSegment(row.account, 1), true);
+			const investmentRows = this.parseInvestmentRows(investmentsCsv);
+			const investmentsByType = this.groupRows(investmentRows, row => this.investmentType(row.account), true);
+			const topInvestments = this.withPercent(
+				investmentRows
+					.filter(row => Math.abs(row.amount) >= 0.01)
+					.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+					.slice(0, 20),
+				investmentRows.reduce((sum, row) => sum + row.amount, 0)
+			);
+
+			const totalIncome = incomeByAccount.reduce((sum, row) => sum + row.amount, 0);
+			const totalExpenses = expensesByAccount.reduce((sum, row) => sum + row.amount, 0);
+			const totalAssets = this.parseSingleNumber(totalAssetsCsv);
+			const totalLiabilities = this.parseSingleNumber(totalLiabilitiesCsv);
+			const netWorth = this.parseSingleNumber(netWorthCsv);
+
+			this.state.update(s => ({
+				...s,
+				isLoading: false,
+				error: null,
+				totalIncome,
+				totalExpenses,
+				netIncome: totalIncome - totalExpenses,
+				totalAssets,
+				totalLiabilities,
+				netWorth,
+				incomeByCategory: this.withPercent(incomeByCategory, totalIncome),
+				expensesByCategory: this.withPercent(expensesByCategory, totalExpenses),
+				incomeByAccount: this.withPercent(incomeByAccount, totalIncome),
+				expensesByAccount: this.withPercent(expensesByAccount, totalExpenses),
+				assetsByCategory: this.withPercent(assetsByCategory, totalAssets),
+				investmentsByType: this.withPercent(investmentsByType, investmentRows.reduce((sum, row) => sum + row.amount, 0)),
+				topInvestments,
+				incomeChartConfig: this.buildDoughnutConfig('Income', incomeByCategory, totalIncome, currency),
+				expensesChartConfig: this.buildDoughnutConfig('Expenses', expensesByCategory, totalExpenses, currency),
+				assetsChartConfig: this.buildDoughnutConfig('Assets', assetsByCategory, totalAssets, currency),
+				investmentsChartConfig: this.buildDoughnutConfig('Investments', investmentsByType, investmentRows.reduce((sum, row) => sum + row.amount, 0), currency),
+			}));
+		} catch (e) {
+			Logger.error('Error loading reports:', e);
+			this.state.update(s => ({ ...s, isLoading: false, error: e instanceof Error ? e.message : String(e) }));
+		}
+	}
+
+	private parseRows(rawCsv: string): CsvRow[] {
+		const clean = rawCsv.replace(/\r/g, '').trim();
+		if (!clean) return [];
+		const records = parseCsv(clean, { columns: false, skip_empty_lines: true, relax_column_count: true }) as CsvRow[];
+		if (records.length === 0) return [];
+		const firstCell = (records[0]?.[0] || '').toLowerCase();
+		const firstRowIsHeader = firstCell.includes('account') || firstCell.startsWith('_') || firstCell.includes('round(') || firstCell.includes('neg(');
+		return firstRowIsHeader ? records.slice(1) : records;
+	}
+
+	private parseAccountRows(rawCsv: string): ReportRow[] {
+		return this.parseRows(rawCsv)
+			.filter(row => row.length >= 2)
+			.map(row => ({
+				label: this.accountLabel(row[0]),
+				account: row[0],
+				amount: this.parseNumber(row[1]),
+				percent: 0,
+			}))
+			.filter(row => Math.abs(row.amount) >= 0.01)
+			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+	}
+
+	private parseInvestmentRows(rawCsv: string): ReportRow[] {
+		return this.parseRows(rawCsv)
+			.filter(row => row.length >= 3)
+			.map(row => ({
+				label: this.accountLabel(row[0]),
+				account: row[0],
+				commodity: row[1],
+				amount: this.parseNumber(row[2]),
+				percent: 0,
+			}))
+			.filter(row => Math.abs(row.amount) >= 0.01)
+			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+	}
+
+	private parseSingleNumber(rawCsv: string): number {
+		const rows = this.parseRows(rawCsv);
+		if (rows.length === 0 || rows[0].length === 0) return 0;
+		return this.parseNumber(rows[0][0]);
+	}
+
+	private parseNumber(value: string): number {
+		const match = (value || '').replace(/,/g, '').match(/-?\d+(\.\d+)?/);
+		return match ? Number(match[0]) : 0;
+	}
+
+	private groupRows(rows: ReportRow[], labelFor: (row: ReportRow) => string, excludeNegative = false): ReportRow[] {
+		const grouped = new Map<string, number>();
+		for (const row of rows) {
+			if (excludeNegative && row.amount <= 0) continue;
+			const label = labelFor(row);
+			grouped.set(label, (grouped.get(label) || 0) + row.amount);
+		}
+		return Array.from(grouped.entries())
+			.map(([label, amount]) => ({ label, amount, percent: 0 }))
+			.filter(row => Math.abs(row.amount) >= 0.01)
+			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+	}
+
+	private withPercent(rows: ReportRow[], total: number): ReportRow[] {
+		if (!total) return rows.map(row => ({ ...row, percent: 0 }));
+		return rows.map(row => ({ ...row, percent: (row.amount / total) * 100 }));
+	}
+
+	private accountSegment(account: string | undefined, index: number): string {
+		const segment = (account || '').split(':')[index];
+		return segment || account || 'Other';
+	}
+
+	private accountLabel(account: string | undefined): string {
+		const parts = (account || '').split(':');
+		return parts[parts.length - 1] || account || 'Other';
+	}
+
+	private investmentType(account: string | undefined): string {
+		const segment = this.accountSegment(account, 2);
+		return segment.split('-', 1)[0] || segment;
+	}
+
+	private getPeriodRange(periodMode: ReportsPeriodMode, year: number, month: number): { startDate: string; endDate: string; label: string } {
+		if (periodMode === 'year') {
+			return {
+				startDate: `${year}-01-01`,
+				endDate: `${year + 1}-01-01`,
+				label: `${year}`,
+			};
+		}
+		const start = new Date(year, month - 1, 1);
+		const end = new Date(year, month, 1);
+		return {
+			startDate: this.formatDate(start),
+			endDate: this.formatDate(end),
+			label: start.toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
+		};
+	}
+
+	private formatDate(date: Date): string {
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, '0');
+		const day = String(date.getDate()).padStart(2, '0');
+		return `${year}-${month}-${day}`;
+	}
+
+	private buildDoughnutConfig(title: string, rows: ReportRow[], total: number, currency: string): ChartConfiguration | null {
+		const chartRows = rows
+			.filter(row => row.amount > 0)
+			.slice(0, 8);
+		if (chartRows.length === 0 || total <= 0) return null;
+
+		return {
+			type: 'doughnut',
+			data: {
+				labels: chartRows.map(row => row.label),
+				datasets: [{
+					data: chartRows.map(row => row.amount),
+					backgroundColor: chartRows.map((_, index) => CHART_COLORS[index % CHART_COLORS.length]),
+					borderWidth: 1,
+				}],
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				plugins: {
+					title: { display: true, text: `${title} (${currency})` },
+					legend: { position: 'bottom' },
+					tooltip: {
+						callbacks: {
+							label: (context: { label: string; parsed: number }) => {
+								const value = context.parsed || 0;
+								const percent = total ? (value / total) * 100 : 0;
+								return `${context.label}: ${value.toLocaleString()} ${currency} (${percent.toFixed(1)}%)`;
+							},
+						},
+					},
+				},
+			},
+		};
+	}
+}
