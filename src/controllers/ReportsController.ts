@@ -196,14 +196,14 @@ export class ReportsController {
 			] = await Promise.all([
 				this.plugin.runQuery(queries.getPeriodIncomeBreakdownQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodExpenseBreakdownQuery(currency, 2, range.startDate, range.endDate)),
-				this.plugin.runQuery(queries.getTotalAssetsQuery(currency, 2)),
-				this.plugin.runQuery(queries.getTotalLiabilitiesQuery(currency, 2)),
-				this.plugin.runQuery(queries.getTotalWorthQuery(currency, 2)),
+				this.plugin.runQuery(queries.getTotalAssetsQuery(currency, 2, range.endDate)),
+				this.plugin.runQuery(queries.getTotalLiabilitiesQuery(currency, 2, range.endDate)),
+				this.plugin.runQuery(queries.getTotalWorthQuery(currency, 2, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodIncomeTransactionsQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodExpenseTransactionsQuery(currency, 2, range.startDate, range.endDate)),
-				this.plugin.runQuery(queries.getAssetAllocationQuery(currency, 2)),
-				this.plugin.runQuery(queries.getLiabilityAllocationQuery(currency, 2)),
-				this.plugin.runQuery(queries.getInvestmentAllocationQuery(currency, 2)),
+				this.plugin.runQuery(queries.getAssetAllocationQuery(currency, 2, range.endDate)),
+				this.plugin.runQuery(queries.getLiabilityAllocationQuery(currency, 2, range.endDate)),
+				this.plugin.runQuery(queries.getInvestmentAllocationQuery(currency, 2, range.endDate)),
 			]);
 
 			const incomeByAccount = this.parseAccountRows(incomeCsv);
