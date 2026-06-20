@@ -264,25 +264,30 @@
 		</div>
 
 		<div class="report-controls">
-			<div class="segmented-control" aria-label="Report view">
-				<button class:active={activeView === 'cashflow'} on:click={() => (activeView = 'cashflow')}>Cash Flow</button>
-				<button class:active={activeView === 'assets'} on:click={() => (activeView = 'assets')}>Assets</button>
+			<div class="toolbar-group">
+				<div class="segmented-control primary-switch" aria-label="Report view">
+					<button class:active={activeView === 'cashflow'} on:click={() => (activeView = 'cashflow')}>Cash Flow</button>
+					<button class:active={activeView === 'assets'} on:click={() => (activeView = 'assets')}>Assets</button>
+				</div>
 			</div>
-
 			<div class="period-controls">
 				<button class="icon-button" on:click={() => handleMove(-1)} disabled={state.isLoading} aria-label="Previous period">‹</button>
-				<div class="segmented-control" aria-label="Period mode">
-					<button class:active={state.periodMode === 'month'} on:click={() => handlePeriodModeChange('month')} disabled={state.isLoading}>Month</button>
-					<button class:active={state.periodMode === 'year'} on:click={() => handlePeriodModeChange('year')} disabled={state.isLoading}>Year</button>
+				<div class="toolbar-group">
+					<div class="segmented-control" aria-label="Period mode">
+						<button class:active={state.periodMode === 'month'} on:click={() => handlePeriodModeChange('month')} disabled={state.isLoading}>Month</button>
+						<button class:active={state.periodMode === 'year'} on:click={() => handlePeriodModeChange('year')} disabled={state.isLoading}>Year</button>
+					</div>
+					<div class="date-fields">
+						{#if state.periodMode === 'month'}
+							<select value={state.month} on:change={handleMonthChange} disabled={state.isLoading} aria-label="Month">
+								{#each months as month}
+									<option value={month.value}>{month.label}</option>
+								{/each}
+							</select>
+						{/if}
+						<input type="number" min="1970" max="9999" value={state.year} on:change={handleYearChange} disabled={state.isLoading} aria-label="Year" />
+					</div>
 				</div>
-				{#if state.periodMode === 'month'}
-					<select value={state.month} on:change={handleMonthChange} disabled={state.isLoading} aria-label="Month">
-						{#each months as month}
-							<option value={month.value}>{month.label}</option>
-						{/each}
-					</select>
-				{/if}
-				<input type="number" min="1970" max="9999" value={state.year} on:change={handleYearChange} disabled={state.isLoading} aria-label="Year" />
 				<button class="icon-button" on:click={() => handleMove(1)} disabled={state.isLoading} aria-label="Next period">›</button>
 				<button class="refresh-button" on:click={handleRefresh} disabled={state.isLoading}>Refresh</button>
 			</div>
@@ -627,16 +632,36 @@
 	.period-controls {
 		display: flex;
 		align-items: center;
-		gap: var(--size-4-2);
+		gap: var(--size-4-3);
 		flex-wrap: wrap;
+	}
+
+	.report-controls {
+		justify-content: flex-end;
+	}
+
+	.toolbar-group {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--size-4-2);
+		padding: 3px;
+		border: 1px solid var(--background-modifier-border);
+		border-radius: var(--radius-m);
+		background: var(--background-secondary);
+	}
+
+	.date-fields {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--size-4-2);
 	}
 
 	.segmented-control {
 		display: inline-flex;
-		border: 1px solid var(--background-modifier-border);
+		border: none;
 		border-radius: var(--radius-s);
 		overflow: hidden;
-		background: var(--background-secondary);
+		background: transparent;
 	}
 
 	.segmented-control button,
@@ -649,13 +674,18 @@
 		cursor: pointer;
 		font-size: var(--font-ui-small);
 		min-height: 30px;
-		padding: 4px 10px;
+		padding: 4px 12px;
 	}
 
 	.segmented-control button.active {
-		background: var(--background-primary);
-		color: var(--text-accent);
+		background: var(--interactive-accent);
+		color: var(--text-on-accent);
 		font-weight: 600;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+	}
+
+	.primary-switch button {
+		min-width: 86px;
 	}
 
 	.icon-button {
@@ -671,6 +701,7 @@
 		border-radius: var(--radius-s);
 		background: var(--interactive-normal);
 		color: var(--text-normal);
+		font-weight: 500;
 	}
 
 	select,
