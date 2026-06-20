@@ -21,6 +21,7 @@ export interface ReportTransaction {
 	payee: string;
 	narration: string;
 	account: string;
+	counterpartAccounts: string[];
 	amount: number;
 }
 
@@ -190,6 +191,7 @@ export class ReportsController {
 				netWorthCsv,
 				incomeTransactionsCsv,
 				expenseTransactionsCsv,
+				counterpartAccountsCsv,
 				assetsCsv,
 				liabilitiesCsv,
 				investmentsCsv,
@@ -201,6 +203,7 @@ export class ReportsController {
 				this.plugin.runQuery(queries.getTotalWorthQuery(currency, 2, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodIncomeTransactionsQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodExpenseTransactionsQuery(currency, 2, range.startDate, range.endDate)),
+				this.plugin.runQuery(queries.getPeriodCounterpartAccountsQuery(range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getAssetAllocationQuery(currency, 2, range.endDate)),
 				this.plugin.runQuery(queries.getLiabilityAllocationQuery(currency, 2, range.endDate)),
 				this.plugin.runQuery(queries.getInvestmentAllocationQuery(currency, 2, range.endDate)),
@@ -229,6 +232,7 @@ export class ReportsController {
 			const totalAssets = this.parseSingleNumber(totalAssetsCsv);
 			const totalLiabilities = this.parseSingleNumber(totalLiabilitiesCsv);
 			const netWorth = this.parseSingleNumber(netWorthCsv);
+			const counterpartAccounts = this.parseCounterpartRows(counterpartAccountsCsv);
 
 			this.state.update(s => ({
 				...s,
@@ -244,8 +248,8 @@ export class ReportsController {
 				expensesByCategory: this.withPercent(expensesByCategory, totalExpenses),
 				incomeByAccount: this.withPercent(incomeByAccount, totalIncome),
 				expensesByAccount: this.withPercent(expensesByAccount, totalExpenses),
-				incomeTransactions: this.parseTransactionRows(incomeTransactionsCsv),
-				expenseTransactions: this.parseTransactionRows(expenseTransactionsCsv),
+				incomeTransactions: this.parseTransactionRows(incomeTransactionsCsv, counterpartAccounts),
+				expenseTransactions: this.parseTransactionRows(expenseTransactionsCsv, counterpartAccounts),
 				assetsByCategory: this.withPercent(assetsByCategory, totalAssets),
 				assetsByAccount: this.withPercent(assetsByAccount, totalAssets),
 				liabilitiesByCategory: this.withPercent(liabilitiesByCategory, totalLiabilities),
@@ -301,7 +305,7 @@ export class ReportsController {
 			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 	}
 
-	private parseTransactionRows(rawCsv: string): ReportTransaction[] {
+	private parseTransactionRows(rawCsv: string, counterpartAccounts = new Map<string, string[]>()): ReportTransaction[] {
 		return this.parseRows(rawCsv)
 			.filter(row => row.length >= 5)
 			.map(row => ({
@@ -309,9 +313,26 @@ export class ReportsController {
 				payee: row[1],
 				narration: row[2],
 				account: row[3],
+				counterpartAccounts: counterpartAccounts.get(this.transactionKey(row[0], row[1], row[2])) || [],
 				amount: this.parseNumber(row[4]),
 			}))
 			.filter(row => row.date && row.account && Math.abs(row.amount) >= 0.01);
+	}
+
+	private parseCounterpartRows(rawCsv: string): Map<string, string[]> {
+		const rowsByTransaction = new Map<string, string[]>();
+		for (const row of this.parseRows(rawCsv)) {
+			if (row.length < 4 || !row[0] || !row[3]) continue;
+			const key = this.transactionKey(row[0], row[1], row[2]);
+			const accounts = rowsByTransaction.get(key) || [];
+			if (!accounts.includes(row[3])) accounts.push(row[3]);
+			rowsByTransaction.set(key, accounts);
+		}
+		return rowsByTransaction;
+	}
+
+	private transactionKey(date: string, payee: string, narration: string): string {
+		return [date || '', payee || '', narration || ''].join('\u001f');
 	}
 
 	private parseSingleNumber(rawCsv: string): number {

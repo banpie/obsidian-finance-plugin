@@ -137,6 +137,16 @@
 		return transaction.narration || transaction.payee || '';
 	}
 
+	function counterpartLabel(transaction: ReportTransaction): string {
+		const accounts = transaction.counterpartAccounts || [];
+		if (!accounts.length) return '—';
+		return accounts.map(account => detailAccountLabel(account)).join(', ');
+	}
+
+	function counterpartTitle(transaction: ReportTransaction): string {
+		return (transaction.counterpartAccounts || []).join(', ');
+	}
+
 	function isCashFlowDetail(kind: DetailKind): boolean {
 		return kind === 'income' || kind === 'expense';
 	}
@@ -567,6 +577,7 @@
 								<tr>
 									<th>Date</th>
 									<th>Transaction</th>
+									<th>Counterpart</th>
 									<th>Category</th>
 									<th class="align-right">Amount</th>
 								</tr>
@@ -576,6 +587,7 @@
 									<tr>
 										<td>{transaction.date}</td>
 										<td title={transaction.payee}>{transactionLabel(transaction)}</td>
+										<td title={counterpartTitle(transaction)}>{counterpartLabel(transaction)}</td>
 										<td title={transaction.account}>{detailAccountLabel(transaction.account)}</td>
 										<td class={`align-right ${amountClass(transaction.amount)}`}>{formatCurrency(transaction.amount)}</td>
 									</tr>
