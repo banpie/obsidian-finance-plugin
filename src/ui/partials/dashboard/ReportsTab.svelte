@@ -186,15 +186,6 @@
 		}));
 	}
 
-	function summaryGroups(): DetailGroup[] {
-		if (!detailSelection?.summary) return [];
-		if (detailSelection.kind === 'asset') return assetDetailGroups();
-		if (detailSelection.kind === 'liability') return liabilityDetailGroups();
-		if (detailSelection.kind === 'networth') return netWorthDetailGroups();
-		if (detailSelection.kind === 'investment') return investmentDetailGroups();
-		return [];
-	}
-
 	function openDetails(kind: DetailKind, title: string, amount: number, category: string | null = null, summary = false) {
 		detailSelection = { kind, title, amount, category, summary };
 	}
@@ -221,7 +212,17 @@
 							? detailSelection.summary ? [] : rowsForInvestmentType(state.investmentsByAccount, detailSelection.category)
 							: []
 		: [];
-	$: detailGroups = summaryGroups();
+	$: detailGroups = detailSelection?.summary
+		? detailSelection.kind === 'asset'
+			? assetDetailGroups()
+			: detailSelection.kind === 'liability'
+				? liabilityDetailGroups()
+				: detailSelection.kind === 'networth'
+					? netWorthDetailGroups()
+					: detailSelection.kind === 'investment'
+						? investmentDetailGroups()
+						: []
+		: [];
 	$: detailTransactions = detailSelection
 		? detailSelection.kind === 'income'
 			? rowsForCategory(state.incomeTransactions, detailSelection.category)
