@@ -14,6 +14,7 @@
 		title: string;
 		amount: number;
 		category: string | null;
+		summary?: boolean;
 	}
 
 	const placeholderState: Writable<ReportsState> = writable({
@@ -123,8 +124,8 @@
 	}
 
 	function detailSectionTitle(kind: DetailKind): string {
-		if (kind === 'investment') return 'Current Holdings';
-		if (kind === 'asset' || kind === 'liability' || kind === 'networth') return 'Current Balances';
+		if (kind === 'investment') return detailSelection?.summary ? 'Summary by Type' : 'Current Holdings';
+		if (kind === 'asset' || kind === 'liability' || kind === 'networth') return detailSelection?.summary ? 'Summary by Category' : 'Current Balances';
 		return 'Category Breakdown';
 	}
 
@@ -140,8 +141,12 @@
 		];
 	}
 
-	function openDetails(kind: DetailKind, title: string, amount: number, category: string | null = null) {
-		detailSelection = { kind, title, amount, category };
+	function detailRowLabel(row: ReportRow): string {
+		return row.account ? detailAccountLabel(row.account) : row.label;
+	}
+
+	function openDetails(kind: DetailKind, title: string, amount: number, category: string | null = null, summary = false) {
+		detailSelection = { kind, title, amount, category, summary };
 	}
 
 	function closeDetails() {
@@ -159,11 +164,11 @@
 			: detailSelection.kind === 'expense'
 				? rowsForCategory(state.expensesByAccount, detailSelection.category)
 				: detailSelection.kind === 'asset'
-					? rowsForCategory(state.assetsByAccount, detailSelection.category)
+					? detailSelection.summary ? state.assetsByCategory : rowsForCategory(state.assetsByAccount, detailSelection.category)
 					: detailSelection.kind === 'liability'
-						? rowsForCategory(state.liabilitiesByAccount, detailSelection.category)
+						? detailSelection.summary ? state.liabilitiesByCategory : rowsForCategory(state.liabilitiesByAccount, detailSelection.category)
 						: detailSelection.kind === 'investment'
-							? state.investmentsByAccount.filter(row => !detailSelection?.category || investmentType(row.account) === detailSelection.category)
+							? detailSelection.summary ? state.investmentsByType : state.investmentsByAccount.filter(row => !detailSelection?.category || investmentType(row.account) === detailSelection.category)
 							: netWorthRows()
 		: [];
 	$: detailTransactions = detailSelection
@@ -322,19 +327,19 @@
 
 	{:else}
 		<div class="metric-grid">
-			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('asset', 'Total Assets', state.totalAssets)}>
+			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('asset', 'Total Assets', state.totalAssets, null, true)}>
 				<span>Total Assets</span>
 				<strong>{formatCurrency(state.totalAssets)}</strong>
 			</button>
-			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('liability', 'Liabilities', state.totalLiabilities)}>
+			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('liability', 'Liabilities', state.totalLiabilities, null, true)}>
 				<span>Liabilities</span>
 				<strong>{formatCurrency(state.totalLiabilities)}</strong>
 			</button>
-			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('networth', 'Net Worth', state.netWorth)}>
+			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('networth', 'Net Worth', state.netWorth, null, true)}>
 				<span>Net Worth</span>
 				<strong>{formatCurrency(state.netWorth)}</strong>
 			</button>
-			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('investment', 'Investment Assets', investmentTotal)}>
+			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('investment', 'Investment Assets', investmentTotal, null, true)}>
 				<span>Investment Assets</span>
 				<strong>{formatCurrency(investmentTotal)}</strong>
 			</button>
@@ -465,7 +470,7 @@
 						<tbody>
 							{#each detailAccounts as row}
 								<tr>
-									<td title={row.account || row.label}>{detailAccountLabel(row.account)}</td>
+									<td title={row.account || row.label}>{detailRowLabel(row)}</td>
 									{#if detailSelection.kind === 'investment'}
 										<td>{row.commodity || ''}</td>
 									{/if}
