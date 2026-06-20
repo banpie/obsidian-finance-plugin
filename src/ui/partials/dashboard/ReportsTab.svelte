@@ -27,6 +27,7 @@
 		isLoading: true,
 		error: null,
 		currency: 'USD',
+		activeView: 'cashflow',
 		periodPreset: 'this-month',
 		periodMode: 'month',
 		year: new Date().getFullYear(),
@@ -59,7 +60,6 @@
 		investmentsChartConfig: null,
 	});
 
-	let activeView: ReportsView = 'cashflow';
 	let detailSelection: DetailSelection | null = null;
 	const months = [
 		{ value: 1, label: 'January' },
@@ -255,6 +255,10 @@
 		if (controller) await controller.setPeriodPreset(preset);
 	}
 
+	function handleViewChange(view: ReportsView) {
+		controller?.setActiveView(view);
+	}
+
 	async function handleMonthChange(event: Event) {
 		const value = Number((event.target as HTMLSelectElement).value);
 		if (controller) await controller.setMonth(value);
@@ -282,8 +286,8 @@
 		<div class="report-controls">
 			<div class="toolbar-group">
 				<div class="segmented-control primary-switch" aria-label="Report view">
-					<button class:active={activeView === 'cashflow'} on:click={() => (activeView = 'cashflow')}>Cash Flow</button>
-					<button class:active={activeView === 'assets'} on:click={() => (activeView = 'assets')}>Assets</button>
+					<button class:active={state.activeView === 'cashflow'} on:click={() => handleViewChange('cashflow')}>Cash Flow</button>
+					<button class:active={state.activeView === 'assets'} on:click={() => handleViewChange('assets')}>Assets</button>
 				</div>
 			</div>
 			<div class="period-controls">
@@ -322,7 +326,7 @@
 		<SkeletonLoader type="table" />
 	{:else if state.error}
 		<ErrorBanner message={state.error} on:retry={handleRefresh} />
-	{:else if activeView === 'cashflow'}
+	{:else if state.activeView === 'cashflow'}
 		<div class="metric-grid">
 			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('income', 'Income', state.totalIncome)}>
 				<span>Income</span>
