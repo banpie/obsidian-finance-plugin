@@ -15,6 +15,7 @@
 		amount: number;
 		category: string | null;
 		projectTag?: string;
+		projectType?: 'Income' | 'Expense';
 		summary?: boolean;
 	}
 
@@ -244,6 +245,17 @@
 		};
 	}
 
+	function openProjectSummaryDetails(title: string, amount: number, projectType?: 'Income' | 'Expense') {
+		detailSelection = {
+			kind: 'project',
+			title,
+			amount,
+			category: null,
+			projectType,
+			summary: true,
+		};
+	}
+
 	function canOpenHoldingTransactions(row: ReportRow): boolean {
 		return Boolean(row.account && row.commodity);
 	}
@@ -357,8 +369,19 @@
 		}
 	}
 
-	function rowsForProjectTransactions(rows: ReportProjectTransaction[], label: string | null, tag: string | undefined): ReportProjectTransaction[] {
-		return rows.filter(row => row.projectLabel === (label || 'Unassigned') && row.projectTag === (tag || ''));
+	function rowsForProjectTransactions(
+		rows: ReportProjectTransaction[],
+		label: string | null,
+		tag: string | undefined,
+		type: 'Income' | 'Expense' | undefined
+	): ReportProjectTransaction[] {
+		return rows.filter(row => {
+			const projectMatches = label === null && tag === undefined
+				? true
+				: row.projectLabel === (label || 'Unassigned') && row.projectTag === (tag || '');
+			const typeMatches = type ? row.type === type : true;
+			return projectMatches && typeMatches;
+		});
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -403,9 +426,12 @@
 			: detailSelection.kind === 'expense'
 				? rowsForCategory(state.expenseTransactions, detailSelection.category)
 				: detailSelection.kind === 'project'
-					? rowsForProjectTransactions(state.projectTransactions, detailSelection.category, detailSelection.projectTag)
+					? rowsForProjectTransactions(state.projectTransactions, detailSelection.category, detailSelection.projectTag, detailSelection.projectType)
 					: []
 		: [];
+	$: projectIncomeTotal = state.projects.reduce((sum, row) => sum + row.income, 0);
+	$: projectExpensesTotal = state.projects.reduce((sum, row) => sum + row.expenses, 0);
+	$: projectNetIncomeTotal = state.projects.reduce((sum, row) => sum + row.netIncome, 0);
 
 	async function handlePeriodPresetChange(event: Event) {
 		const preset = (event.currentTarget as HTMLSelectElement).value as ReportsPeriodPreset;
@@ -691,18 +717,18 @@
 		</section>
 	{:else}
 		<div class="metric-grid">
-			<div class="metric-card">
+			<button type="button" class="metric-card interactive-card" on:click={() => openProjectSummaryDetails('Project Income', projectIncomeTotal, 'Income')}>
 				<span>Project Income</span>
-				<strong>{formatCurrency(state.projects.reduce((sum, row) => sum + row.income, 0))}</strong>
-			</div>
-			<div class="metric-card">
+				<strong>{formatCurrency(projectIncomeTotal)}</strong>
+			</button>
+			<button type="button" class="metric-card interactive-card" on:click={() => openProjectSummaryDetails('Project Expenses', projectExpensesTotal, 'Expense')}>
 				<span>Project Expenses</span>
-				<strong>{formatCurrency(state.projects.reduce((sum, row) => sum + row.expenses, 0))}</strong>
-			</div>
-			<div class="metric-card">
+				<strong>{formatCurrency(projectExpensesTotal)}</strong>
+			</button>
+			<button type="button" class="metric-card interactive-card" on:click={() => openProjectSummaryDetails('Project Net Income', projectNetIncomeTotal)}>
 				<span>Project Net Income</span>
-				<strong class={amountClass(state.projects.reduce((sum, row) => sum + row.netIncome, 0))}>{formatCurrency(state.projects.reduce((sum, row) => sum + row.netIncome, 0))}</strong>
-			</div>
+				<strong class={amountClass(projectNetIncomeTotal)}>{formatCurrency(projectNetIncomeTotal)}</strong>
+			</button>
 			<div class="metric-card">
 				<span>Projects</span>
 				<strong>{state.projects.filter(row => row.label !== 'Unassigned').length}</strong>
@@ -764,6 +790,8 @@
 			</header>
 
 			<div class="detail-modal-body">
+				<button type="button" class="detail-modal-empty-close" on:click={closeDetails} aria-label="Close details"></button>
+				<div class="detail-modal-content">
 				{#if detailSelection.kind !== 'project'}
 					<div class="detail-table-wrap">
 					<h4>{detailSectionTitle(detailSelection.kind)}</h4>
@@ -863,6 +891,7 @@
 						</table>
 					</div>
 				{/if}
+				</div>
 			</div>
 		</section>
 	{/if}
@@ -882,6 +911,8 @@
 			</header>
 
 			<div class="detail-modal-body">
+				<button type="button" class="detail-modal-empty-close" on:click={closeHoldingTransactions} aria-label="Close holding transactions"></button>
+				<div class="detail-modal-content">
 				<div class="detail-table-wrap">
 					<h4>Transactions</h4>
 					{#if holdingTransactionsLoading}
@@ -949,6 +980,7 @@
 						<div class="empty-state">No transactions found for this holding.</div>
 					{/if}
 				</div>
+				</div>
 			</div>
 		</section>
 	{/if}
@@ -968,6 +1000,8 @@
 			</header>
 
 			<div class="detail-modal-body">
+				<button type="button" class="detail-modal-empty-close" on:click={closeAccountTransactions} aria-label="Close account transactions"></button>
+				<div class="detail-modal-content">
 				<div class="detail-table-wrap">
 					<h4>Account Transactions</h4>
 					{#if accountTransactionsLoading}
@@ -998,6 +1032,7 @@
 					{:else}
 						<div class="empty-state">No transactions found for this account in the selected period.</div>
 					{/if}
+				</div>
 				</div>
 			</div>
 		</section>
@@ -1407,10 +1442,10 @@
 	.detail-modal-backdrop {
 		position: fixed;
 		inset: 0;
-		z-index: 1000;
+		z-index: 10000;
 		border: none;
 		border-radius: 0;
-		background: rgba(0, 0, 0, 0.48);
+		background-color: rgba(0, 0, 0, 0.48);
 		cursor: default;
 	}
 
@@ -1418,7 +1453,7 @@
 		position: fixed;
 		top: 50%;
 		left: 50%;
-		z-index: 1001;
+		z-index: 10001;
 		width: min(1100px, calc(100vw - 48px));
 		max-height: min(820px, calc(100vh - 48px));
 		transform: translate(-50%, -50%);
@@ -1461,9 +1496,30 @@
 	}
 
 	.detail-modal-body {
+		position: relative;
 		overflow: auto;
 		padding: var(--size-4-4);
 		user-select: text;
+	}
+
+	.detail-modal-empty-close {
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		width: 100%;
+		height: 100%;
+		min-height: 0;
+		padding: 0;
+		border: none;
+		border-radius: 0;
+		background: transparent;
+		box-shadow: none;
+		cursor: default;
+	}
+
+	.detail-modal-content {
+		position: relative;
+		z-index: 1;
 	}
 
 	.align-right {
