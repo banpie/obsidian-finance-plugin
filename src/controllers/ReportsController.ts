@@ -7,7 +7,7 @@ import { Logger } from '../utils/logger';
 
 export type ReportsPeriodMode = 'month' | 'year';
 export type ReportsPeriodPreset = 'this-month' | 'last-month' | 'this-year' | 'last-year' | 'custom-month' | 'custom-year';
-export type ReportsView = 'cashflow' | 'assets';
+export type ReportsView = 'cashflow' | 'assets' | 'projects';
 
 export interface ReportRow {
 	label: string;
@@ -25,6 +25,21 @@ export interface ReportTransaction {
 	account: string;
 	counterpartAccounts: string[];
 	amount: number;
+}
+
+export interface ReportProjectRow {
+	label: string;
+	tag: string;
+	income: number;
+	expenses: number;
+	netIncome: number;
+	transactionCount: number;
+}
+
+export interface ReportProjectTransaction extends ReportTransaction {
+	projectLabel: string;
+	projectTag: string;
+	type: 'Income' | 'Expense';
 }
 
 export interface ReportInvestmentTransaction {
@@ -77,6 +92,8 @@ export interface ReportsState {
 	investmentsByType: ReportRow[];
 	investmentsByAccount: ReportRow[];
 	topInvestments: ReportRow[];
+	projects: ReportProjectRow[];
+	projectTransactions: ReportProjectTransaction[];
 	incomeChartConfig: ChartConfiguration | null;
 	expensesChartConfig: ChartConfiguration | null;
 	assetsChartConfig: ChartConfiguration | null;
@@ -157,6 +174,8 @@ export class ReportsController {
 			investmentsByType: [],
 			investmentsByAccount: [],
 			topInvestments: [],
+			projects: [],
+			projectTransactions: [],
 			incomeChartConfig: null,
 			expensesChartConfig: null,
 			assetsChartConfig: null,
@@ -259,6 +278,9 @@ export class ReportsController {
 				incomeTransactionsCsv,
 				expenseTransactionsCsv,
 				counterpartAccountsCsv,
+				projectIncomeCsv,
+				projectExpensesCsv,
+				projectTransactionsCsv,
 				assetsCsv,
 				liabilitiesCsv,
 				investmentsCsv,
@@ -271,6 +293,9 @@ export class ReportsController {
 				this.plugin.runQuery(queries.getPeriodIncomeTransactionsQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodExpenseTransactionsQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodCounterpartAccountsQuery(range.startDate, range.endDate)),
+				this.plugin.runQuery(queries.getPeriodProjectIncomeQuery(currency, 2, range.startDate, range.endDate)),
+				this.plugin.runQuery(queries.getPeriodProjectExpenseQuery(currency, 2, range.startDate, range.endDate)),
+				this.plugin.runQuery(queries.getPeriodProjectTransactionsQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getAssetAllocationQuery(currency, 2, range.endDate)),
 				this.plugin.runQuery(queries.getLiabilityAllocationQuery(currency, 2, range.endDate)),
 				this.plugin.runQuery(queries.getInvestmentAllocationQuery(currency, 2, range.endDate)),
@@ -300,6 +325,8 @@ export class ReportsController {
 			const totalLiabilities = this.parseSingleNumber(totalLiabilitiesCsv);
 			const netWorth = this.parseSingleNumber(netWorthCsv);
 			const counterpartAccounts = this.parseCounterpartRows(counterpartAccountsCsv);
+			const projectTransactions = this.parseProjectTransactionRows(projectTransactionsCsv, counterpartAccounts);
+			const projects = this.buildProjectRows(projectIncomeCsv, projectExpensesCsv, projectTransactions);
 
 			this.state.update(s => ({
 				...s,
@@ -324,6 +351,8 @@ export class ReportsController {
 				investmentsByType: this.withPercent(investmentsByType, investmentRows.reduce((sum, row) => sum + row.amount, 0)),
 				investmentsByAccount: this.withPercent(investmentRows, investmentRows.reduce((sum, row) => sum + row.amount, 0)),
 				topInvestments,
+				projects,
+				projectTransactions,
 				incomeChartConfig: this.buildDoughnutConfig('Income', incomeByCategory, totalIncome, currency),
 				expensesChartConfig: this.buildDoughnutConfig('Expenses', expensesByCategory, totalExpenses, currency),
 				assetsChartConfig: this.buildDoughnutConfig('Assets', assetsByCategory, totalAssets, currency),
@@ -385,6 +414,86 @@ export class ReportsController {
 				amount: this.parseNumber(row[4]),
 			}))
 			.filter(row => row.date && row.account && Math.abs(row.amount) >= 0.01);
+	}
+
+	private parseProjectTransactionRows(rawCsv: string, counterpartAccounts = new Map<string, string[]>()): ReportProjectTransaction[] {
+		return this.parseRows(rawCsv)
+			.filter(row => row.length >= 7)
+			.map(row => {
+				const rawAmount = this.parseNumber(row[6]);
+				const type: 'Income' | 'Expense' = row[3].startsWith('Income') ? 'Income' : 'Expense';
+				return {
+					date: row[0],
+					payee: row[1],
+					narration: row[2],
+					account: row[3],
+					counterpartAccounts: counterpartAccounts.get(this.transactionKey(row[0], row[1], row[2])) || [],
+					projectLabel: this.projectLabel(row[4], row[5]),
+					projectTag: this.projectTag(row[5]),
+					type,
+					amount: -rawAmount,
+				};
+			})
+			.filter(row => row.date && row.account && Math.abs(row.amount) >= 0.01);
+	}
+
+	private buildProjectRows(
+		incomeCsv: string,
+		expensesCsv: string,
+		transactions: ReportProjectTransaction[]
+	): ReportProjectRow[] {
+		const projects = new Map<string, ReportProjectRow>();
+		const ensureProject = (label: string, tag: string): ReportProjectRow => {
+			const normalizedLabel = this.projectLabel(label, tag);
+			const normalizedTag = this.projectTag(tag);
+			const key = this.projectKey(normalizedLabel, normalizedTag);
+			const existing = projects.get(key);
+			if (existing) return existing;
+			const row = {
+				label: normalizedLabel,
+				tag: normalizedTag,
+				income: 0,
+				expenses: 0,
+				netIncome: 0,
+				transactionCount: 0,
+			};
+			projects.set(key, row);
+			return row;
+		};
+
+		for (const row of this.parseRows(incomeCsv).filter(row => row.length >= 3)) {
+			const project = ensureProject(row[0], row[1]);
+			project.income += this.parseNumber(row[2]);
+		}
+
+		for (const row of this.parseRows(expensesCsv).filter(row => row.length >= 3)) {
+			const project = ensureProject(row[0], row[1]);
+			project.expenses += this.parseNumber(row[2]);
+		}
+
+		const transactionKeysByProject = new Map<string, Set<string>>();
+		for (const transaction of transactions) {
+			const project = ensureProject(transaction.projectLabel, transaction.projectTag);
+			const key = this.projectKey(project.label, project.tag);
+			const transactionKeys = transactionKeysByProject.get(key) || new Set<string>();
+			transactionKeys.add(this.transactionKey(transaction.date, transaction.payee, transaction.narration));
+			transactionKeysByProject.set(key, transactionKeys);
+		}
+
+		return Array.from(projects.values())
+			.map(row => ({
+				...row,
+				income: this.roundCurrency(row.income),
+				expenses: this.roundCurrency(row.expenses),
+				netIncome: this.roundCurrency(row.income - row.expenses),
+				transactionCount: transactionKeysByProject.get(this.projectKey(row.label, row.tag))?.size || 0,
+			}))
+			.filter(row => Math.abs(row.income) >= 0.01 || Math.abs(row.expenses) >= 0.01 || row.transactionCount > 0)
+			.sort((a, b) => {
+				if (a.label === 'Unassigned') return 1;
+				if (b.label === 'Unassigned') return -1;
+				return Math.abs(b.netIncome) - Math.abs(a.netIncome);
+			});
 	}
 
 	private parseInvestmentPostingRows(rawCsv: string): InvestmentPostingRow[] {
@@ -555,6 +664,10 @@ export class ReportsController {
 		return match ? Number(match[0]) : 0;
 	}
 
+	private roundCurrency(value: number): number {
+		return Math.round(value * 100) / 100;
+	}
+
 	private groupRows(rows: ReportRow[], labelFor: (row: ReportRow) => string, excludeNegative = false): ReportRow[] {
 		const grouped = new Map<string, number>();
 		for (const row of rows) {
@@ -586,6 +699,21 @@ export class ReportsController {
 	private investmentType(account: string | undefined): string {
 		const segment = this.accountSegment(account, 2);
 		return segment.split('-', 1)[0] || segment;
+	}
+
+	private projectLabel(label: string | undefined, tag: string | undefined): string {
+		const normalized = (label || '').trim();
+		if (normalized) return normalized;
+		const normalizedTag = this.projectTag(tag);
+		return normalizedTag ? normalizedTag : 'Unassigned';
+	}
+
+	private projectTag(tag: string | undefined): string {
+		return (tag || '').trim();
+	}
+
+	private projectKey(label: string, tag: string): string {
+		return `${label || 'Unassigned'}\u001f${tag || ''}`;
 	}
 
 	private getPeriodRange(periodMode: ReportsPeriodMode, year: number, month: number): { startDate: string; endDate: string; label: string } {

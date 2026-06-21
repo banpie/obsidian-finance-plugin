@@ -1,19 +1,20 @@
 <script lang="ts">
 	import { writable, type Writable } from 'svelte/store';
-	import type { ReportsController, ReportsState, ReportRow, ReportTransaction, ReportInvestmentTransaction, ReportsPeriodPreset, ReportsView } from '../../../controllers/ReportsController';
+	import type { ReportsController, ReportsState, ReportRow, ReportTransaction, ReportInvestmentTransaction, ReportProjectRow, ReportProjectTransaction, ReportsPeriodPreset, ReportsView } from '../../../controllers/ReportsController';
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
 
 	export let controller: ReportsController;
 
-	type DetailKind = 'income' | 'expense' | 'asset' | 'liability' | 'networth' | 'investment';
+	type DetailKind = 'income' | 'expense' | 'asset' | 'liability' | 'networth' | 'investment' | 'project';
 
 	interface DetailSelection {
 		kind: DetailKind;
 		title: string;
 		amount: number;
 		category: string | null;
+		projectTag?: string;
 		summary?: boolean;
 	}
 
@@ -54,6 +55,8 @@
 		investmentsByType: [],
 		investmentsByAccount: [],
 		topInvestments: [],
+		projects: [],
+		projectTransactions: [],
 		incomeChartConfig: null,
 		expensesChartConfig: null,
 		assetsChartConfig: null,
@@ -151,6 +154,10 @@
 		return transaction.narration || transaction.payee || '';
 	}
 
+	function transactionTypeLabel(transaction: ReportTransaction): string {
+		return 'type' in transaction ? (transaction as ReportProjectTransaction).type : '';
+	}
+
 	function counterpartLabel(transaction: ReportTransaction): string {
 		const accounts = transaction.counterpartAccounts || [];
 		if (!accounts.length) return '—';
@@ -162,12 +169,13 @@
 	}
 
 	function isCashFlowDetail(kind: DetailKind): boolean {
-		return kind === 'income' || kind === 'expense';
+		return kind === 'income' || kind === 'expense' || kind === 'project';
 	}
 
 	function detailSectionTitle(kind: DetailKind): string {
 		if (kind === 'investment') return detailSelection?.summary ? 'Holdings by Type' : 'Current Holdings';
 		if (kind === 'asset' || kind === 'liability' || kind === 'networth') return detailSelection?.summary ? 'Balances by Category' : 'Current Balances';
+		if (kind === 'project') return 'Project Transactions';
 		return 'Category Breakdown';
 	}
 
@@ -220,6 +228,16 @@
 		detailSelection = { kind, title, amount, category, summary };
 	}
 
+	function openProjectDetails(project: ReportProjectRow) {
+		detailSelection = {
+			kind: 'project',
+			title: project.label,
+			amount: project.netIncome,
+			category: project.label,
+			projectTag: project.tag,
+		};
+	}
+
 	function closeDetails() {
 		detailSelection = null;
 	}
@@ -261,6 +279,22 @@
 		return transaction.narration || transaction.payee || '';
 	}
 
+	function handleHoldingRowKeydown(event: KeyboardEvent, row: ReportRow) {
+		if (event.key !== 'Enter' && event.key !== ' ') return;
+		event.preventDefault();
+		openHoldingTransactions(row);
+	}
+
+	function handleProjectRowKeydown(event: KeyboardEvent, project: ReportProjectRow) {
+		if (event.key !== 'Enter' && event.key !== ' ') return;
+		event.preventDefault();
+		openProjectDetails(project);
+	}
+
+	function rowsForProjectTransactions(rows: ReportProjectTransaction[], label: string | null, tag: string | undefined): ReportProjectTransaction[] {
+		return rows.filter(row => row.projectLabel === (label || 'Unassigned') && row.projectTag === (tag || ''));
+	}
+
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key !== 'Escape') return;
 		if (holdingSelection) {
@@ -300,7 +334,9 @@
 			? rowsForCategory(state.incomeTransactions, detailSelection.category)
 			: detailSelection.kind === 'expense'
 				? rowsForCategory(state.expenseTransactions, detailSelection.category)
-				: []
+				: detailSelection.kind === 'project'
+					? rowsForProjectTransactions(state.projectTransactions, detailSelection.category, detailSelection.projectTag)
+					: []
 		: [];
 
 	async function handlePeriodPresetChange(event: Event) {
@@ -341,6 +377,7 @@
 				<div class="segmented-control primary-switch" aria-label="Report view">
 					<button class:active={state.activeView === 'cashflow'} on:click={() => handleViewChange('cashflow')}>Cash Flow</button>
 					<button class:active={state.activeView === 'assets'} on:click={() => handleViewChange('assets')}>Assets</button>
+					<button class:active={state.activeView === 'projects'} on:click={() => handleViewChange('projects')}>Projects</button>
 				</div>
 			</div>
 			<div class="period-controls">
@@ -463,7 +500,7 @@
 			</section>
 		</div>
 
-	{:else}
+	{:else if state.activeView === 'assets'}
 		<div class="metric-grid">
 			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('asset', 'Total Assets', state.totalAssets, null, true)}>
 				<span>Total Assets</span>
@@ -565,16 +602,77 @@
 					</thead>
 					<tbody>
 						{#each state.topInvestments as row}
-							<tr>
-								<td title={row.commodityName || row.label}>
-									<button type="button" class="table-link" on:click={() => openHoldingTransactions(row)}>
-										{commodityNameLabel(row)}
-									</button>
-								</td>
+							<tr
+								class="clickable-row"
+								role="button"
+								tabindex="0"
+								on:click={() => openHoldingTransactions(row)}
+								on:keydown={(event) => handleHoldingRowKeydown(event, row)}
+								title="View holding transactions"
+							>
+								<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 								<td>{row.commodity || ''}</td>
 								<td title={row.account || row.label}>{row.label}</td>
 								<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
 								<td class="align-right">{formatPercent(row.percent)}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</section>
+	{:else}
+		<div class="metric-grid">
+			<div class="metric-card">
+				<span>Project Income</span>
+				<strong>{formatCurrency(state.projects.reduce((sum, row) => sum + row.income, 0))}</strong>
+			</div>
+			<div class="metric-card">
+				<span>Project Expenses</span>
+				<strong>{formatCurrency(state.projects.reduce((sum, row) => sum + row.expenses, 0))}</strong>
+			</div>
+			<div class="metric-card">
+				<span>Project Net Income</span>
+				<strong class={amountClass(state.projects.reduce((sum, row) => sum + row.netIncome, 0))}>{formatCurrency(state.projects.reduce((sum, row) => sum + row.netIncome, 0))}</strong>
+			</div>
+			<div class="metric-card">
+				<span>Projects</span>
+				<strong>{state.projects.filter(row => row.label !== 'Unassigned').length}</strong>
+			</div>
+		</div>
+
+		<section class="report-section">
+			<div class="section-header">
+				<h3>Project Performance</h3>
+			</div>
+			<div class="detail-table-wrap">
+				<table class="reports-table project-table">
+					<thead>
+						<tr>
+							<th>Project</th>
+							<th>Tag</th>
+							<th class="align-right">Income</th>
+							<th class="align-right">Expenses</th>
+							<th class="align-right">Net Income</th>
+							<th class="align-right">Transactions</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each state.projects as project}
+							<tr
+								class="clickable-row"
+								role="button"
+								tabindex="0"
+								on:click={() => openProjectDetails(project)}
+								on:keydown={(event) => handleProjectRowKeydown(event, project)}
+								title="View project transactions"
+							>
+								<td><span class="table-link">{project.label}</span></td>
+								<td>{project.tag || '—'}</td>
+								<td class="align-right">{formatCurrency(project.income)}</td>
+								<td class="align-right">{formatCurrency(project.expenses)}</td>
+								<td class={`align-right ${amountClass(project.netIncome)}`}>{formatCurrency(project.netIncome)}</td>
+								<td class="align-right">{project.transactionCount}</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -598,7 +696,8 @@
 			</header>
 
 			<div class="detail-modal-body">
-				<div class="detail-table-wrap">
+				{#if detailSelection.kind !== 'project'}
+					<div class="detail-table-wrap">
 					<h4>{detailSectionTitle(detailSelection.kind)}</h4>
 					<table class="reports-table">
 						<thead>
@@ -621,14 +720,17 @@
 										<td class="align-right">{detailPercent(group.amount, detailSelection.amount)}</td>
 									</tr>
 									{#each group.rows as row}
-										<tr class="child-row">
+										<tr
+											class:clickable-row={detailSelection.kind === 'investment'}
+											role={detailSelection.kind === 'investment' ? 'button' : undefined}
+											tabindex={detailSelection.kind === 'investment' ? 0 : undefined}
+											on:click={() => detailSelection?.kind === 'investment' && openHoldingTransactions(row)}
+											on:keydown={(event) => detailSelection?.kind === 'investment' && handleHoldingRowKeydown(event, row)}
+											class="child-row"
+										>
 											<td title={row.account || row.label}>{detailRowLabel(row)}</td>
 											{#if detailSelection.kind === 'investment'}
-												<td title={row.commodityName || row.label}>
-													<button type="button" class="table-link" on:click={() => openHoldingTransactions(row)}>
-														{commodityNameLabel(row)}
-													</button>
-												</td>
+												<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 												<td>{row.commodity || ''}</td>
 											{/if}
 											<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
@@ -638,14 +740,16 @@
 								{/each}
 							{:else}
 								{#each detailAccounts as row}
-									<tr>
+									<tr
+										class:clickable-row={detailSelection.kind === 'investment'}
+										role={detailSelection.kind === 'investment' ? 'button' : undefined}
+										tabindex={detailSelection.kind === 'investment' ? 0 : undefined}
+										on:click={() => detailSelection?.kind === 'investment' && openHoldingTransactions(row)}
+										on:keydown={(event) => detailSelection?.kind === 'investment' && handleHoldingRowKeydown(event, row)}
+									>
 										<td title={row.account || row.label}>{detailRowLabel(row)}</td>
 										{#if detailSelection.kind === 'investment'}
-											<td title={row.commodityName || row.label}>
-												<button type="button" class="table-link" on:click={() => openHoldingTransactions(row)}>
-													{commodityNameLabel(row)}
-												</button>
-											</td>
+											<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 											<td>{row.commodity || ''}</td>
 										{/if}
 										<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
@@ -655,16 +759,20 @@
 							{/if}
 						</tbody>
 					</table>
-				</div>
+					</div>
+				{/if}
 
 				{#if isCashFlowDetail(detailSelection.kind)}
 					<div class="detail-table-wrap">
-						<h4>Transactions</h4>
+						<h4>{detailSelection.kind === 'project' ? 'Project Transactions' : 'Transactions'}</h4>
 						<table class="reports-table transaction-table">
 							<thead>
 								<tr>
 									<th>Date</th>
 									<th>Transaction</th>
+									{#if detailSelection.kind === 'project'}
+										<th>Type</th>
+									{/if}
 									<th>Counterpart</th>
 									<th>Category</th>
 									<th class="align-right">Amount</th>
@@ -675,6 +783,9 @@
 									<tr>
 										<td>{transaction.date}</td>
 										<td title={transaction.payee}>{transactionLabel(transaction)}</td>
+										{#if detailSelection.kind === 'project'}
+											<td>{transactionTypeLabel(transaction)}</td>
+										{/if}
 										<td title={counterpartTitle(transaction)}>{counterpartLabel(transaction)}</td>
 										<td title={transaction.account}>{detailAccountLabel(transaction.account)}</td>
 										<td class={`align-right ${amountClass(transaction.amount)}`}>{formatCurrency(transaction.amount)}</td>
@@ -1088,6 +1199,23 @@
 
 	.reports-table .child-row td:first-child {
 		padding-left: 24px;
+	}
+
+	.reports-table .clickable-row {
+		cursor: pointer;
+	}
+
+	.reports-table .clickable-row:hover td,
+	.reports-table .clickable-row:focus-visible td {
+		background: var(--background-secondary);
+	}
+
+	.reports-table .clickable-row:focus {
+		outline: none;
+	}
+
+	.reports-table .clickable-row:focus-visible td:first-child {
+		box-shadow: inset 3px 0 0 var(--interactive-accent);
 	}
 
 	.reports-table td:first-child {

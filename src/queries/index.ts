@@ -77,6 +77,18 @@ export function getPeriodCounterpartAccountsQuery(startDate: string, endDate: st
 	return `SELECT date, payee, narration, account WHERE NOT account ~ '^(Income|Expenses)' AND date >= ${startDate} AND date < ${endDate} GROUP BY date, payee, narration, account ORDER BY date DESC`;
 }
 
+export function getPeriodProjectIncomeQuery(currency: string, rounding: number, startDate: string, endDate: string): string {
+	return `SELECT entry_meta('project_label') AS _projectLabel, entry_meta('project_tag') AS _projectTag, neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _income WHERE account ~ '^Income' AND date >= ${startDate} AND date < ${endDate} GROUP BY _projectLabel, _projectTag ORDER BY _projectLabel`;
+}
+
+export function getPeriodProjectExpenseQuery(currency: string, rounding: number, startDate: string, endDate: string): string {
+	return `SELECT entry_meta('project_label') AS _projectLabel, entry_meta('project_tag') AS _projectTag, round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _expenses WHERE account ~ '^Expenses' AND date >= ${startDate} AND date < ${endDate} GROUP BY _projectLabel, _projectTag ORDER BY _projectLabel`;
+}
+
+export function getPeriodProjectTransactionsQuery(currency: string, rounding: number, startDate: string, endDate: string): string {
+	return `SELECT date, payee, narration, account, entry_meta('project_label') AS _projectLabel, entry_meta('project_tag') AS _projectTag, round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _amount WHERE account ~ '^(Income|Expenses)' AND date >= ${startDate} AND date < ${endDate} GROUP BY date, payee, narration, account, _projectLabel, _projectTag ORDER BY date DESC`;
+}
+
 export function getAssetAllocationQuery(currency: string, rounding: number, asOfDate?: string): string {
 	return `SELECT account, round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding}) AS _value WHERE account ~ '^Assets'${asOfDateClause(asOfDate)}${openAccountClause(asOfDate)} GROUP BY account ORDER BY account`;
 }
