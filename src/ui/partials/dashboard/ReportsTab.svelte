@@ -181,6 +181,7 @@
 		if (kind === 'investment') return detailSelection?.summary ? 'Holdings by Type' : 'Current Holdings';
 		if (kind === 'asset' || kind === 'liability' || kind === 'networth') return detailSelection?.summary ? 'Balances by Category' : 'Current Balances';
 		if (kind === 'project') return 'Project Transactions';
+		if (detailSelection?.category) return 'Selected Category';
 		return 'Category Breakdown';
 	}
 
@@ -266,6 +267,15 @@
 
 	function canOpenDetailRow(row: ReportRow): boolean {
 		return canOpenHoldingTransactions(row) || canOpenAccountTransactions(row);
+	}
+
+	function canOpenCashFlowCategory(row: ReportRow): boolean {
+		return Boolean(
+			detailSelection
+			&& (detailSelection.kind === 'income' || detailSelection.kind === 'expense')
+			&& !detailSelection.category
+			&& row.label
+		);
 	}
 
 	function detailDisplayLabel(row: ReportRow): string {
@@ -357,6 +367,18 @@
 		openProjectDetails(project);
 	}
 
+	function handleCashFlowCategoryRow(row: ReportRow) {
+		if (!detailSelection || !canOpenCashFlowCategory(row)) return;
+		openDetails(detailSelection.kind, row.label, row.amount, row.label);
+	}
+
+	function handleCashFlowCategoryKeydown(event: KeyboardEvent, row: ReportRow) {
+		if (event.key !== 'Enter' && event.key !== ' ') return;
+		if (!canOpenCashFlowCategory(row)) return;
+		event.preventDefault();
+		handleCashFlowCategoryRow(row);
+	}
+
 	function handleHoldingRowClick(event: MouseEvent, row: ReportRow) {
 		if (!canOpenDetailRow(row)) return;
 		const selection = window.getSelection();
@@ -398,9 +420,13 @@
 	$: investmentTotal = state.investmentsByType.reduce((sum, row) => sum + row.amount, 0);
 	$: detailAccounts = detailSelection
 		? detailSelection.kind === 'income'
-			? rowsForCategory(state.incomeByAccount, detailSelection.category)
+			? detailSelection.category
+				? state.incomeByCategory.filter(row => row.label === detailSelection?.category)
+				: state.incomeByCategory
 			: detailSelection.kind === 'expense'
-				? rowsForCategory(state.expensesByAccount, detailSelection.category)
+				? detailSelection.category
+					? state.expensesByCategory.filter(row => row.label === detailSelection?.category)
+					: state.expensesByCategory
 				: detailSelection.kind === 'asset'
 					? detailSelection.summary ? [] : rowsForCategory(state.assetsByAccount, detailSelection.category)
 					: detailSelection.kind === 'liability'
@@ -837,11 +863,11 @@
 							{:else}
 								{#each detailAccounts as row}
 									<tr
-										class:clickable-row={canOpenDetailRow(row)}
-										role={canOpenDetailRow(row) ? 'button' : undefined}
-										tabindex={canOpenDetailRow(row) ? 0 : undefined}
-										on:click={(event) => handleHoldingRowClick(event, row)}
-										on:keydown={(event) => handleHoldingRowKeydown(event, row)}
+										class:clickable-row={canOpenDetailRow(row) || canOpenCashFlowCategory(row)}
+										role={canOpenDetailRow(row) || canOpenCashFlowCategory(row) ? 'button' : undefined}
+										tabindex={canOpenDetailRow(row) || canOpenCashFlowCategory(row) ? 0 : undefined}
+										on:click={(event) => canOpenCashFlowCategory(row) ? handleCashFlowCategoryRow(row) : handleHoldingRowClick(event, row)}
+										on:keydown={(event) => canOpenCashFlowCategory(row) ? handleCashFlowCategoryKeydown(event, row) : handleHoldingRowKeydown(event, row)}
 									>
 										<td title={row.account || row.label}>{detailDisplayLabel(row)}</td>
 										{#if detailSelection.kind === 'investment'}
