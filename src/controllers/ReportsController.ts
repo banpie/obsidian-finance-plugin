@@ -148,19 +148,19 @@ export class ReportsController {
 	constructor(plugin: BeancountPlugin) {
 		this.plugin = plugin;
 		const today = new Date();
-		const year = today.getFullYear();
-		const month = today.getMonth() + 1;
-		const range = this.getPeriodRange('month', year, month);
+		const defaultPreset = this.getDefaultPeriodPreset();
+		const defaultPeriod = this.resolvePresetDate(defaultPreset, today);
+		const range = this.getPeriodRange(defaultPeriod.mode, defaultPeriod.year, defaultPeriod.month);
 
 		this.state = writable({
 			isLoading: true,
 			error: null,
 			currency: plugin.settings.operatingCurrency || 'USD',
 			activeView: 'cashflow',
-			periodPreset: 'this-month',
-			periodMode: 'month',
-			year,
-			month,
+			periodPreset: defaultPreset,
+			periodMode: defaultPeriod.mode,
+			year: defaultPeriod.year,
+			month: defaultPeriod.month,
 			periodLabel: range.label,
 			startDate: range.startDate,
 			endDate: range.endDate,
@@ -763,7 +763,7 @@ export class ReportsController {
 	}
 
 	private resolvePresetDate(periodPreset: ReportsPeriodPreset, now: Date): { mode: ReportsPeriodMode; year: number; month: number } {
-		const current = get(this.state);
+		const current = this.state ? get(this.state) : { year: now.getFullYear(), month: now.getMonth() + 1 };
 		switch (periodPreset) {
 			case 'last-month': {
 				const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -788,6 +788,14 @@ export class ReportsController {
 		const month = String(date.getMonth() + 1).padStart(2, '0');
 		const day = String(date.getDate()).padStart(2, '0');
 		return `${year}-${month}-${day}`;
+	}
+
+	private getDefaultPeriodPreset(): ReportsPeriodPreset {
+		const preset = this.plugin.settings.dashboardDefaultPeriod;
+		if (preset === 'last-month' || preset === 'this-year' || preset === 'last-year') {
+			return preset;
+		}
+		return 'this-month';
 	}
 
 	private buildDoughnutConfig(title: string, rows: ReportRow[], total: number, currency: string): ChartConfiguration | null {
