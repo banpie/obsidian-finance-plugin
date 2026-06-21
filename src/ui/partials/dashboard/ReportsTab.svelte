@@ -65,6 +65,8 @@
 	});
 
 	let detailSelection: DetailSelection | null = null;
+	let detailBackStack: DetailSelection[] = [];
+	let detailForwardStack: DetailSelection[] = [];
 	let holdingSelection: ReportRow | null = null;
 	let holdingTransactions: ReportInvestmentTransaction[] = [];
 	let holdingTransactionsLoading = false;
@@ -232,51 +234,61 @@
 		}));
 	}
 
+	function pushDetailSelection(selection: DetailSelection) {
+		if (detailSelection) {
+			detailBackStack = [...detailBackStack, detailSelection];
+		}
+		detailForwardStack = [];
+		detailSelection = selection;
+	}
+
 	function openDetails(kind: DetailKind, title: string, amount: number, category: string | null = null, summary = false) {
-		detailSelection = { kind, title, amount, category, summary };
+		pushDetailSelection({ kind, title, amount, category, summary });
 	}
 
 	function openProjectDetails(project: ReportProjectRow) {
-		detailSelection = {
+		pushDetailSelection({
 			kind: 'project',
 			title: project.label,
 			amount: project.netIncome,
 			category: project.label,
 			projectTag: project.tag,
-		};
+		});
 	}
 
 	function openProjectSummaryDetails(title: string, amount: number, projectType?: 'Income' | 'Expense') {
-		detailSelection = {
+		pushDetailSelection({
 			kind: 'project',
 			title,
 			amount,
 			category: null,
 			projectType,
 			summary: true,
-		};
+		});
 	}
 
 	function canGoBackInDetails(): boolean {
-		if (!detailSelection) return false;
-		if (detailSelection.kind === 'income') return detailSelection.title !== 'Income';
-		if (detailSelection.kind === 'expense') return detailSelection.title !== 'Expenses';
-		if (detailSelection.kind === 'project') return !detailSelection.summary;
-		return Boolean(
-			detailSelection?.category
-			&& (detailSelection.kind === 'income' || detailSelection.kind === 'expense' || detailSelection.kind === 'project')
-		);
+		return detailBackStack.length > 0;
+	}
+
+	function canGoForwardInDetails(): boolean {
+		return detailForwardStack.length > 0;
 	}
 
 	function goBackInDetails() {
-		if (!detailSelection) return;
-		if (detailSelection.kind === 'income') {
-			openDetails('income', 'Income', state.totalIncome);
-		} else if (detailSelection.kind === 'expense') {
-			openDetails('expense', 'Expenses', state.totalExpenses);
-		} else if (detailSelection.kind === 'project') {
-			openProjectSummaryDetails('Project Net Income', projectNetIncomeTotal);
-		}
+		if (!detailSelection || !detailBackStack.length) return;
+		const previous = detailBackStack[detailBackStack.length - 1];
+		detailBackStack = detailBackStack.slice(0, -1);
+		detailForwardStack = [detailSelection, ...detailForwardStack];
+		detailSelection = previous;
+	}
+
+	function goForwardInDetails() {
+		if (!detailSelection || !detailForwardStack.length) return;
+		const next = detailForwardStack[0];
+		detailForwardStack = detailForwardStack.slice(1);
+		detailBackStack = [...detailBackStack, detailSelection];
+		detailSelection = next;
 	}
 
 	function closeOnBlankClick(event: MouseEvent, close: () => void) {
@@ -315,6 +327,8 @@
 
 	function closeDetails() {
 		detailSelection = null;
+		detailBackStack = [];
+		detailForwardStack = [];
 	}
 
 	async function openHoldingTransactions(row: ReportRow) {
@@ -835,16 +849,19 @@
 		<div class="detail-modal-backdrop" role="presentation" on:click={closeDetails}></div>
 		<section class="detail-modal" role="dialog" aria-modal="true" aria-label="Report details">
 			<header class="detail-modal-header">
-				<div class="detail-modal-title">
-					<div>
-						<h3>{detailSelection.title}</h3>
-						<div class="period-label">{state.periodLabel}</div>
+				<div class="detail-modal-left">
+					<div class="detail-nav-actions" aria-label="Detail navigation">
+						<button type="button" class="nav-button" on:click={goBackInDetails} disabled={!canGoBackInDetails()} aria-label="Back to previous details" title="Back">Back</button>
+						<button type="button" class="nav-button" on:click={goForwardInDetails} disabled={!canGoForwardInDetails()} aria-label="Forward to next details" title="Forward">Forward</button>
+					</div>
+					<div class="detail-modal-title">
+						<div>
+							<h3>{detailSelection.title}</h3>
+							<div class="period-label">{state.periodLabel}</div>
+						</div>
 					</div>
 				</div>
 				<div class="detail-modal-actions">
-					{#if canGoBackInDetails()}
-						<button type="button" class="back-button" on:click={goBackInDetails} aria-label="Back to summary" title="Back to summary">Back</button>
-					{/if}
 					<strong class={amountClass(detailSelection.amount)}>{formatCurrency(detailSelection.amount)}</strong>
 					<button type="button" class="close-button" on:click={closeDetails} aria-label="Close details">Close</button>
 				</div>
@@ -856,9 +873,6 @@
 					<div class="detail-table-wrap">
 					<div class="detail-section-heading">
 						<h4>{detailSectionTitle(detailSelection.kind)}</h4>
-						{#if canGoBackInDetails()}
-							<button type="button" class="section-back-button" on:click={goBackInDetails} aria-label="Back to summary" title="Back to summary">Back</button>
-						{/if}
 					</div>
 					<table class="reports-table">
 						<thead>
@@ -1401,33 +1415,6 @@
 		margin: 0 0 var(--size-4-2) 0;
 	}
 
-	.section-back-button {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		flex: 0 0 auto;
-		width: auto;
-		min-width: 48px;
-		height: 30px;
-		min-height: 30px;
-		margin-bottom: var(--size-4-2);
-		padding: 4px 10px;
-		border: 1px solid var(--background-modifier-border);
-		border-radius: var(--radius-s);
-		background: var(--interactive-normal);
-		color: var(--text-normal);
-		box-shadow: none;
-		cursor: pointer;
-		font-size: var(--font-ui-medium);
-		line-height: 1;
-		user-select: none;
-	}
-
-	.section-back-button:hover,
-	.section-back-button:focus-visible {
-		background: var(--interactive-hover);
-	}
-
 	.reports-table {
 		width: 100%;
 		border-collapse: collapse;
@@ -1585,6 +1572,20 @@
 		background: var(--background-secondary);
 	}
 
+	.detail-modal-left {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--size-4-3);
+		min-width: 0;
+	}
+
+	.detail-nav-actions {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--size-2-1);
+		flex: 0 0 auto;
+	}
+
 	.detail-modal-title {
 		display: flex;
 		align-items: flex-start;
@@ -1597,7 +1598,7 @@
 		overflow-wrap: anywhere;
 	}
 
-	.back-button {
+	.nav-button {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
@@ -1618,9 +1619,14 @@
 		user-select: none;
 	}
 
-	.back-button:hover,
-	.back-button:focus-visible {
+	.nav-button:hover:not(:disabled),
+	.nav-button:focus-visible:not(:disabled) {
 		background: var(--interactive-hover);
+	}
+
+	.nav-button:disabled {
+		opacity: 0.45;
+		cursor: not-allowed;
 	}
 
 	.detail-modal-actions {
@@ -1693,6 +1699,11 @@
 		}
 
 		.detail-modal-header {
+			flex-direction: column;
+		}
+
+		.detail-modal-left {
+			width: 100%;
 			flex-direction: column;
 		}
 
