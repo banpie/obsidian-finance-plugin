@@ -832,7 +832,7 @@
 	{/if}
 
 	{#if detailSelection}
-		<button type="button" class="detail-modal-backdrop" on:click={closeDetails} aria-label="Close details"></button>
+		<div class="detail-modal-backdrop" role="presentation" on:click={closeDetails}></div>
 		<section class="detail-modal" role="dialog" aria-modal="true" aria-label="Report details">
 			<header class="detail-modal-header">
 				<div class="detail-modal-title">
@@ -843,7 +843,7 @@
 				</div>
 				<div class="detail-modal-actions">
 					{#if canGoBackInDetails()}
-						<button type="button" class="back-button" on:click={goBackInDetails} aria-label="Back to summary" title="Back to summary">&larr;</button>
+						<button type="button" class="back-button" on:click={goBackInDetails} aria-label="Back to summary" title="Back to summary">Back</button>
 					{/if}
 					<strong class={amountClass(detailSelection.amount)}>{formatCurrency(detailSelection.amount)}</strong>
 					<button type="button" class="close-button" on:click={closeDetails} aria-label="Close details">Close</button>
@@ -857,7 +857,7 @@
 					<div class="detail-section-heading">
 						<h4>{detailSectionTitle(detailSelection.kind)}</h4>
 						{#if canGoBackInDetails()}
-							<button type="button" class="section-back-button" on:click={goBackInDetails} aria-label="Back to summary" title="Back to summary">&larr;</button>
+							<button type="button" class="section-back-button" on:click={goBackInDetails} aria-label="Back to summary" title="Back to summary">Back</button>
 						{/if}
 					</div>
 					<table class="reports-table">
@@ -962,7 +962,7 @@
 	{/if}
 
 	{#if holdingSelection}
-		<button type="button" class="detail-modal-backdrop" on:click={closeHoldingTransactions} aria-label="Close holding transactions"></button>
+		<div class="detail-modal-backdrop" role="presentation" on:click={closeHoldingTransactions}></div>
 		<section class="detail-modal" role="dialog" aria-modal="true" aria-label="Holding transactions">
 			<header class="detail-modal-header">
 				<div>
@@ -1050,7 +1050,7 @@
 	{/if}
 
 	{#if accountSelection}
-		<button type="button" class="detail-modal-backdrop" on:click={closeAccountTransactions} aria-label="Close account transactions"></button>
+		<div class="detail-modal-backdrop" role="presentation" on:click={closeAccountTransactions}></div>
 		<section class="detail-modal" role="dialog" aria-modal="true" aria-label="Account transactions">
 			<header class="detail-modal-header">
 				<div>
@@ -1406,12 +1406,12 @@
 		align-items: center;
 		justify-content: center;
 		flex: 0 0 auto;
-		width: 30px;
-		min-width: 30px;
+		width: auto;
+		min-width: 48px;
 		height: 30px;
 		min-height: 30px;
 		margin-bottom: var(--size-4-2);
-		padding: 0;
+		padding: 4px 10px;
 		border: 1px solid var(--background-modifier-border);
 		border-radius: var(--radius-s);
 		background: var(--interactive-normal);
@@ -1544,9 +1544,17 @@
 		position: fixed;
 		inset: 0;
 		z-index: 10000;
+		display: block;
+		width: 100vw;
+		height: 100vh;
+		min-width: 0;
+		min-height: 0;
+		margin: 0;
+		padding: 0;
 		border: none;
 		border-radius: 0;
 		background-color: rgba(0, 0, 0, 0.48);
+		box-shadow: none;
 		cursor: default;
 	}
 
@@ -1594,11 +1602,11 @@
 		align-items: center;
 		justify-content: center;
 		flex: 0 0 auto;
-		width: 30px;
-		min-width: 30px;
+		width: auto;
+		min-width: 48px;
 		height: 30px;
 		min-height: 30px;
-		padding: 0;
+		padding: 4px 10px;
 		border: 1px solid var(--background-modifier-border);
 		border-radius: var(--radius-s);
 		background: var(--interactive-normal);
