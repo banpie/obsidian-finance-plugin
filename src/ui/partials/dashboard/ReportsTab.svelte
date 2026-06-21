@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { writable, type Writable } from 'svelte/store';
-	import type { ReportsController, ReportsState, ReportRow, ReportTransaction, ReportInvestmentTransaction, ReportProjectRow, ReportProjectTransaction, ReportsPeriodPreset, ReportsView } from '../../../controllers/ReportsController';
+	import type { ReportsController, ReportsState, ReportRow, ReportTransaction, ReportInvestmentTransaction, ReportAccountTransaction, ReportProjectRow, ReportProjectTransaction, ReportsPeriodPreset, ReportsView } from '../../../controllers/ReportsController';
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
@@ -69,6 +69,10 @@
 	let holdingTransactionsLoading = false;
 	let holdingTransactionsError: string | null = null;
 	let expandedHoldingTransactions = new Set<string>();
+	let accountSelection: ReportRow | null = null;
+	let accountTransactions: ReportAccountTransaction[] = [];
+	let accountTransactionsLoading = false;
+	let accountTransactionsError: string | null = null;
 	const months = [
 		{ value: 1, label: 'January' },
 		{ value: 2, label: 'February' },
@@ -244,6 +248,14 @@
 		return Boolean(row.account && row.commodity);
 	}
 
+	function canOpenAccountTransactions(row: ReportRow): boolean {
+		return Boolean(row.account && !row.commodity);
+	}
+
+	function canOpenDetailRow(row: ReportRow): boolean {
+		return canOpenHoldingTransactions(row) || canOpenAccountTransactions(row);
+	}
+
 	function detailDisplayLabel(row: ReportRow): string {
 		if (detailSelection?.kind !== 'investment' && row.commodity) return commodityNameLabel(row);
 		return detailRowLabel(row);
@@ -276,6 +288,28 @@
 		expandedHoldingTransactions = new Set();
 	}
 
+	async function openAccountTransactions(row: ReportRow) {
+		if (!canOpenAccountTransactions(row)) return;
+		accountSelection = row;
+		accountTransactions = [];
+		accountTransactionsError = null;
+		accountTransactionsLoading = true;
+		try {
+			accountTransactions = controller ? await controller.loadAccountTransactions(row, state.startDate, state.endDate) : [];
+		} catch (error) {
+			accountTransactionsError = error instanceof Error ? error.message : String(error);
+		} finally {
+			accountTransactionsLoading = false;
+		}
+	}
+
+	function closeAccountTransactions() {
+		accountSelection = null;
+		accountTransactions = [];
+		accountTransactionsError = null;
+		accountTransactionsLoading = false;
+	}
+
 	function toggleHoldingTransaction(key: string) {
 		const next = new Set(expandedHoldingTransactions);
 		if (next.has(key)) {
@@ -290,11 +324,19 @@
 		return transaction.narration || transaction.payee || '';
 	}
 
+	function accountTransactionLabel(transaction: ReportAccountTransaction): string {
+		return transaction.narration || transaction.payee || '';
+	}
+
 	function handleHoldingRowKeydown(event: KeyboardEvent, row: ReportRow) {
-		if (!canOpenHoldingTransactions(row)) return;
+		if (!canOpenDetailRow(row)) return;
 		if (event.key !== 'Enter' && event.key !== ' ') return;
 		event.preventDefault();
-		openHoldingTransactions(row);
+		if (canOpenHoldingTransactions(row)) {
+			openHoldingTransactions(row);
+		} else {
+			openAccountTransactions(row);
+		}
 	}
 
 	function handleProjectRowKeydown(event: KeyboardEvent, project: ReportProjectRow) {
@@ -304,11 +346,15 @@
 	}
 
 	function handleHoldingRowClick(event: MouseEvent, row: ReportRow) {
-		if (!canOpenHoldingTransactions(row)) return;
+		if (!canOpenDetailRow(row)) return;
 		const selection = window.getSelection();
 		if (selection && selection.toString()) return;
 		if (event.detail === 0) return;
-		openHoldingTransactions(row);
+		if (canOpenHoldingTransactions(row)) {
+			openHoldingTransactions(row);
+		} else {
+			openAccountTransactions(row);
+		}
 	}
 
 	function rowsForProjectTransactions(rows: ReportProjectTransaction[], label: string | null, tag: string | undefined): ReportProjectTransaction[] {
@@ -319,6 +365,8 @@
 		if (event.key !== 'Escape') return;
 		if (holdingSelection) {
 			closeHoldingTransactions();
+		} else if (accountSelection) {
+			closeAccountTransactions();
 		} else if (detailSelection) {
 			closeDetails();
 		}
@@ -741,9 +789,9 @@
 									</tr>
 									{#each group.rows as row}
 										<tr
-											class:clickable-row={canOpenHoldingTransactions(row)}
-											role={canOpenHoldingTransactions(row) ? 'button' : undefined}
-											tabindex={canOpenHoldingTransactions(row) ? 0 : undefined}
+											class:clickable-row={canOpenDetailRow(row)}
+											role={canOpenDetailRow(row) ? 'button' : undefined}
+											tabindex={canOpenDetailRow(row) ? 0 : undefined}
 											on:click={(event) => handleHoldingRowClick(event, row)}
 											on:keydown={(event) => handleHoldingRowKeydown(event, row)}
 											class="child-row"
@@ -761,9 +809,9 @@
 							{:else}
 								{#each detailAccounts as row}
 									<tr
-										class:clickable-row={canOpenHoldingTransactions(row)}
-										role={canOpenHoldingTransactions(row) ? 'button' : undefined}
-										tabindex={canOpenHoldingTransactions(row) ? 0 : undefined}
+										class:clickable-row={canOpenDetailRow(row)}
+										role={canOpenDetailRow(row) ? 'button' : undefined}
+										tabindex={canOpenDetailRow(row) ? 0 : undefined}
 										on:click={(event) => handleHoldingRowClick(event, row)}
 										on:keydown={(event) => handleHoldingRowKeydown(event, row)}
 									>
@@ -899,6 +947,56 @@
 						</table>
 					{:else}
 						<div class="empty-state">No transactions found for this holding.</div>
+					{/if}
+				</div>
+			</div>
+		</section>
+	{/if}
+
+	{#if accountSelection}
+		<button type="button" class="detail-modal-backdrop" on:click={closeAccountTransactions} aria-label="Close account transactions"></button>
+		<section class="detail-modal" role="dialog" aria-modal="true" aria-label="Account transactions">
+			<header class="detail-modal-header">
+				<div>
+					<h3>{detailRowLabel(accountSelection)}</h3>
+					<div class="period-label">{state.periodLabel} · {accountSelection.account}</div>
+				</div>
+				<div class="detail-modal-actions">
+					<strong class={amountClass(accountSelection.amount)}>{formatCurrency(accountSelection.amount)}</strong>
+					<button type="button" class="close-button" on:click={closeAccountTransactions} aria-label="Close account transactions">Close</button>
+				</div>
+			</header>
+
+			<div class="detail-modal-body">
+				<div class="detail-table-wrap">
+					<h4>Account Transactions</h4>
+					{#if accountTransactionsLoading}
+						<SkeletonLoader rows={4} />
+					{:else if accountTransactionsError}
+						<ErrorBanner message={accountTransactionsError} />
+					{:else if accountTransactions.length}
+						<table class="reports-table transaction-table">
+							<thead>
+								<tr>
+									<th>Date</th>
+									<th>Transaction</th>
+									<th class="align-right">Posting</th>
+									<th class="align-right">Balance</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each accountTransactions as transaction}
+									<tr>
+										<td>{transaction.date}</td>
+										<td title={transaction.payee}>{accountTransactionLabel(transaction)}</td>
+										<td class="align-right">{transaction.position}</td>
+										<td class="align-right">{transaction.balance || '—'}</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					{:else}
+						<div class="empty-state">No transactions found for this account in the selected period.</div>
 					{/if}
 				</div>
 			</div>

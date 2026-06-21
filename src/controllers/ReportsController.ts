@@ -61,6 +61,15 @@ export interface ReportInvestmentPosting {
 	position: string;
 }
 
+export interface ReportAccountTransaction {
+	date: string;
+	payee: string;
+	narration: string;
+	account: string;
+	position: string;
+	balance: string;
+}
+
 export interface ReportsState {
 	isLoading: boolean;
 	error: string | null;
@@ -197,6 +206,12 @@ export class ReportsController {
 		const allPostingsCsv = await this.plugin.runQuery(queries.getInvestmentTransactionPostingsQuery(earliestDate, endDate));
 		const allPostings = this.parseInvestmentPostingRows(allPostingsCsv);
 		return this.buildInvestmentTransactions(targetPostings, allPostings, row.account, row.commodity);
+	}
+
+	async loadAccountTransactions(row: ReportRow, startDate: string, endDate: string): Promise<ReportAccountTransaction[]> {
+		if (!row.account || !startDate || !endDate) return [];
+		const csv = await this.plugin.runQuery(queries.getAccountTransactionsQuery(row.account, startDate, endDate));
+		return this.parseAccountTransactionRows(csv);
 	}
 
 	async setPeriodMode(periodMode: ReportsPeriodMode) {
@@ -507,6 +522,20 @@ export class ReportsController {
 				position: row[4],
 				units: row[5] || '',
 				cost: row[6] || '',
+			}))
+			.filter(row => row.position);
+	}
+
+	private parseAccountTransactionRows(rawCsv: string): ReportAccountTransaction[] {
+		return this.parseRows(rawCsv)
+			.filter(row => row.length >= 5 && /^\d{4}-\d{2}-\d{2}$/.test(row[0]))
+			.map(row => ({
+				date: row[0],
+				payee: row[1],
+				narration: row[2],
+				account: row[3],
+				position: row[4],
+				balance: row[5] || '',
 			}))
 			.filter(row => row.position);
 	}

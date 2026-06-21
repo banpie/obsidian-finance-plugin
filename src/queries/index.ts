@@ -111,6 +111,11 @@ export function getInvestmentTransactionPostingsQuery(startDate: string, endDate
 	return `SELECT date, payee, narration, account, position, units(position), cost(position) WHERE date >= ${startDate} AND date < ${endDate} ORDER BY date DESC, lineno DESC LIMIT ${limit}`;
 }
 
+export function getAccountTransactionsQuery(account: string, startDate: string, endDate: string, limit = 500): string {
+	const escapedAccount = account.replace(/'/g, "''");
+	return `SELECT date, payee, narration, account, position, balance WHERE account = '${escapedAccount}' AND date >= ${startDate} AND date < ${endDate} ORDER BY date DESC, lineno DESC LIMIT ${limit}`;
+}
+
 export function getBalanceSheetQuery(currency: string): string {
 	return `SELECT account, convert(sum(position), '${currency}') WHERE account ~ '^(Assets|Liabilities|Equity)' AND NOT close_date(account) GROUP BY account ORDER BY account`;
 }
