@@ -67,6 +67,8 @@
 	let detailSelection: DetailSelection | null = null;
 	let detailBackStack: DetailSelection[] = [];
 	let detailForwardStack: DetailSelection[] = [];
+	let canGoBack = false;
+	let canGoForward = false;
 	let holdingSelection: ReportRow | null = null;
 	let holdingTransactions: ReportInvestmentTransaction[] = [];
 	let holdingTransactionsLoading = false;
@@ -101,6 +103,8 @@
 
 	$: stateStore = controller ? controller.state : placeholderState;
 	$: state = $stateStore;
+	$: canGoBack = detailBackStack.length > 0;
+	$: canGoForward = detailForwardStack.length > 0;
 
 	function formatCurrency(value: number): string {
 		return `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${state.currency}`;
@@ -877,8 +881,8 @@
 			<header class="detail-modal-header">
 				<div class="detail-modal-left">
 					<div class="detail-nav-actions" aria-label="Detail navigation">
-						<button type="button" class="nav-button" on:click={goBackInDetails} disabled={!canGoBackInDetails()} aria-label="Back to previous details" title="Back">←</button>
-						<button type="button" class="nav-button" on:click={goForwardInDetails} disabled={!canGoForwardInDetails()} aria-label="Forward to next details" title="Forward">→</button>
+						<button type="button" class="nav-button" on:click={goBackInDetails} disabled={!canGoBack} aria-label="Back to previous details" title="Back">←</button>
+						<button type="button" class="nav-button" on:click={goForwardInDetails} disabled={!canGoForward} aria-label="Forward to next details" title="Forward">→</button>
 					</div>
 					<div class="detail-modal-title">
 						<div>
