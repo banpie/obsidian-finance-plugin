@@ -54,8 +54,7 @@
 		showPicker = !showPicker;
 	}
 
-	async function handlePresetChange(event: Event) {
-		const preset = (event.currentTarget as HTMLSelectElement).value as PeriodPreset;
+	async function handlePresetChange(preset: PeriodPreset) {
 		showPicker = false;
 		await onPresetChange(preset);
 	}
@@ -117,70 +116,83 @@
 </script>
 
 <div class="period-navigator">
-	<div class="period-stepper-wrap">
-		<div class="period-stepper" aria-label="Selected reporting period">
-			<button type="button" class="icon-button" on:click={() => handleMovePeriod(-1)} disabled={disabled} aria-label={previousLabel} title={previousLabel}>←</button>
-			<button
-				type="button"
-				class="current-period-button"
-				on:click={openPicker}
-				disabled={disabled}
-				aria-expanded={showPicker}
-				title="Choose exact period"
-			>
-				<span class="current-period">{displayLabel}</span>
-				<span class="current-preset">{presetLabel}</span>
-			</button>
-			<button type="button" class="icon-button" on:click={() => handleMovePeriod(1)} disabled={disabled} aria-label={nextLabel} title={nextLabel}>→</button>
+	<div class="period-main">
+		<div class="period-stepper-wrap">
+			<div class="period-stepper" aria-label="Selected reporting period">
+				<button type="button" class="icon-button" on:click={() => handleMovePeriod(-1)} disabled={disabled} aria-label={previousLabel} title={previousLabel}>←</button>
+				<button
+					type="button"
+					class="current-period-button"
+					on:click={openPicker}
+					disabled={disabled}
+					aria-expanded={showPicker}
+					title="Choose exact period"
+				>
+					<span class="current-period">{displayLabel}</span>
+					<span class="current-preset">{presetLabel}</span>
+				</button>
+				<button type="button" class="icon-button" on:click={() => handleMovePeriod(1)} disabled={disabled} aria-label={nextLabel} title={nextLabel}>→</button>
+			</div>
+
+			{#if showPicker}
+				<div class="exact-picker" role="dialog" aria-label="Choose exact period">
+					<div class="exact-picker-fields">
+						<label>
+							<span>Year</span>
+							<input type="number" min="1970" max="9999" step="1" value={draftYear} on:input={handleYearChange} on:keydown={handlePickerKeydown} disabled={disabled} />
+						</label>
+						{#if periodMode === 'month'}
+							<label>
+								<span>Month</span>
+								<select value={draftMonth} on:change={handleMonthChange} on:keydown={handlePickerKeydown} disabled={disabled}>
+									{#each months as monthOption}
+										<option value={monthOption.value}>{monthOption.label}</option>
+									{/each}
+								</select>
+							</label>
+						{/if}
+					</div>
+					<div class="exact-picker-actions">
+						<button type="button" class="secondary-button" on:click={cancelPicker}>Cancel</button>
+						<button type="button" class="primary-button" on:click={applyPicker} disabled={disabled}>Apply</button>
+					</div>
+				</div>
+			{/if}
 		</div>
 
-		{#if showPicker}
-			<div class="exact-picker" role="dialog" aria-label="Choose exact period">
-				<div class="exact-picker-fields">
-					<label>
-						<span>Year</span>
-						<input type="number" min="1970" max="9999" step="1" value={draftYear} on:input={handleYearChange} on:keydown={handlePickerKeydown} disabled={disabled} />
-					</label>
-					{#if periodMode === 'month'}
-						<label>
-							<span>Month</span>
-							<select value={draftMonth} on:change={handleMonthChange} on:keydown={handlePickerKeydown} disabled={disabled}>
-								{#each months as monthOption}
-									<option value={monthOption.value}>{monthOption.label}</option>
-								{/each}
-							</select>
-						</label>
-					{/if}
-				</div>
-				<div class="exact-picker-actions">
-					<button type="button" class="secondary-button" on:click={cancelPicker}>Cancel</button>
-					<button type="button" class="primary-button" on:click={applyPicker} disabled={disabled}>Apply</button>
-				</div>
-			</div>
-		{/if}
+		<div class="segmented-control period-mode" aria-label="Period mode">
+			<button type="button" class:active={periodMode === 'month'} on:click={() => handleModeChange('month')} disabled={disabled}>Month</button>
+			<button type="button" class:active={periodMode === 'year'} on:click={() => handleModeChange('year')} disabled={disabled}>Year</button>
+		</div>
+
+		<button type="button" class="refresh-button" on:click={handleRefresh} disabled={disabled}>Refresh</button>
 	</div>
 
-	<div class="segmented-control period-mode" aria-label="Period mode">
-		<button type="button" class:active={periodMode === 'month'} on:click={() => handleModeChange('month')} disabled={disabled}>Month</button>
-		<button type="button" class:active={periodMode === 'year'} on:click={() => handleModeChange('year')} disabled={disabled}>Year</button>
+	<div class="quick-presets" aria-label="Quick period presets">
+		{#each periodPresets as preset}
+			<button
+				type="button"
+				class:active={periodPreset === preset.value}
+				on:click={() => handlePresetChange(preset.value)}
+				disabled={disabled}
+			>
+				{preset.label}
+			</button>
+		{/each}
 	</div>
-
-	<label class="quick-picker">
-		<span>Quick</span>
-		<select value={periodPreset} on:change={handlePresetChange} disabled={disabled}>
-			{#each periodPresets as preset}
-				<option value={preset.value}>{preset.label}</option>
-			{/each}
-		</select>
-	</label>
-
-	<button type="button" class="refresh-button" on:click={handleRefresh} disabled={disabled}>Refresh</button>
 </div>
 
 <style>
 	.period-navigator {
 		display: flex;
+		flex-direction: column;
 		align-items: flex-end;
+		gap: var(--size-4-1);
+	}
+
+	.period-main {
+		display: flex;
+		align-items: center;
 		flex-wrap: wrap;
 		justify-content: flex-end;
 		gap: var(--size-4-2);
@@ -204,6 +216,7 @@
 	.current-period-button,
 	.segmented-control button,
 	.refresh-button,
+	.quick-presets button,
 	.primary-button,
 	.secondary-button {
 		height: 34px;
@@ -270,7 +283,6 @@
 		color: var(--text-on-accent);
 	}
 
-	.quick-picker,
 	.exact-picker label {
 		display: flex;
 		flex-direction: column;
@@ -279,7 +291,6 @@
 		font-size: var(--font-ui-smaller);
 	}
 
-	.quick-picker select,
 	.exact-picker select,
 	.exact-picker input {
 		min-width: 110px;
@@ -296,6 +307,29 @@
 		padding: 0 var(--size-4-3);
 		border: 1px solid var(--background-modifier-border);
 		border-radius: 4px;
+	}
+
+	.quick-presets {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		gap: 4px;
+	}
+
+	.quick-presets button {
+		height: 26px;
+		padding: 0 8px;
+		border: 1px solid transparent;
+		border-radius: 999px;
+		background: transparent;
+		color: var(--text-muted);
+		font-size: var(--font-ui-smaller);
+	}
+
+	.quick-presets button.active {
+		border-color: var(--interactive-accent);
+		background: var(--background-modifier-hover);
+		color: var(--text-normal);
 	}
 
 	.primary-button,
@@ -319,6 +353,7 @@
 	.current-period-button:hover,
 	.segmented-control button:hover,
 	.refresh-button:hover,
+	.quick-presets button:hover,
 	.secondary-button:hover {
 		background: var(--interactive-hover);
 	}
@@ -331,9 +366,9 @@
 	.current-period-button:disabled,
 	.segmented-control button:disabled,
 	.refresh-button:disabled,
+	.quick-presets button:disabled,
 	.primary-button:disabled,
 	.secondary-button:disabled,
-	.quick-picker select:disabled,
 	.exact-picker select:disabled,
 	.exact-picker input:disabled {
 		cursor: not-allowed;
@@ -369,6 +404,11 @@
 
 	@media (max-width: 700px) {
 		.period-navigator {
+			align-items: flex-start;
+		}
+
+		.period-main,
+		.quick-presets {
 			justify-content: flex-start;
 		}
 
