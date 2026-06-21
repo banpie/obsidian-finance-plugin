@@ -257,6 +257,24 @@
 		};
 	}
 
+	function canGoBackInDetails(): boolean {
+		return Boolean(
+			detailSelection?.category
+			&& (detailSelection.kind === 'income' || detailSelection.kind === 'expense' || detailSelection.kind === 'project')
+		);
+	}
+
+	function goBackInDetails() {
+		if (!detailSelection) return;
+		if (detailSelection.kind === 'income') {
+			openDetails('income', 'Income', state.totalIncome);
+		} else if (detailSelection.kind === 'expense') {
+			openDetails('expense', 'Expenses', state.totalExpenses);
+		} else if (detailSelection.kind === 'project') {
+			openProjectSummaryDetails('Project Net Income', projectNetIncomeTotal);
+		}
+	}
+
 	function canOpenHoldingTransactions(row: ReportRow): boolean {
 		return Boolean(row.account && row.commodity);
 	}
@@ -805,9 +823,14 @@
 		<button type="button" class="detail-modal-backdrop" on:click={closeDetails} aria-label="Close details"></button>
 		<section class="detail-modal" role="dialog" aria-modal="true" aria-label="Report details">
 			<header class="detail-modal-header">
-				<div>
-					<h3>{detailSelection.title}</h3>
-					<div class="period-label">{state.periodLabel}</div>
+				<div class="detail-modal-title">
+					{#if canGoBackInDetails()}
+						<button type="button" class="back-button" on:click={goBackInDetails} aria-label="Back to summary" title="Back to summary">&larr;</button>
+					{/if}
+					<div>
+						<h3>{detailSelection.title}</h3>
+						<div class="period-label">{state.periodLabel}</div>
+					</div>
 				</div>
 				<div class="detail-modal-actions">
 					<strong class={amountClass(detailSelection.amount)}>{formatCurrency(detailSelection.amount)}</strong>
@@ -1500,6 +1523,44 @@
 		padding: var(--size-4-4);
 		border-bottom: 1px solid var(--background-modifier-border);
 		background: var(--background-secondary);
+	}
+
+	.detail-modal-title {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--size-4-2);
+		min-width: 0;
+	}
+
+	.detail-modal-title h3 {
+		margin-top: 0;
+		overflow-wrap: anywhere;
+	}
+
+	.back-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex: 0 0 auto;
+		width: 30px;
+		min-width: 30px;
+		height: 30px;
+		min-height: 30px;
+		padding: 0;
+		border: 1px solid var(--background-modifier-border);
+		border-radius: var(--radius-s);
+		background: var(--interactive-normal);
+		color: var(--text-normal);
+		box-shadow: none;
+		cursor: pointer;
+		font-size: var(--font-ui-medium);
+		line-height: 1;
+		user-select: none;
+	}
+
+	.back-button:hover,
+	.back-button:focus-visible {
+		background: var(--interactive-hover);
 	}
 
 	.detail-modal-actions {
