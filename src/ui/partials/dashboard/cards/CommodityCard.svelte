@@ -139,7 +139,7 @@
 
 		<div class="card-body">
 			<!-- Value (primary) -->
-			{#if (commodity?.valueInOperatingCurrency ?? 0) > 0}
+			{#if (commodity?.valueInOperatingCurrency ?? 0) !== 0}
 				<div class="value-container" title={`${(commodity.valueInOperatingCurrency ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${operatingCurrency}`}>
 					<span class="value-main">{formatValue(commodity.valueInOperatingCurrency ?? 0)}</span>
 					<span class="value-currency">{operatingCurrency}</span>
