@@ -234,9 +234,35 @@
 		}));
 	}
 
+	function parentDetailSelection(selection: DetailSelection): DetailSelection | null {
+		if (!selection.category || selection.summary) return null;
+		if (selection.kind === 'income') {
+			return { kind: 'income', title: 'Income', amount: state.totalIncome, category: null };
+		}
+		if (selection.kind === 'expense') {
+			return { kind: 'expense', title: 'Expenses', amount: state.totalExpenses, category: null };
+		}
+		if (selection.kind === 'asset') {
+			return { kind: 'asset', title: 'Total Assets', amount: state.totalAssets, category: null, summary: true };
+		}
+		if (selection.kind === 'liability') {
+			return { kind: 'liability', title: 'Liabilities', amount: state.totalLiabilities, category: null, summary: true };
+		}
+		if (selection.kind === 'investment') {
+			return { kind: 'investment', title: 'Investment Assets', amount: investmentTotal, category: null, summary: true };
+		}
+		if (selection.kind === 'project') {
+			return { kind: 'project', title: 'Project Net Income', amount: projectNetIncomeTotal, category: null, summary: true };
+		}
+		return null;
+	}
+
 	function pushDetailSelection(selection: DetailSelection) {
 		if (detailSelection) {
 			detailBackStack = [...detailBackStack, detailSelection];
+		} else {
+			const parent = parentDetailSelection(selection);
+			detailBackStack = parent ? [parent] : [];
 		}
 		detailForwardStack = [];
 		detailSelection = selection;
@@ -851,8 +877,8 @@
 			<header class="detail-modal-header">
 				<div class="detail-modal-left">
 					<div class="detail-nav-actions" aria-label="Detail navigation">
-						<button type="button" class="nav-button" on:click={goBackInDetails} disabled={!canGoBackInDetails()} aria-label="Back to previous details" title="Back">Back</button>
-						<button type="button" class="nav-button" on:click={goForwardInDetails} disabled={!canGoForwardInDetails()} aria-label="Forward to next details" title="Forward">Forward</button>
+						<button type="button" class="nav-button" on:click={goBackInDetails} disabled={!canGoBackInDetails()} aria-label="Back to previous details" title="Back">←</button>
+						<button type="button" class="nav-button" on:click={goForwardInDetails} disabled={!canGoForwardInDetails()} aria-label="Forward to next details" title="Forward">→</button>
 					</div>
 					<div class="detail-modal-title">
 						<div>
