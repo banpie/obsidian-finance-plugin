@@ -524,19 +524,12 @@
 
 <div class="reports-tab">
 	<div class="reports-header">
-		<div>
+		<div class="reports-title">
 			<h2>Reports</h2>
 			<div class="period-label">{state.periodLabel}</div>
 		</div>
 
-		<div class="report-controls">
-			<div class="toolbar-group">
-				<div class="segmented-control primary-switch" aria-label="Report view">
-					<button class:active={state.activeView === 'cashflow'} on:click={() => handleViewChange('cashflow')}>Cash Flow</button>
-					<button class:active={state.activeView === 'assets'} on:click={() => handleViewChange('assets')}>Assets</button>
-					<button class:active={state.activeView === 'projects'} on:click={() => handleViewChange('projects')}>Projects</button>
-				</div>
-			</div>
+		<div class="report-period-controls">
 			<PeriodNavigator
 				periodPreset={state.periodPreset}
 				periodMode={state.periodMode}
@@ -550,6 +543,16 @@
 				onMovePeriod={(delta) => controller?.movePeriod(delta)}
 				onRefresh={handleRefresh}
 			/>
+		</div>
+	</div>
+
+	<div class="reports-subnav">
+		<div class="toolbar-group">
+			<div class="segmented-control primary-switch" aria-label="Report view">
+				<button class:active={state.activeView === 'cashflow'} on:click={() => handleViewChange('cashflow')}>Cash Flow</button>
+				<button class:active={state.activeView === 'assets'} on:click={() => handleViewChange('assets')}>Assets</button>
+				<button class:active={state.activeView === 'projects'} on:click={() => handleViewChange('projects')}>Projects</button>
+			</div>
 		</div>
 	</div>
 
@@ -1109,6 +1112,10 @@
 		flex-wrap: wrap;
 	}
 
+	.reports-title {
+		min-width: 160px;
+	}
+
 	h2, h3, h4 {
 		margin: 0;
 	}
@@ -1133,16 +1140,16 @@
 		margin-top: 2px;
 	}
 
-	.report-controls,
-	.period-controls {
+	.report-period-controls {
 		display: flex;
-		align-items: center;
-		gap: var(--size-4-3);
-		flex-wrap: wrap;
+		justify-content: flex-end;
+		flex: 1 1 520px;
 	}
 
-	.report-controls {
-		justify-content: flex-end;
+	.reports-subnav {
+		display: flex;
+		justify-content: flex-start;
+		margin-top: calc(-1 * var(--size-4-2));
 	}
 
 	.toolbar-group {
@@ -1153,24 +1160,6 @@
 		border: 1px solid var(--background-modifier-border);
 		border-radius: var(--radius-m);
 		background: var(--background-secondary);
-	}
-
-	.period-picker {
-		align-items: center;
-		flex-wrap: wrap;
-	}
-
-	.period-picker label {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--size-4-1);
-		color: var(--text-muted);
-		font-size: var(--font-ui-smaller);
-	}
-
-	.period-picker select,
-	.period-picker input {
-		min-height: 30px;
 	}
 
 	.segmented-control {
@@ -1655,14 +1644,15 @@
 			flex-direction: column;
 		}
 
-		.report-controls {
+		.report-period-controls {
 			width: 100%;
 			align-items: flex-start;
-			flex-direction: column;
+			justify-content: flex-start;
 		}
 
-		.period-controls {
+		.reports-subnav {
 			width: 100%;
+			margin-top: 0;
 		}
 
 		.two-column,
