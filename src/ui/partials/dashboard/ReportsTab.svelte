@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { writable, type Writable } from 'svelte/store';
-	import type { ReportsController, ReportsState, ReportRow, ReportTransaction, ReportInvestmentTransaction, ReportAccountTransaction, ReportProjectRow, ReportProjectTransaction, ReportsPeriodPreset, ReportsView } from '../../../controllers/ReportsController';
+	import type { ReportsController, ReportsState, ReportRow, ReportTransaction, ReportInvestmentTransaction, ReportAccountTransaction, ReportProjectRow, ReportProjectTransaction, ReportsView } from '../../../controllers/ReportsController';
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
+	import PeriodNavigator from './PeriodNavigator.svelte';
 
 	export let controller: ReportsController;
 
@@ -78,29 +79,6 @@
 	let accountTransactions: ReportAccountTransaction[] = [];
 	let accountTransactionsLoading = false;
 	let accountTransactionsError: string | null = null;
-	const months = [
-		{ value: 1, label: 'January' },
-		{ value: 2, label: 'February' },
-		{ value: 3, label: 'March' },
-		{ value: 4, label: 'April' },
-		{ value: 5, label: 'May' },
-		{ value: 6, label: 'June' },
-		{ value: 7, label: 'July' },
-		{ value: 8, label: 'August' },
-		{ value: 9, label: 'September' },
-		{ value: 10, label: 'October' },
-		{ value: 11, label: 'November' },
-		{ value: 12, label: 'December' },
-	];
-	const periodPresets = [
-		{ value: 'this-month', label: 'This Month' },
-		{ value: 'last-month', label: 'Last Month' },
-		{ value: 'this-year', label: 'This Year' },
-		{ value: 'last-year', label: 'Last Year' },
-		{ value: 'custom-month', label: 'Custom Month' },
-		{ value: 'custom-year', label: 'Custom Year' },
-	];
-
 	$: stateStore = controller ? controller.state : placeholderState;
 	$: state = $stateStore;
 	$: canGoBack = detailBackStack.length > 0;
@@ -533,23 +511,8 @@
 	$: projectExpensesTotal = state.projects.reduce((sum, row) => sum + row.expenses, 0);
 	$: projectNetIncomeTotal = state.projects.reduce((sum, row) => sum + row.netIncome, 0);
 
-	async function handlePeriodPresetChange(event: Event) {
-		const preset = (event.currentTarget as HTMLSelectElement).value as ReportsPeriodPreset;
-		if (controller) await controller.setPeriodPreset(preset);
-	}
-
 	function handleViewChange(view: ReportsView) {
 		controller?.setActiveView(view);
-	}
-
-	async function handleMonthChange(event: Event) {
-		const value = Number((event.target as HTMLSelectElement).value);
-		if (controller) await controller.setMonth(value);
-	}
-
-	async function handleYearChange(event: Event) {
-		const value = Number((event.target as HTMLInputElement).value);
-		if (controller && Number.isFinite(value)) await controller.setYear(value);
 	}
 
 	async function handleRefresh() {
@@ -574,35 +537,19 @@
 					<button class:active={state.activeView === 'projects'} on:click={() => handleViewChange('projects')}>Projects</button>
 				</div>
 			</div>
-			<div class="period-controls">
-				<div class="toolbar-group period-picker">
-					<label>
-						<span>Period</span>
-						<select value={state.periodPreset} on:change={handlePeriodPresetChange} disabled={state.isLoading}>
-							{#each periodPresets as preset}
-								<option value={preset.value}>{preset.label}</option>
-							{/each}
-						</select>
-					</label>
-					{#if state.periodPreset === 'custom-month' || state.periodPreset === 'custom-year'}
-						<label>
-							<span>Year</span>
-							<input type="number" min="1970" max="9999" step="1" value={state.year} on:change={handleYearChange} disabled={state.isLoading} />
-						</label>
-					{/if}
-					{#if state.periodPreset === 'custom-month'}
-						<label>
-							<span>Month</span>
-							<select value={state.month} on:change={handleMonthChange} disabled={state.isLoading}>
-								{#each months as month}
-									<option value={month.value}>{month.label}</option>
-								{/each}
-							</select>
-						</label>
-					{/if}
-				</div>
-				<button class="refresh-button" on:click={handleRefresh} disabled={state.isLoading}>Refresh</button>
-			</div>
+			<PeriodNavigator
+				periodPreset={state.periodPreset}
+				periodMode={state.periodMode}
+				year={state.year}
+				month={state.month}
+				disabled={state.isLoading}
+				onPresetChange={(preset) => controller?.setPeriodPreset(preset)}
+				onModeChange={(mode) => controller?.setPeriodMode(mode)}
+				onMonthChange={(month) => controller?.setMonth(month)}
+				onYearChange={(year) => controller?.setYear(year)}
+				onMovePeriod={(delta) => controller?.movePeriod(delta)}
+				onRefresh={handleRefresh}
+			/>
 		</div>
 	</div>
 
