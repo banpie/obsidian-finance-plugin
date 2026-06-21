@@ -280,7 +280,9 @@
 	}
 
 	function closeOnBlankClick(event: MouseEvent, close: () => void) {
-		if (event.target === event.currentTarget) {
+		const target = event.target as HTMLElement | null;
+		const contentSelector = 'table, button, a, input, select, textarea, [role="button"], .chart-box, .metric-card, .breakdown-row';
+		if (!target || !target.closest(contentSelector)) {
 			close();
 		}
 	}
@@ -852,7 +854,12 @@
 				<div class="detail-modal-content" role="presentation" on:click={(event) => closeOnBlankClick(event, closeDetails)}>
 				{#if detailSelection.kind !== 'project'}
 					<div class="detail-table-wrap">
-					<h4>{detailSectionTitle(detailSelection.kind)}</h4>
+					<div class="detail-section-heading">
+						<h4>{detailSectionTitle(detailSelection.kind)}</h4>
+						{#if canGoBackInDetails()}
+							<button type="button" class="section-back-button" on:click={goBackInDetails} aria-label="Back to summary" title="Back to summary">&larr;</button>
+						{/if}
+					</div>
 					<table class="reports-table">
 						<thead>
 							<tr>
@@ -1381,6 +1388,44 @@
 
 	.detail-table-wrap + .detail-table-wrap {
 		margin-top: var(--size-4-4);
+	}
+
+	.detail-section-heading {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--size-4-3);
+	}
+
+	.detail-section-heading h4 {
+		margin: 0 0 var(--size-4-2) 0;
+	}
+
+	.section-back-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex: 0 0 auto;
+		width: 30px;
+		min-width: 30px;
+		height: 30px;
+		min-height: 30px;
+		margin-bottom: var(--size-4-2);
+		padding: 0;
+		border: 1px solid var(--background-modifier-border);
+		border-radius: var(--radius-s);
+		background: var(--interactive-normal);
+		color: var(--text-normal);
+		box-shadow: none;
+		cursor: pointer;
+		font-size: var(--font-ui-medium);
+		line-height: 1;
+		user-select: none;
+	}
+
+	.section-back-button:hover,
+	.section-back-button:focus-visible {
+		background: var(--interactive-hover);
 	}
 
 	.reports-table {
