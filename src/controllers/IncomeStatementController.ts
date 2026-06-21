@@ -96,7 +96,8 @@ export class IncomeStatementController {
 		const rootAccounts: AccountItem[] = [];
 
 		for (const [fullAccount, rawAmount] of accounts) {
-			const amountNumber = extractConvertedAmountNumber(rawAmount, reportingCurrency);
+			const rawAmountNumber = extractConvertedAmountNumber(rawAmount, reportingCurrency);
+			const amountNumber = accountType === 'Income' ? -rawAmountNumber : rawAmountNumber;
 			const otherCurrencies = extractNonReportingCurrencies(rawAmount, reportingCurrency);
 
 			const parts = fullAccount.split(':');
@@ -452,8 +453,7 @@ export class IncomeStatementController {
 
 			const totalIncome = this.calculateCategoryTotals(incomeHierarchy, reportingCurrency);
 			const totalExpenses = this.calculateCategoryTotals(expensesHierarchy, reportingCurrency);
-			// totalIncome is negative in beancount (credit accounts); compute conventional profit
-			const netProfit = -(totalIncome + totalExpenses);
+			const netProfit = totalIncome - totalExpenses;
 
 			let unconvertedWarning: string | null = null;
 			if (hasUnconvertedCommodities) {
