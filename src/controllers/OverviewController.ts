@@ -143,10 +143,21 @@ export class OverviewController {
 		await this.loadData();
 	}
 
+	async setPeriodMode(periodMode: OverviewPeriodMode) {
+		this.state.update(s => ({
+			...s,
+			periodMode,
+			periodPreset: periodMode === 'year' ? 'custom-year' : 'custom-month',
+			periodLabel: this.formatPeriodLabel(periodMode, s.periodYear, s.periodMonth),
+		}));
+		await this.loadData();
+	}
+
 	async setPeriodYear(year: number) {
 		const normalizedYear = Number.isFinite(year) ? Math.max(1, Math.trunc(year)) : new Date().getFullYear();
 		this.state.update(s => ({
 			...s,
+			periodPreset: s.periodMode === 'year' ? 'custom-year' : 'custom-month',
 			periodYear: normalizedYear,
 			periodLabel: this.formatPeriodLabel(s.periodMode, normalizedYear, s.periodMonth),
 		}));
@@ -157,8 +168,38 @@ export class OverviewController {
 		const normalizedMonth = Number.isFinite(month) ? Math.min(12, Math.max(1, Math.trunc(month))) : new Date().getMonth() + 1;
 		this.state.update(s => ({
 			...s,
+			periodPreset: 'custom-month',
+			periodMode: 'month',
 			periodMonth: normalizedMonth,
-			periodLabel: this.formatPeriodLabel(s.periodMode, s.periodYear, normalizedMonth),
+			periodLabel: this.formatPeriodLabel('month', s.periodYear, normalizedMonth),
+		}));
+		await this.loadData();
+	}
+
+	async movePeriod(delta: -1 | 1) {
+		const current = get(this.state);
+		let year = current.periodYear;
+		let month = current.periodMonth;
+
+		if (current.periodMode === 'month') {
+			month += delta;
+			if (month < 1) {
+				month = 12;
+				year -= 1;
+			} else if (month > 12) {
+				month = 1;
+				year += 1;
+			}
+		} else {
+			year += delta;
+		}
+
+		this.state.update(s => ({
+			...s,
+			periodPreset: current.periodMode === 'year' ? 'custom-year' : 'custom-month',
+			periodYear: year,
+			periodMonth: month,
+			periodLabel: this.formatPeriodLabel(current.periodMode, year, month),
 		}));
 		await this.loadData();
 	}
