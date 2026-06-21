@@ -100,6 +100,7 @@
         border-bottom: 2px solid transparent;
         white-space: nowrap;
         border-radius: 0;
+        user-select: none;
     }
 
     .tab-button:hover {
@@ -119,5 +120,6 @@
         overflow-y: auto;
         padding: var(--size-4-4);
         background: var(--background-primary);
+        user-select: text;
     }
 </style>
