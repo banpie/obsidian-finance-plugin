@@ -65,6 +65,7 @@
 	let holdingTransactions: ReportInvestmentTransaction[] = [];
 	let holdingTransactionsLoading = false;
 	let holdingTransactionsError: string | null = null;
+	let expandedHoldingTransactions = new Set<string>();
 	const months = [
 		{ value: 1, label: 'January' },
 		{ value: 2, label: 'February' },
@@ -228,6 +229,7 @@
 		holdingTransactions = [];
 		holdingTransactionsError = null;
 		holdingTransactionsLoading = true;
+		expandedHoldingTransactions = new Set();
 		try {
 			holdingTransactions = controller ? await controller.loadInvestmentTransactions(row, state.endDate) : [];
 		} catch (error) {
@@ -242,6 +244,21 @@
 		holdingTransactions = [];
 		holdingTransactionsError = null;
 		holdingTransactionsLoading = false;
+		expandedHoldingTransactions = new Set();
+	}
+
+	function toggleHoldingTransaction(key: string) {
+		const next = new Set(expandedHoldingTransactions);
+		if (next.has(key)) {
+			next.delete(key);
+		} else {
+			next.add(key);
+		}
+		expandedHoldingTransactions = next;
+	}
+
+	function holdingTransactionLabel(transaction: ReportInvestmentTransaction): string {
+		return transaction.narration || transaction.payee || '';
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -698,18 +715,54 @@
 								<tr>
 									<th>Date</th>
 									<th>Transaction</th>
-									<th>Ledger Account</th>
-									<th class="align-right">Position</th>
+									<th>Type</th>
+									<th class="align-right">Quantity</th>
+									<th class="align-right">Unit Cost</th>
+									<th class="align-right">Cash Amount</th>
+									<th class="align-right">Cost Basis</th>
+									<th>Accounts</th>
+									<th></th>
 								</tr>
 							</thead>
 							<tbody>
 								{#each holdingTransactions as transaction}
 									<tr>
 										<td>{transaction.date}</td>
-										<td title={transaction.payee}>{transaction.narration || transaction.payee || ''}</td>
-										<td title={transaction.account}>{detailAccountLabel(transaction.account)}</td>
-										<td class="align-right">{transaction.position}</td>
+										<td title={transaction.payee}>{holdingTransactionLabel(transaction)}</td>
+										<td>{transaction.type}</td>
+										<td class="align-right">{transaction.quantity}</td>
+										<td class="align-right">{transaction.unitCost || '—'}</td>
+										<td class="align-right">{transaction.cashAmount || '—'}</td>
+										<td class="align-right">{transaction.costBasis || '—'}</td>
+										<td title={transaction.accounts}>{transaction.accounts}</td>
+										<td class="align-right">
+											<button type="button" class="table-link detail-toggle" on:click={() => toggleHoldingTransaction(transaction.key)}>
+												{expandedHoldingTransactions.has(transaction.key) ? 'Hide' : 'Details'}
+											</button>
+										</td>
 									</tr>
+									{#if expandedHoldingTransactions.has(transaction.key)}
+										<tr class="posting-detail-row">
+											<td colspan={9}>
+												<table class="reports-table posting-table">
+													<thead>
+														<tr>
+															<th>Posting Account</th>
+															<th class="align-right">Posting</th>
+														</tr>
+													</thead>
+													<tbody>
+														{#each transaction.postings as posting}
+															<tr>
+																<td title={posting.account}>{detailAccountLabel(posting.account)}</td>
+																<td class="align-right">{posting.position}</td>
+															</tr>
+														{/each}
+													</tbody>
+												</table>
+											</td>
+										</tr>
+									{/if}
 								{/each}
 							</tbody>
 						</table>
@@ -1070,6 +1123,25 @@
 
 	.transaction-table {
 		margin-top: var(--size-4-3);
+	}
+
+	.detail-toggle {
+		white-space: nowrap;
+	}
+
+	.posting-detail-row td {
+		background: var(--background-secondary);
+		padding: var(--size-4-2) var(--size-4-3);
+	}
+
+	.posting-table {
+		margin: 0;
+		font-size: var(--font-ui-smaller);
+	}
+
+	.posting-table th,
+	.posting-table td {
+		background: transparent;
 	}
 
 	.empty-state {

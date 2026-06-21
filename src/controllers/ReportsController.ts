@@ -28,9 +28,20 @@ export interface ReportTransaction {
 }
 
 export interface ReportInvestmentTransaction {
+	key: string;
 	date: string;
 	payee: string;
 	narration: string;
+	type: string;
+	quantity: string;
+	unitCost: string;
+	cashAmount: string;
+	costBasis: string;
+	accounts: string;
+	postings: ReportInvestmentPosting[];
+}
+
+export interface ReportInvestmentPosting {
 	account: string;
 	position: string;
 }
@@ -73,6 +84,21 @@ export interface ReportsState {
 }
 
 type CsvRow = string[];
+
+interface AmountCommodity {
+	amount: number;
+	commodity: string;
+}
+
+interface InvestmentPostingRow {
+	date: string;
+	payee: string;
+	narration: string;
+	account: string;
+	position: string;
+	units: string;
+	cost: string;
+}
 
 const CHART_COLORS = [
 	'#2563eb',
@@ -144,8 +170,14 @@ export class ReportsController {
 
 	async loadInvestmentTransactions(row: ReportRow, endDate: string): Promise<ReportInvestmentTransaction[]> {
 		if (!row.account || !row.commodity || !endDate) return [];
-		const csv = await this.plugin.runQuery(queries.getInvestmentTransactionsQuery(row.account, row.commodity, endDate));
-		return this.parseInvestmentTransactionRows(csv);
+		const targetCsv = await this.plugin.runQuery(queries.getInvestmentTransactionsQuery(row.account, row.commodity, endDate));
+		const targetPostings = this.parseInvestmentPostingRows(targetCsv);
+		if (!targetPostings.length) return [];
+
+		const earliestDate = targetPostings.reduce((min, posting) => posting.date < min ? posting.date : min, targetPostings[0].date);
+		const allPostingsCsv = await this.plugin.runQuery(queries.getInvestmentTransactionPostingsQuery(earliestDate, endDate));
+		const allPostings = this.parseInvestmentPostingRows(allPostingsCsv);
+		return this.buildInvestmentTransactions(targetPostings, allPostings, row.account, row.commodity);
 	}
 
 	async setPeriodMode(periodMode: ReportsPeriodMode) {
@@ -355,7 +387,7 @@ export class ReportsController {
 			.filter(row => row.date && row.account && Math.abs(row.amount) >= 0.01);
 	}
 
-	private parseInvestmentTransactionRows(rawCsv: string): ReportInvestmentTransaction[] {
+	private parseInvestmentPostingRows(rawCsv: string): InvestmentPostingRow[] {
 		return this.parseRows(rawCsv)
 			.filter(row => row.length >= 5 && /^\d{4}-\d{2}-\d{2}$/.test(row[0]))
 			.map(row => ({
@@ -364,8 +396,136 @@ export class ReportsController {
 				narration: row[2],
 				account: row[3],
 				position: row[4],
+				units: row[5] || '',
+				cost: row[6] || '',
 			}))
 			.filter(row => row.position);
+	}
+
+	private buildInvestmentTransactions(
+		targetPostings: InvestmentPostingRow[],
+		allPostings: InvestmentPostingRow[],
+		targetAccount: string,
+		commodity: string
+	): ReportInvestmentTransaction[] {
+		const targetByKey = this.groupByTransaction(targetPostings);
+		const allByKey = this.groupByTransaction(allPostings);
+
+		return Array.from(targetByKey.entries()).map(([key, targetRows]) => {
+			const postings = allByKey.get(key) || targetRows;
+			const targetQuantity = this.sumAmounts(targetRows.map(row => this.parseAmountCommodity(row.units || row.position)), commodity);
+			const targetCost = this.sumAmountStrings(targetRows.map(row => row.cost).filter(Boolean));
+			const cashAmount = this.sumAmountStrings(
+				postings
+					.filter(posting => !this.positionUsesCommodity(posting.position, commodity) && this.isBalanceSheetAccount(posting.account))
+					.map(posting => posting.position)
+			);
+			const unitCost = targetCost.amount !== null && targetQuantity.amount
+				? this.formatAmountCommodity(Math.abs(targetCost.amount / targetQuantity.amount), targetCost.commodity)
+				: '';
+			const transferAccounts = postings
+				.filter(posting => this.positionUsesCommodity(posting.position, commodity))
+				.map(posting => ({
+					account: posting.account,
+					amount: this.parseAmountCommodity(posting.units || posting.position).amount,
+				}));
+			const fromAccounts = transferAccounts.filter(row => row.amount < 0).map(row => row.account);
+			const toAccounts = transferAccounts.filter(row => row.amount > 0).map(row => row.account);
+			const first = targetRows[0];
+
+			return {
+				key,
+				date: first.date,
+				payee: first.payee,
+				narration: first.narration,
+				type: this.inferInvestmentTransactionType(targetQuantity.amount, fromAccounts, toAccounts, targetAccount, cashAmount.amount),
+				quantity: this.formatAmountCommodity(targetQuantity.amount, commodity),
+				unitCost,
+				cashAmount: cashAmount.amount !== null ? this.formatAmountCommodity(cashAmount.amount, cashAmount.commodity) : '',
+				costBasis: targetCost.amount !== null ? this.formatAmountCommodity(targetCost.amount, targetCost.commodity) : '',
+				accounts: this.investmentTransactionAccounts(fromAccounts, toAccounts, targetAccount),
+				postings: postings.map(posting => ({
+					account: posting.account,
+					position: posting.position,
+				})),
+			};
+		});
+	}
+
+	private groupByTransaction(rows: InvestmentPostingRow[]): Map<string, InvestmentPostingRow[]> {
+		const grouped = new Map<string, InvestmentPostingRow[]>();
+		for (const row of rows) {
+			const key = this.transactionKey(row.date, row.payee, row.narration);
+			const group = grouped.get(key) || [];
+			group.push(row);
+			grouped.set(key, group);
+		}
+		return grouped;
+	}
+
+	private inferInvestmentTransactionType(quantity: number, fromAccounts: string[], toAccounts: string[], targetAccount: string, cashAmount: number | null): string {
+		const hasTransferCounterpart = quantity > 0
+			? fromAccounts.some(account => account !== targetAccount)
+			: toAccounts.some(account => account !== targetAccount);
+		if (hasTransferCounterpart) return 'Transfer';
+		if (quantity > 0 && cashAmount !== null && cashAmount < 0) return 'Buy';
+		if (quantity < 0 && cashAmount !== null && cashAmount > 0) return 'Sell';
+		if (quantity > 0) return 'Increase';
+		if (quantity < 0) return 'Decrease';
+		return 'Other';
+	}
+
+	private investmentTransactionAccounts(fromAccounts: string[], toAccounts: string[], targetAccount: string): string {
+		const from = this.uniqueAccounts(fromAccounts.filter(account => account !== targetAccount)).map(account => this.accountLabel(account)).join(', ');
+		const to = this.uniqueAccounts(toAccounts.filter(account => account !== targetAccount)).map(account => this.accountLabel(account)).join(', ');
+		if (from || to) return `${from || this.accountLabel(targetAccount)} -> ${to || this.accountLabel(targetAccount)}`;
+		return this.accountLabel(targetAccount);
+	}
+
+	private uniqueAccounts(accounts: string[]): string[] {
+		return Array.from(new Set(accounts));
+	}
+
+	private isBalanceSheetAccount(account: string): boolean {
+		return /^(Assets|Liabilities):/.test(account);
+	}
+
+	private positionUsesCommodity(position: string, commodity: string): boolean {
+		return this.parseAmountCommodity(position).commodity === commodity;
+	}
+
+	private sumAmounts(amounts: AmountCommodity[], preferredCommodity?: string): AmountCommodity {
+		const commodity = preferredCommodity || amounts.find(amount => amount.commodity)?.commodity || '';
+		return {
+			amount: amounts.filter(amount => amount.commodity === commodity).reduce((sum, amount) => sum + amount.amount, 0),
+			commodity,
+		};
+	}
+
+	private sumAmountStrings(values: string[]): { amount: number | null; commodity: string } {
+		const amounts = values.map(value => this.parseAmountCommodity(value)).filter(value => value.commodity);
+		if (!amounts.length) return { amount: null, commodity: '' };
+		const commodity = amounts[0].commodity;
+		const sameCurrencyAmounts = amounts.filter(amount => amount.commodity === commodity);
+		if (sameCurrencyAmounts.length !== amounts.length) return { amount: null, commodity: '' };
+		return {
+			amount: sameCurrencyAmounts.reduce((sum, amount) => sum + amount.amount, 0),
+			commodity,
+		};
+	}
+
+	private parseAmountCommodity(value: string): AmountCommodity {
+		const match = (value || '').replace(/,/g, '').match(/(-?\d+(?:\.\d+)?)\s+([A-Z][A-Z0-9._-]*)/);
+		return {
+			amount: match ? Number(match[1]) : 0,
+			commodity: match ? match[2] : '',
+		};
+	}
+
+	private formatAmountCommodity(amount: number, commodity: string): string {
+		if (!commodity) return '';
+		const maximumFractionDigits = Number.isInteger(amount) ? 0 : 4;
+		return `${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits })} ${commodity}`;
 	}
 
 	private parseCounterpartRows(rawCsv: string): Map<string, string[]> {

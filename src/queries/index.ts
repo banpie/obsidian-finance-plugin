@@ -104,7 +104,11 @@ export function getInvestmentAllocationQuery(currency: string, rounding: number,
 export function getInvestmentTransactionsQuery(account: string, commodity: string, endDate: string, limit = 500): string {
 	const escapedAccount = account.replace(/'/g, "''");
 	const escapedCommodity = commodity.replace(/'/g, "''");
-	return `SELECT date, payee, narration, account, position WHERE account = '${escapedAccount}' AND currency = '${escapedCommodity}' AND date < ${endDate} ORDER BY date DESC, lineno DESC LIMIT ${limit}`;
+	return `SELECT date, payee, narration, account, position, units(position), cost(position) WHERE account = '${escapedAccount}' AND currency = '${escapedCommodity}' AND date < ${endDate} ORDER BY date DESC, lineno DESC LIMIT ${limit}`;
+}
+
+export function getInvestmentTransactionPostingsQuery(startDate: string, endDate: string, limit = 10000): string {
+	return `SELECT date, payee, narration, account, position, units(position), cost(position) WHERE date >= ${startDate} AND date < ${endDate} ORDER BY date DESC, lineno DESC LIMIT ${limit}`;
 }
 
 export function getBalanceSheetQuery(currency: string): string {
