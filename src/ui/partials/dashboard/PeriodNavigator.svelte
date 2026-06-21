@@ -19,18 +19,18 @@
 	let draftMonth = month;
 
 	const months = [
-		{ value: 1, label: 'January', shortLabel: 'Jan' },
-		{ value: 2, label: 'February', shortLabel: 'Feb' },
-		{ value: 3, label: 'March', shortLabel: 'Mar' },
-		{ value: 4, label: 'April', shortLabel: 'Apr' },
-		{ value: 5, label: 'May', shortLabel: 'May' },
-		{ value: 6, label: 'June', shortLabel: 'Jun' },
-		{ value: 7, label: 'July', shortLabel: 'Jul' },
-		{ value: 8, label: 'August', shortLabel: 'Aug' },
-		{ value: 9, label: 'September', shortLabel: 'Sep' },
-		{ value: 10, label: 'October', shortLabel: 'Oct' },
-		{ value: 11, label: 'November', shortLabel: 'Nov' },
-		{ value: 12, label: 'December', shortLabel: 'Dec' },
+		{ value: 1, label: '01' },
+		{ value: 2, label: '02' },
+		{ value: 3, label: '03' },
+		{ value: 4, label: '04' },
+		{ value: 5, label: '05' },
+		{ value: 6, label: '06' },
+		{ value: 7, label: '07' },
+		{ value: 8, label: '08' },
+		{ value: 9, label: '09' },
+		{ value: 10, label: '10' },
+		{ value: 11, label: '11' },
+		{ value: 12, label: '12' },
 	];
 
 	const periodPresets: Array<{ value: PeriodPreset; label: string }> = [
@@ -41,12 +41,15 @@
 	];
 
 	$: normalizedMonth = Math.min(12, Math.max(1, Math.trunc(month || 1)));
-	$: monthName = months.find(item => item.value === normalizedMonth)?.label || '';
-	$: displayLabel = periodMode === 'year' ? String(year) : `${monthName} ${year}`;
+	$: displayLabel = periodMode === 'year' ? String(year) : `${year}-${pad2(normalizedMonth)}`;
 	$: modeLabel = periodMode === 'year' ? 'Year' : 'Month';
 	$: presetLabel = periodPresets.find(item => item.value === periodPreset)?.label || (periodMode === 'year' ? 'Custom Year' : 'Custom Month');
 	$: previousLabel = `Previous ${modeLabel.toLowerCase()}`;
 	$: nextLabel = `Next ${modeLabel.toLowerCase()}`;
+
+	function pad2(value: number): string {
+		return String(value).padStart(2, '0');
+	}
 
 	function openPicker() {
 		draftYear = year;

@@ -758,7 +758,7 @@ export class ReportsController {
 		return {
 			startDate: this.formatDate(start),
 			endDate: this.formatDate(end),
-			label: start.toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
+			label: `${year}-${this.pad2(month)}`,
 		};
 	}
 
@@ -785,9 +785,13 @@ export class ReportsController {
 
 	private formatDate(date: Date): string {
 		const year = date.getFullYear();
-		const month = String(date.getMonth() + 1).padStart(2, '0');
-		const day = String(date.getDate()).padStart(2, '0');
+		const month = this.pad2(date.getMonth() + 1);
+		const day = this.pad2(date.getDate());
 		return `${year}-${month}-${day}`;
+	}
+
+	private pad2(value: number): string {
+		return String(value).padStart(2, '0');
 	}
 
 	private getDefaultPeriodPreset(): ReportsPeriodPreset {
