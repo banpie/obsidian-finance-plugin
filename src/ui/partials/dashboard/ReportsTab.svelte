@@ -193,7 +193,9 @@
 		return state.assetsByCategory.map(group => ({
 			label: group.label,
 			amount: group.amount,
-			rows: rowsForCategory(state.assetsByAccount, group.label),
+			rows: group.label === 'Investments'
+				? state.investmentsByAccount
+				: rowsForCategory(state.assetsByAccount, group.label),
 		}));
 	}
 
@@ -238,6 +240,15 @@
 		};
 	}
 
+	function canOpenHoldingTransactions(row: ReportRow): boolean {
+		return Boolean(row.account && row.commodity);
+	}
+
+	function detailDisplayLabel(row: ReportRow): string {
+		if (detailSelection?.kind !== 'investment' && row.commodity) return commodityNameLabel(row);
+		return detailRowLabel(row);
+	}
+
 	function closeDetails() {
 		detailSelection = null;
 	}
@@ -280,6 +291,7 @@
 	}
 
 	function handleHoldingRowKeydown(event: KeyboardEvent, row: ReportRow) {
+		if (!canOpenHoldingTransactions(row)) return;
 		if (event.key !== 'Enter' && event.key !== ' ') return;
 		event.preventDefault();
 		openHoldingTransactions(row);
@@ -289,6 +301,14 @@
 		if (event.key !== 'Enter' && event.key !== ' ') return;
 		event.preventDefault();
 		openProjectDetails(project);
+	}
+
+	function handleHoldingRowClick(event: MouseEvent, row: ReportRow) {
+		if (!canOpenHoldingTransactions(row)) return;
+		const selection = window.getSelection();
+		if (selection && selection.toString()) return;
+		if (event.detail === 0) return;
+		openHoldingTransactions(row);
 	}
 
 	function rowsForProjectTransactions(rows: ReportProjectTransaction[], label: string | null, tag: string | undefined): ReportProjectTransaction[] {
@@ -606,7 +626,7 @@
 								class="clickable-row"
 								role="button"
 								tabindex="0"
-								on:click={() => openHoldingTransactions(row)}
+								on:click={(event) => handleHoldingRowClick(event, row)}
 								on:keydown={(event) => handleHoldingRowKeydown(event, row)}
 								title="View holding transactions"
 							>
@@ -721,14 +741,14 @@
 									</tr>
 									{#each group.rows as row}
 										<tr
-											class:clickable-row={detailSelection.kind === 'investment'}
-											role={detailSelection.kind === 'investment' ? 'button' : undefined}
-											tabindex={detailSelection.kind === 'investment' ? 0 : undefined}
-											on:click={() => detailSelection?.kind === 'investment' && openHoldingTransactions(row)}
-											on:keydown={(event) => detailSelection?.kind === 'investment' && handleHoldingRowKeydown(event, row)}
+											class:clickable-row={canOpenHoldingTransactions(row)}
+											role={canOpenHoldingTransactions(row) ? 'button' : undefined}
+											tabindex={canOpenHoldingTransactions(row) ? 0 : undefined}
+											on:click={(event) => handleHoldingRowClick(event, row)}
+											on:keydown={(event) => handleHoldingRowKeydown(event, row)}
 											class="child-row"
 										>
-											<td title={row.account || row.label}>{detailRowLabel(row)}</td>
+											<td title={row.account || row.label}>{detailDisplayLabel(row)}</td>
 											{#if detailSelection.kind === 'investment'}
 												<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 												<td>{row.commodity || ''}</td>
@@ -741,13 +761,13 @@
 							{:else}
 								{#each detailAccounts as row}
 									<tr
-										class:clickable-row={detailSelection.kind === 'investment'}
-										role={detailSelection.kind === 'investment' ? 'button' : undefined}
-										tabindex={detailSelection.kind === 'investment' ? 0 : undefined}
-										on:click={() => detailSelection?.kind === 'investment' && openHoldingTransactions(row)}
-										on:keydown={(event) => detailSelection?.kind === 'investment' && handleHoldingRowKeydown(event, row)}
+										class:clickable-row={canOpenHoldingTransactions(row)}
+										role={canOpenHoldingTransactions(row) ? 'button' : undefined}
+										tabindex={canOpenHoldingTransactions(row) ? 0 : undefined}
+										on:click={(event) => handleHoldingRowClick(event, row)}
+										on:keydown={(event) => handleHoldingRowKeydown(event, row)}
 									>
-										<td title={row.account || row.label}>{detailRowLabel(row)}</td>
+										<td title={row.account || row.label}>{detailDisplayLabel(row)}</td>
 										{#if detailSelection.kind === 'investment'}
 											<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 											<td>{row.commodity || ''}</td>
@@ -891,6 +911,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--size-4-4);
+		user-select: text;
 	}
 
 	.reports-header {
@@ -1034,6 +1055,7 @@
 		flex-direction: column;
 		gap: 4px;
 		min-height: 74px;
+		user-select: text;
 	}
 
 	button.metric-card {
@@ -1110,6 +1132,7 @@
 		box-shadow: none;
 		line-height: 1.35;
 		text-align: left;
+		user-select: text;
 	}
 
 	.breakdown-row.interactive {
@@ -1175,6 +1198,7 @@
 		width: 100%;
 		border-collapse: collapse;
 		font-size: var(--font-ui-small);
+		user-select: text;
 	}
 
 	.reports-table th,
@@ -1203,6 +1227,7 @@
 
 	.reports-table .clickable-row {
 		cursor: pointer;
+		user-select: text;
 	}
 
 	.reports-table .clickable-row:hover td,
@@ -1334,11 +1359,13 @@
 		font-size: var(--font-ui-small);
 		min-height: 30px;
 		padding: 4px 10px;
+		user-select: none;
 	}
 
 	.detail-modal-body {
 		overflow: auto;
 		padding: var(--size-4-4);
+		user-select: text;
 	}
 
 	.align-right {
