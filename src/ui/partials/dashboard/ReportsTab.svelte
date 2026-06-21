@@ -258,6 +258,10 @@
 	}
 
 	function canGoBackInDetails(): boolean {
+		if (!detailSelection) return false;
+		if (detailSelection.kind === 'income') return detailSelection.title !== 'Income';
+		if (detailSelection.kind === 'expense') return detailSelection.title !== 'Expenses';
+		if (detailSelection.kind === 'project') return !detailSelection.summary;
 		return Boolean(
 			detailSelection?.category
 			&& (detailSelection.kind === 'income' || detailSelection.kind === 'expense' || detailSelection.kind === 'project')
@@ -272,6 +276,12 @@
 			openDetails('expense', 'Expenses', state.totalExpenses);
 		} else if (detailSelection.kind === 'project') {
 			openProjectSummaryDetails('Project Net Income', projectNetIncomeTotal);
+		}
+	}
+
+	function closeOnBlankClick(event: MouseEvent, close: () => void) {
+		if (event.target === event.currentTarget) {
+			close();
 		}
 	}
 
@@ -824,23 +834,22 @@
 		<section class="detail-modal" role="dialog" aria-modal="true" aria-label="Report details">
 			<header class="detail-modal-header">
 				<div class="detail-modal-title">
-					{#if canGoBackInDetails()}
-						<button type="button" class="back-button" on:click={goBackInDetails} aria-label="Back to summary" title="Back to summary">&larr;</button>
-					{/if}
 					<div>
 						<h3>{detailSelection.title}</h3>
 						<div class="period-label">{state.periodLabel}</div>
 					</div>
 				</div>
 				<div class="detail-modal-actions">
+					{#if canGoBackInDetails()}
+						<button type="button" class="back-button" on:click={goBackInDetails} aria-label="Back to summary" title="Back to summary">&larr;</button>
+					{/if}
 					<strong class={amountClass(detailSelection.amount)}>{formatCurrency(detailSelection.amount)}</strong>
 					<button type="button" class="close-button" on:click={closeDetails} aria-label="Close details">Close</button>
 				</div>
 			</header>
 
-			<div class="detail-modal-body">
-				<button type="button" class="detail-modal-empty-close" on:click={closeDetails} aria-label="Close details"></button>
-				<div class="detail-modal-content">
+			<div class="detail-modal-body" role="presentation" on:click={(event) => closeOnBlankClick(event, closeDetails)}>
+				<div class="detail-modal-content" role="presentation" on:click={(event) => closeOnBlankClick(event, closeDetails)}>
 				{#if detailSelection.kind !== 'project'}
 					<div class="detail-table-wrap">
 					<h4>{detailSectionTitle(detailSelection.kind)}</h4>
@@ -959,9 +968,8 @@
 				</div>
 			</header>
 
-			<div class="detail-modal-body">
-				<button type="button" class="detail-modal-empty-close" on:click={closeHoldingTransactions} aria-label="Close holding transactions"></button>
-				<div class="detail-modal-content">
+			<div class="detail-modal-body" role="presentation" on:click={(event) => closeOnBlankClick(event, closeHoldingTransactions)}>
+				<div class="detail-modal-content" role="presentation" on:click={(event) => closeOnBlankClick(event, closeHoldingTransactions)}>
 				<div class="detail-table-wrap">
 					<h4>Transactions</h4>
 					{#if holdingTransactionsLoading}
@@ -1048,9 +1056,8 @@
 				</div>
 			</header>
 
-			<div class="detail-modal-body">
-				<button type="button" class="detail-modal-empty-close" on:click={closeAccountTransactions} aria-label="Close account transactions"></button>
-				<div class="detail-modal-content">
+			<div class="detail-modal-body" role="presentation" on:click={(event) => closeOnBlankClick(event, closeAccountTransactions)}>
+				<div class="detail-modal-content" role="presentation" on:click={(event) => closeOnBlankClick(event, closeAccountTransactions)}>
 				<div class="detail-table-wrap">
 					<h4>Account Transactions</h4>
 					{#if accountTransactionsLoading}
@@ -1587,21 +1594,6 @@
 		overflow: auto;
 		padding: var(--size-4-4);
 		user-select: text;
-	}
-
-	.detail-modal-empty-close {
-		position: absolute;
-		inset: 0;
-		z-index: 0;
-		width: 100%;
-		height: 100%;
-		min-height: 0;
-		padding: 0;
-		border: none;
-		border-radius: 0;
-		background: transparent;
-		box-shadow: none;
-		cursor: default;
 	}
 
 	.detail-modal-content {
