@@ -13,6 +13,11 @@
 		return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 	}
 
+	function formatQuantity(n: number | null | undefined): string {
+		if (!n) return '0';
+		return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+	}
+
 	const dispatch = createEventDispatcher();
 
 	function handleClick() {
@@ -145,10 +150,9 @@
 					<span class="value-currency">{operatingCurrency}</span>
 				</div>
 			{:else if commodity?.holdingsRaw && !commodity?.isOperatingCurrency}
-				<!-- Has holdings but no price to convert — show raw units -->
+				<!-- Has holdings but no price to convert — show quantity, not a value currency. -->
 				<div class="value-container" title={commodity.holdingsRaw}>
-					<span class="value-main no-price">{commodity.holdingsRaw.split(' ')[0]}</span>
-					<span class="value-currency">{commodity.symbol}</span>
+					<span class="value-main no-price">{formatQuantity(commodity.holdings)}</span>
 				</div>
 			{:else}
 				<div class="value-container">
@@ -182,9 +186,9 @@
 				<div class="data-row">
 					<span class="data-label">Holdings</span>
 					{#if commodity?.holdingsRaw}
-						<span class="data-value" title={commodity.holdingsRaw}>{commodity.holdingsRaw}</span>
+						<span class="data-value" title={commodity.holdingsRaw}>{formatQuantity(commodity.holdings)}</span>
 					{:else}
-						<span class="data-value unavailable">0 {commodity?.symbol}</span>
+						<span class="data-value unavailable">0</span>
 					{/if}
 				</div>
 			{/if}
