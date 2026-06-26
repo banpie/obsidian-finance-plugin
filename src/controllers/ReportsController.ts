@@ -429,7 +429,7 @@ export class ReportsController {
 		const costBasis = hasNameColumn ? this.parseOptionalNumber(row[6] || '') : null;
 		const quantityAmount = this.parseAmountCommodity(quantityRaw).amount;
 		const costBasisCommodity = this.parseAmountCommodity(costBasisRaw).commodity;
-		const costStatus = this.investmentCostStatus(costBasis, costBasisRaw, costBasisCommodity, commodity);
+		const costStatus = this.investmentCostStatus(costBasis, costBasisRaw, costBasisCommodity, commodity, amount);
 		const averageCost = costStatus === 'available' && costBasis !== null && quantityAmount
 			? Math.abs(costBasis / quantityAmount)
 			: null;
@@ -462,10 +462,16 @@ export class ReportsController {
 		costBasis: number | null,
 		costBasisRaw: string,
 		costBasisCommodity: string,
-		holdingCommodity: string
+		holdingCommodity: string,
+		currentValue: number
 	): ReportRow['costStatus'] {
+		const hasCurrentValue = Math.abs(currentValue) >= 0.01;
+		const normalizedCostRaw = costBasisRaw.trim();
+		if (hasCurrentValue && costBasis === 0 && (!normalizedCostRaw || normalizedCostRaw === '()' || costBasisCommodity === holdingCommodity)) {
+			return 'missing';
+		}
 		if (costBasis !== null) return 'available';
-		if (!costBasisRaw || costBasisRaw.trim() === '()') return 'missing';
+		if (!normalizedCostRaw || normalizedCostRaw === '()') return 'missing';
 		if (costBasisCommodity && costBasisCommodity !== holdingCommodity) return 'mixed-currency';
 		return 'missing';
 	}
