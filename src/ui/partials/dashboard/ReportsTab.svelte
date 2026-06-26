@@ -121,7 +121,13 @@
 	}
 
 	function investmentQuantity(row: ReportRow): string {
-		return row.quantityRaw || (row.quantity !== null && row.quantity !== undefined && row.commodity ? `${row.quantity} ${row.commodity}` : '—');
+		return row.quantity !== null && row.quantity !== undefined
+			? row.quantity.toLocaleString(undefined, { maximumFractionDigits: 6 })
+			: '—';
+	}
+
+	function investmentQuantityTitle(row: ReportRow): string {
+		return row.quantityRaw || (row.quantity !== null && row.quantity !== undefined && row.commodity ? `${row.quantity} ${row.commodity}` : 'No quantity available');
 	}
 
 	function investmentCostBasis(row: ReportRow): string {
@@ -828,7 +834,7 @@
 								<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 								<td>{row.commodity || ''}</td>
 								<td title={row.account || row.label}>{row.label}</td>
-								<td class="align-right" title={investmentQuantity(row)}>{investmentQuantity(row)}</td>
+								<td class="align-right" title={investmentQuantityTitle(row)}>{investmentQuantity(row)}</td>
 								<td class="align-right">{formatCurrency(row.amount)}</td>
 								<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
 								<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
