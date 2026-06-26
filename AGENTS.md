@@ -17,13 +17,14 @@
 
 Current feature branch:
 
-- `codex/investment-cost-basis` is for making investment holding cost basis easier to inspect.
+- `codex/reports-dashboard` is for Reports dashboard work, including making investment holding cost basis easier to inspect.
 
 ## Investment Cost Basis Direction
 
 - Treat commodity metadata and investment holdings separately. The Commodity dashboard includes currencies, prices, logos, and exchange-rate-like commodities; many of these do not have a meaningful holding cost basis.
 - Show cost basis in investment-oriented views, especially Reports -> Assets -> Investment holdings, rather than assuming every commodity has cost.
 - Derive holding cost basis from Beancount investment postings and their cost annotations, scoped to asset investment accounts and the selected as-of date.
+- Preserve the original cost currency in explanatory UI when an investment was bought in a foreign currency, then show the report-currency conversion for portfolio totals.
 - If a holding has no cost annotation or uses mixed cost currencies, show an explicit unavailable state instead of a misleading zero.
 - Useful columns for investment holding rows: current value, quantity, total cost basis, average unit cost, unrealized gain/loss, gain/loss percent, and a cost status.
 - Keep row click-through transaction details; they already expose per-transaction unit cost and cost basis, and can be reused to explain aggregate numbers.

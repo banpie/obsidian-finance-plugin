@@ -126,6 +126,8 @@ interface AmountCommodity {
 
 interface InvestmentCostBasis {
 	amount: number;
+	rawAmount: number;
+	rawCommodity: string;
 	source: 'cost' | 'total-price';
 }
 
@@ -445,7 +447,7 @@ export class ReportsController {
 				? aggregateCostBasis
 				: null;
 		const costBasisRaw = derivedCostBasis
-			? `${this.roundCurrency(derivedCostBasis.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${operatingCurrency}`
+			? this.formatInvestmentCostBasisRaw(derivedCostBasis, operatingCurrency)
 			: aggregateCostBasisRaw;
 		const costBasisCommodity = derivedCostBasis ? operatingCurrency : aggregateCostCommodity;
 		const costStatus = this.investmentCostStatus(costBasis, costBasisRaw, costBasisCommodity, commodity, amount);
@@ -508,23 +510,39 @@ export class ReportsController {
 			const sourcePrice = this.parseOptionalNumber(sourcePriceRaw || '');
 			const confirmedPrice = this.parseOptionalNumber(confirmedPriceRaw || '');
 			let costAmount: number | null = null;
+			let rawAmount: number | null = null;
+			let rawCommodity = '';
 			let source: InvestmentCostBasis['source'] = 'cost';
 
 			if (costRawAmount.commodity && costRawAmount.commodity !== commodity && convertedCost !== null) {
 				costAmount = convertedCost;
+				rawAmount = costRawAmount.amount;
+				rawCommodity = costRawAmount.commodity;
 			} else if (sourcePrice !== null || confirmedPrice !== null) {
 				costAmount = quantity.amount * (sourcePrice ?? confirmedPrice ?? 0);
+				rawAmount = costAmount;
+				rawCommodity = operatingCurrency;
 				source = 'total-price';
 			} else if (commodity === operatingCurrency && costRawAmount.commodity === operatingCurrency) {
 				costAmount = costRawAmount.amount;
+				rawAmount = costRawAmount.amount;
+				rawCommodity = operatingCurrency;
 			}
 
-			if (costAmount === null) continue;
+			if (costAmount === null || rawAmount === null) continue;
 			const key = this.investmentHoldingKey(account, commodity);
 			const current = costByHolding.get(key);
+			const nextAmount = (current?.amount || 0) + costAmount;
+			const canKeepRawCost = !current || current.rawCommodity === rawCommodity;
 			costByHolding.set(key, {
-				amount: (current?.amount || 0) + costAmount,
-				source: current?.source === 'cost' ? 'cost' : source,
+				amount: nextAmount,
+				rawAmount: current
+					? canKeepRawCost
+						? current.rawAmount + rawAmount
+						: nextAmount
+					: rawAmount,
+				rawCommodity: canKeepRawCost ? rawCommodity : operatingCurrency,
+				source: current?.source === 'cost' && source === 'cost' ? 'cost' : source,
 			});
 		}
 		return costByHolding;
@@ -790,6 +808,12 @@ export class ReportsController {
 		if (!commodity) return '';
 		const maximumFractionDigits = Number.isInteger(amount) ? 0 : 4;
 		return `${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits })} ${commodity}`;
+	}
+
+	private formatInvestmentCostBasisRaw(costBasis: InvestmentCostBasis, operatingCurrency: string): string {
+		const converted = `${this.roundCurrency(costBasis.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${operatingCurrency}`;
+		if (!costBasis.rawCommodity || costBasis.rawCommodity === operatingCurrency) return converted;
+		return `${this.formatAmountCommodity(costBasis.rawAmount, costBasis.rawCommodity)} -> ${converted}`;
 	}
 
 	private parseCounterpartRows(rawCsv: string): Map<string, string[]> {
