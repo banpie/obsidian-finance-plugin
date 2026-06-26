@@ -18,6 +18,20 @@
 		return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 });
 	}
 
+	const fiatCurrencySymbols = new Set([
+		'AUD',
+		'CAD',
+		'CHF',
+		'CNY',
+		'EUR',
+		'GBP',
+		'HKD',
+		'JPY',
+		'NZD',
+		'SGD',
+		'USD',
+	]);
+
 	const dispatch = createEventDispatcher();
 
 	function handleClick() {
@@ -91,6 +105,9 @@
 	}
 
 	$: displayName = commodity?.displayName || commodity?.metadata?.name || "";
+	$: isFiatCurrency = fiatCurrencySymbols.has(commodity?.symbol || '');
+	$: priceLabel = isFiatCurrency ? 'FX Rate' : 'Unit Price';
+	$: holdingsLabel = isFiatCurrency ? 'Balance' : 'Units';
 	$: ariaLabel = displayName
 		? `View details for ${commodity?.symbol || `UNKNOWN_${index}`} (${displayName})`
 		: `View details for ${commodity?.symbol || `UNKNOWN_${index}`}`;
@@ -174,7 +191,7 @@
 			{:else}
 				<!-- Price row -->
 				<div class="data-row">
-					<span class="data-label">Price</span>
+					<span class="data-label">{priceLabel}</span>
 					{#if commodity?.currentPrice}
 						<span class="data-value" title={commodity.currentPrice}>{commodity.currentPrice}</span>
 					{:else}
@@ -184,7 +201,7 @@
 
 				<!-- Holdings row -->
 				<div class="data-row">
-					<span class="data-label">Holdings</span>
+					<span class="data-label">{holdingsLabel}</span>
 					{#if commodity?.holdingsRaw}
 						<span class="data-value" title={commodity.holdingsRaw}>{formatQuantity(commodity.holdings)}</span>
 					{:else}
@@ -479,7 +496,7 @@
 	/* Price + Holdings rows */
 	.data-row {
 		display: grid;
-		grid-template-columns: 78px minmax(0, 1fr);
+		grid-template-columns: 92px minmax(0, 1fr);
 		align-items: baseline;
 		gap: 10px;
 		padding: 6px 0;
