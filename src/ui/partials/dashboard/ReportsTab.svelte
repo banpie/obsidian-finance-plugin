@@ -92,6 +92,11 @@
 		return value === null || value === undefined ? '—' : formatCurrency(value);
 	}
 
+	function formatSignedCurrency(value: number): string {
+		const prefix = value > 0 ? '+' : '';
+		return `${prefix}${formatCurrency(value)}`;
+	}
+
 	function formatPercent(value: number): string {
 		return `${value.toFixed(1)}%`;
 	}
@@ -145,7 +150,8 @@
 	function investmentGain(row: ReportRow): string {
 		if (row.unrealizedGain === null || row.unrealizedGain === undefined) return '—';
 		const percent = formatOptionalPercent(row.unrealizedGainPercent);
-		return `${formatCurrency(row.unrealizedGain)} (${percent})`;
+		const percentPrefix = row.unrealizedGainPercent !== null && row.unrealizedGainPercent !== undefined && row.unrealizedGainPercent > 0 ? '+' : '';
+		return `${formatSignedCurrency(row.unrealizedGain)} (${percentPrefix}${percent})`;
 	}
 
 	function investmentGainClass(row: ReportRow): string {
@@ -823,7 +829,7 @@
 								<td>{row.commodity || ''}</td>
 								<td title={row.account || row.label}>{row.label}</td>
 								<td class="align-right" title={investmentQuantity(row)}>{investmentQuantity(row)}</td>
-								<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
+								<td class="align-right">{formatCurrency(row.amount)}</td>
 								<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
 								<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
 								<td class={`align-right ${investmentGainClass(row)}`}>{investmentGain(row)}</td>
@@ -945,7 +951,7 @@
 								{#each detailGroups as group}
 									<tr class="group-row">
 										<td colspan={detailSelection.kind === 'investment' ? 3 : 1}>{group.label}</td>
-										<td class={`align-right ${amountClass(group.amount)}`}>{formatCurrency(group.amount)}</td>
+										<td class={`align-right ${detailSelection.kind === 'investment' ? '' : amountClass(group.amount)}`}>{formatCurrency(group.amount)}</td>
 										{#if detailSelection.kind === 'investment'}
 											<td class="align-right">{formatOptionalCurrency(groupCostBasis(group.rows))}</td>
 											<td class="align-right">—</td>
@@ -967,7 +973,7 @@
 												<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 												<td>{row.commodity || ''}</td>
 											{/if}
-											<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
+											<td class={`align-right ${detailSelection.kind === 'investment' ? '' : amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
 											{#if detailSelection.kind === 'investment'}
 												<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
 												<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
@@ -991,7 +997,7 @@
 											<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 											<td>{row.commodity || ''}</td>
 										{/if}
-										<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
+										<td class={`align-right ${detailSelection.kind === 'investment' ? '' : amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
 										{#if detailSelection.kind === 'investment'}
 											<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
 											<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>

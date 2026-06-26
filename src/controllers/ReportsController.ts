@@ -124,6 +124,11 @@ interface AmountCommodity {
 	commodity: string;
 }
 
+interface InvestmentCostBasis {
+	amount: number;
+	source: 'cost' | 'total-price';
+}
+
 interface InvestmentPostingRow {
 	date: string;
 	payee: string;
@@ -307,6 +312,7 @@ export class ReportsController {
 				assetsCsv,
 				liabilitiesCsv,
 				investmentsCsv,
+				investmentCostPostingsCsv,
 			] = await Promise.all([
 				this.plugin.runQuery(queries.getPeriodIncomeBreakdownQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodExpenseBreakdownQuery(currency, 2, range.startDate, range.endDate)),
@@ -322,6 +328,7 @@ export class ReportsController {
 				this.plugin.runQuery(queries.getAssetAllocationQuery(currency, 2, range.endDate)),
 				this.plugin.runQuery(queries.getLiabilityAllocationQuery(currency, 2, range.endDate)),
 				this.plugin.runQuery(queries.getInvestmentAllocationQuery(currency, 2, range.endDate)),
+				this.plugin.runQuery(queries.getInvestmentCostPostingsQuery(currency, range.endDate)),
 			]);
 
 			const incomeByAccount = this.parseAccountRows(incomeCsv);
@@ -332,7 +339,8 @@ export class ReportsController {
 			const liabilitiesByAccount = this.parseAccountRows(liabilitiesCsv).filter(row => row.amount > 0);
 			const assetsByCategory = this.groupRows(assetsByAccount, row => this.accountSegment(row.account, 1), true);
 			const liabilitiesByCategory = this.groupRows(liabilitiesByAccount, row => this.accountSegment(row.account, 1), true);
-			const investmentRows = this.parseInvestmentRows(investmentsCsv);
+			const investmentCostBasis = this.parseInvestmentCostBasisRows(investmentCostPostingsCsv, currency);
+			const investmentRows = this.parseInvestmentRows(investmentsCsv, investmentCostBasis, currency);
 			const investmentsByType = this.groupRows(investmentRows, row => this.investmentType(row.account), true);
 			const topInvestments = this.withPercent(
 				investmentRows
@@ -410,25 +418,36 @@ export class ReportsController {
 			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 	}
 
-	private parseInvestmentRows(rawCsv: string): ReportRow[] {
+	private parseInvestmentRows(rawCsv: string, costBasisByHolding = new Map<string, InvestmentCostBasis>(), operatingCurrency = this.plugin.settings.operatingCurrency): ReportRow[] {
 		return this.parseRows(rawCsv)
 			.filter(row => row.length >= 3)
-			.map(row => this.parseInvestmentRow(row))
+			.map(row => this.parseInvestmentRow(row, costBasisByHolding, operatingCurrency))
 			.filter(row => Math.abs(row.amount) >= 0.01)
 			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 	}
 
-	private parseInvestmentRow(row: CsvRow): ReportRow {
+	private parseInvestmentRow(row: CsvRow, costBasisByHolding: Map<string, InvestmentCostBasis>, operatingCurrency: string): ReportRow {
 		const hasNameColumn = row.length >= 4;
 		const account = row[0];
 		const commodity = row[1];
 		const commodityName = hasNameColumn ? row[2] : undefined;
 		const amount = this.parseNumber(hasNameColumn ? row[3] : row[2]);
 		const quantityRaw = hasNameColumn ? row[4] || '' : '';
-		const costBasisRaw = hasNameColumn ? row[5] || '' : '';
-		const costBasis = hasNameColumn ? this.parseOptionalNumber(row[6] || '') : null;
+		const aggregateCostBasisRaw = hasNameColumn ? row[5] || '' : '';
+		const aggregateCostBasis = hasNameColumn ? this.parseOptionalNumber(row[6] || '') : null;
 		const quantityAmount = this.parseAmountCommodity(quantityRaw).amount;
-		const costBasisCommodity = this.parseAmountCommodity(costBasisRaw).commodity;
+		const aggregateCostCommodity = this.parseAmountCommodity(aggregateCostBasisRaw).commodity;
+		const derivedCostBasis = costBasisByHolding.get(this.investmentHoldingKey(account, commodity));
+		const aggregateHasCost = aggregateCostCommodity && (aggregateCostCommodity !== commodity || commodity === operatingCurrency);
+		const costBasis = derivedCostBasis
+			? this.roundCurrency(derivedCostBasis.amount)
+			: aggregateHasCost
+				? aggregateCostBasis
+				: null;
+		const costBasisRaw = derivedCostBasis
+			? `${this.roundCurrency(derivedCostBasis.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${operatingCurrency}`
+			: aggregateCostBasisRaw;
+		const costBasisCommodity = derivedCostBasis ? operatingCurrency : aggregateCostCommodity;
 		const costStatus = this.investmentCostStatus(costBasis, costBasisRaw, costBasisCommodity, commodity, amount);
 		const averageCost = costStatus === 'available' && costBasis !== null && quantityAmount
 			? Math.abs(costBasis / quantityAmount)
@@ -474,6 +493,45 @@ export class ReportsController {
 		if (!normalizedCostRaw || normalizedCostRaw === '()') return 'missing';
 		if (costBasisCommodity && costBasisCommodity !== holdingCommodity) return 'mixed-currency';
 		return 'missing';
+	}
+
+	private parseInvestmentCostBasisRows(rawCsv: string, operatingCurrency: string): Map<string, InvestmentCostBasis> {
+		const costByHolding = new Map<string, InvestmentCostBasis>();
+		for (const row of this.parseRows(rawCsv)) {
+			if (row.length < 6) continue;
+			const [account, commodity, position, units, costRaw, costConvertedRaw, sourcePriceRaw, confirmedPriceRaw] = row;
+			const quantity = this.parseAmountCommodity(units || position);
+			if (!account || !commodity || !quantity.amount) continue;
+
+			const costRawAmount = this.parseAmountCommodity(costRaw);
+			const convertedCost = this.parseOptionalNumber(costConvertedRaw);
+			const sourcePrice = this.parseOptionalNumber(sourcePriceRaw || '');
+			const confirmedPrice = this.parseOptionalNumber(confirmedPriceRaw || '');
+			let costAmount: number | null = null;
+			let source: InvestmentCostBasis['source'] = 'cost';
+
+			if (costRawAmount.commodity && costRawAmount.commodity !== commodity && convertedCost !== null) {
+				costAmount = convertedCost;
+			} else if (sourcePrice !== null || confirmedPrice !== null) {
+				costAmount = quantity.amount * (sourcePrice ?? confirmedPrice ?? 0);
+				source = 'total-price';
+			} else if (commodity === operatingCurrency && costRawAmount.commodity === operatingCurrency) {
+				costAmount = costRawAmount.amount;
+			}
+
+			if (costAmount === null) continue;
+			const key = this.investmentHoldingKey(account, commodity);
+			const current = costByHolding.get(key);
+			costByHolding.set(key, {
+				amount: (current?.amount || 0) + costAmount,
+				source: current?.source === 'cost' ? 'cost' : source,
+			});
+		}
+		return costByHolding;
+	}
+
+	private investmentHoldingKey(account: string, commodity: string): string {
+		return `${account}\u001f${commodity}`;
 	}
 
 	private parseTransactionRows(rawCsv: string, counterpartAccounts = new Map<string, string[]>()): ReportTransaction[] {
@@ -716,6 +774,15 @@ export class ReportsController {
 		return {
 			amount: match ? Number(match[1]) : 0,
 			commodity: match ? match[2] : '',
+		};
+	}
+
+	private parseTotalPrice(value: string): AmountCommodity | null {
+		const match = (value || '').replace(/,/g, '').match(/@@\s*(-?\d+(?:\.\d+)?)\s+([A-Z][A-Z0-9._-]*)/);
+		if (!match) return null;
+		return {
+			amount: Number(match[1]),
+			commodity: match[2],
 		};
 	}
 
