@@ -467,7 +467,7 @@ export class ReportsController {
 	): ReportRow['costStatus'] {
 		const hasCurrentValue = Math.abs(currentValue) >= 0.01;
 		const normalizedCostRaw = costBasisRaw.trim();
-		if (hasCurrentValue && costBasis === 0 && (!normalizedCostRaw || normalizedCostRaw === '()' || costBasisCommodity === holdingCommodity)) {
+		if (hasCurrentValue && costBasis === 0) {
 			return 'missing';
 		}
 		if (costBasis !== null) return 'available';

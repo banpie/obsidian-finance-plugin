@@ -132,9 +132,14 @@
 	}
 
 	function investmentAverageCost(row: ReportRow): string {
-		return row.averageCost !== null && row.averageCost !== undefined && row.commodity
-			? `${formatCurrency(row.averageCost)} / ${row.commodity}`
+		return row.averageCost !== null && row.averageCost !== undefined
+			? formatCurrency(row.averageCost)
 			: '—';
+	}
+
+	function investmentAverageCostTitle(row: ReportRow): string {
+		if (row.averageCost === null || row.averageCost === undefined) return 'No average cost available for this holding.';
+		return row.commodity ? `Average cost per 1 ${row.commodity}` : 'Average cost per unit';
 	}
 
 	function investmentGain(row: ReportRow): string {
@@ -799,7 +804,7 @@
 							<th class="align-right">Quantity</th>
 							<th class="align-right">Value</th>
 							<th class="align-right">Cost</th>
-							<th class="align-right">Avg Cost</th>
+							<th class="align-right">Avg Cost / Unit</th>
 							<th class="align-right">Gain/Loss</th>
 							<th class="align-right">Share</th>
 						</tr>
@@ -820,7 +825,7 @@
 								<td class="align-right" title={investmentQuantity(row)}>{investmentQuantity(row)}</td>
 								<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
 								<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
-								<td class="align-right">{investmentAverageCost(row)}</td>
+								<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
 								<td class={`align-right ${investmentGainClass(row)}`}>{investmentGain(row)}</td>
 								<td class="align-right">{formatPercent(row.percent)}</td>
 							</tr>
@@ -929,7 +934,7 @@
 								<th class="align-right">Amount</th>
 								{#if detailSelection.kind === 'investment'}
 									<th class="align-right">Cost</th>
-									<th class="align-right">Avg Cost</th>
+									<th class="align-right">Avg Cost / Unit</th>
 									<th class="align-right">Gain/Loss</th>
 								{/if}
 								<th class="align-right">Share</th>
@@ -965,7 +970,7 @@
 											<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
 											{#if detailSelection.kind === 'investment'}
 												<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
-												<td class="align-right">{investmentAverageCost(row)}</td>
+												<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
 												<td class={`align-right ${investmentGainClass(row)}`}>{investmentGain(row)}</td>
 											{/if}
 											<td class="align-right">{detailPercent(row.amount, detailSelection.amount)}</td>
@@ -989,7 +994,7 @@
 										<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
 										{#if detailSelection.kind === 'investment'}
 											<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
-											<td class="align-right">{investmentAverageCost(row)}</td>
+											<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
 											<td class={`align-right ${investmentGainClass(row)}`}>{investmentGain(row)}</td>
 										{/if}
 										<td class="align-right">{detailPercent(row.amount, detailSelection.amount)}</td>

@@ -4,7 +4,9 @@
 
 - `master` tracks `mkshp-dev/master`. Keep it clean and fast-forward it from `upstream/master`; do not do feature work directly on `master`.
 - `codex/local-current` is Banpie's personal integration branch. It should include the latest upstream `master` plus Banpie's local optimizations.
-- Create each new optimization on a dedicated `codex/<topic>` branch from `codex/local-current` when the work depends on Banpie's integrated local improvements.
+- Before creating a branch, fetch all remotes with `git fetch origin --prune` and check whether a topic branch already exists.
+- Reuse the existing topic branch when one matches the work area. For Reports work, use `codex/reports-dashboard`.
+- Create each new optimization on a dedicated `codex/<topic>` branch from `codex/local-current` only when no suitable existing topic branch exists and the work depends on Banpie's integrated local improvements.
 - Create upstream-facing PR branches from `master` when the change can be isolated cleanly for `mkshp-dev/obsidian-finance-plugin`.
 - Do not open upstream PRs directly from `codex/local-current` unless the intent is to submit every accumulated local optimization in that branch.
 - After upstream `master` changes, sync `master` first, then merge `upstream/master` into `codex/local-current`, resolve conflicts, build, and push.
