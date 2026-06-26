@@ -88,8 +88,16 @@
 		return `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${state.currency}`;
 	}
 
+	function formatOptionalCurrency(value: number | null | undefined): string {
+		return value === null || value === undefined ? '—' : formatCurrency(value);
+	}
+
 	function formatPercent(value: number): string {
 		return `${value.toFixed(1)}%`;
+	}
+
+	function formatOptionalPercent(value: number | null | undefined): string {
+		return value === null || value === undefined ? '—' : formatPercent(value);
 	}
 
 	function barWidth(row: ReportRow): string {
@@ -105,6 +113,54 @@
 		if (value > 0) return 'positive';
 		if (value < 0) return 'negative';
 		return '';
+	}
+
+	function investmentQuantity(row: ReportRow): string {
+		return row.quantityRaw || (row.quantity !== null && row.quantity !== undefined && row.commodity ? `${row.quantity} ${row.commodity}` : '—');
+	}
+
+	function investmentCostBasis(row: ReportRow): string {
+		if (row.costStatus === 'available') return formatOptionalCurrency(row.costBasis);
+		if (row.costStatus === 'mixed-currency' && row.costBasisRaw) return row.costBasisRaw;
+		return '—';
+	}
+
+	function investmentCostTitle(row: ReportRow): string {
+		if (row.costStatus === 'available') return row.costBasisRaw || investmentCostBasis(row);
+		if (row.costStatus === 'mixed-currency') return `Cost is not in ${state.currency}: ${row.costBasisRaw || 'mixed cost inventory'}`;
+		return 'No cost basis available for this holding.';
+	}
+
+	function investmentAverageCost(row: ReportRow): string {
+		return row.averageCost !== null && row.averageCost !== undefined && row.commodity
+			? `${formatCurrency(row.averageCost)} / ${row.commodity}`
+			: '—';
+	}
+
+	function investmentGain(row: ReportRow): string {
+		if (row.unrealizedGain === null || row.unrealizedGain === undefined) return '—';
+		const percent = formatOptionalPercent(row.unrealizedGainPercent);
+		return `${formatCurrency(row.unrealizedGain)} (${percent})`;
+	}
+
+	function investmentGainClass(row: ReportRow): string {
+		return row.unrealizedGain === null || row.unrealizedGain === undefined ? '' : amountClass(row.unrealizedGain);
+	}
+
+	function completeCostRows(rows: ReportRow[]): ReportRow[] {
+		return rows.filter(row => Math.abs(row.amount) >= 0.01 && row.costStatus === 'available' && row.costBasis !== null && row.costBasis !== undefined);
+	}
+
+	function groupCostBasis(rows: ReportRow[]): number | null {
+		const completeRows = completeCostRows(rows);
+		if (completeRows.length !== rows.filter(row => Math.abs(row.amount) >= 0.01).length) return null;
+		return completeRows.reduce((sum, row) => sum + (row.costBasis || 0), 0);
+	}
+
+	function groupGain(rows: ReportRow[]): number | null {
+		const costBasis = groupCostBasis(rows);
+		if (costBasis === null) return null;
+		return rows.reduce((sum, row) => sum + row.amount, 0) - costBasis;
 	}
 
 	function majorCategory(account: string | undefined): string {
@@ -740,7 +796,11 @@
 							<th>Commodity Name</th>
 							<th>Commodity</th>
 							<th>Ledger Account</th>
-							<th class="align-right">Amount</th>
+							<th class="align-right">Quantity</th>
+							<th class="align-right">Value</th>
+							<th class="align-right">Cost</th>
+							<th class="align-right">Avg Cost</th>
+							<th class="align-right">Gain/Loss</th>
 							<th class="align-right">Share</th>
 						</tr>
 					</thead>
@@ -757,7 +817,11 @@
 								<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 								<td>{row.commodity || ''}</td>
 								<td title={row.account || row.label}>{row.label}</td>
+								<td class="align-right" title={investmentQuantity(row)}>{investmentQuantity(row)}</td>
 								<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
+								<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
+								<td class="align-right">{investmentAverageCost(row)}</td>
+								<td class={`align-right ${investmentGainClass(row)}`}>{investmentGain(row)}</td>
 								<td class="align-right">{formatPercent(row.percent)}</td>
 							</tr>
 						{/each}
@@ -863,6 +927,11 @@
 									<th>Commodity</th>
 								{/if}
 								<th class="align-right">Amount</th>
+								{#if detailSelection.kind === 'investment'}
+									<th class="align-right">Cost</th>
+									<th class="align-right">Avg Cost</th>
+									<th class="align-right">Gain/Loss</th>
+								{/if}
 								<th class="align-right">Share</th>
 							</tr>
 						</thead>
@@ -872,6 +941,11 @@
 									<tr class="group-row">
 										<td colspan={detailSelection.kind === 'investment' ? 3 : 1}>{group.label}</td>
 										<td class={`align-right ${amountClass(group.amount)}`}>{formatCurrency(group.amount)}</td>
+										{#if detailSelection.kind === 'investment'}
+											<td class="align-right">{formatOptionalCurrency(groupCostBasis(group.rows))}</td>
+											<td class="align-right">—</td>
+											<td class={`align-right ${amountClass(groupGain(group.rows) || 0)}`}>{formatOptionalCurrency(groupGain(group.rows))}</td>
+										{/if}
 										<td class="align-right">{detailPercent(group.amount, detailSelection.amount)}</td>
 									</tr>
 									{#each group.rows as row}
@@ -889,6 +963,11 @@
 												<td>{row.commodity || ''}</td>
 											{/if}
 											<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
+											{#if detailSelection.kind === 'investment'}
+												<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
+												<td class="align-right">{investmentAverageCost(row)}</td>
+												<td class={`align-right ${investmentGainClass(row)}`}>{investmentGain(row)}</td>
+											{/if}
 											<td class="align-right">{detailPercent(row.amount, detailSelection.amount)}</td>
 										</tr>
 									{/each}
@@ -908,6 +987,11 @@
 											<td>{row.commodity || ''}</td>
 										{/if}
 										<td class={`align-right ${amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
+										{#if detailSelection.kind === 'investment'}
+											<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
+											<td class="align-right">{investmentAverageCost(row)}</td>
+											<td class={`align-right ${investmentGainClass(row)}`}>{investmentGain(row)}</td>
+										{/if}
 										<td class="align-right">{detailPercent(row.amount, detailSelection.amount)}</td>
 									</tr>
 								{/each}

@@ -16,6 +16,14 @@ export interface ReportRow {
 	commodityName?: string;
 	amount: number;
 	percent: number;
+	quantity?: number | null;
+	quantityRaw?: string;
+	costBasis?: number | null;
+	costBasisRaw?: string;
+	averageCost?: number | null;
+	unrealizedGain?: number | null;
+	unrealizedGainPercent?: number | null;
+	costStatus?: 'available' | 'missing' | 'mixed-currency';
 }
 
 export interface ReportTransaction {
@@ -405,16 +413,61 @@ export class ReportsController {
 	private parseInvestmentRows(rawCsv: string): ReportRow[] {
 		return this.parseRows(rawCsv)
 			.filter(row => row.length >= 3)
-			.map(row => ({
-				label: this.accountLabel(row[0]),
-				account: row[0],
-				commodity: row[1],
-				commodityName: row.length >= 4 ? row[2] : undefined,
-				amount: this.parseNumber(row.length >= 4 ? row[3] : row[2]),
-				percent: 0,
-			}))
+			.map(row => this.parseInvestmentRow(row))
 			.filter(row => Math.abs(row.amount) >= 0.01)
 			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+	}
+
+	private parseInvestmentRow(row: CsvRow): ReportRow {
+		const hasNameColumn = row.length >= 4;
+		const account = row[0];
+		const commodity = row[1];
+		const commodityName = hasNameColumn ? row[2] : undefined;
+		const amount = this.parseNumber(hasNameColumn ? row[3] : row[2]);
+		const quantityRaw = hasNameColumn ? row[4] || '' : '';
+		const costBasisRaw = hasNameColumn ? row[5] || '' : '';
+		const costBasis = hasNameColumn ? this.parseOptionalNumber(row[6] || '') : null;
+		const quantityAmount = this.parseAmountCommodity(quantityRaw).amount;
+		const costBasisCommodity = this.parseAmountCommodity(costBasisRaw).commodity;
+		const costStatus = this.investmentCostStatus(costBasis, costBasisRaw, costBasisCommodity, commodity);
+		const averageCost = costStatus === 'available' && costBasis !== null && quantityAmount
+			? Math.abs(costBasis / quantityAmount)
+			: null;
+		const unrealizedGain = costStatus === 'available' && costBasis !== null
+			? this.roundCurrency(amount - costBasis)
+			: null;
+		const unrealizedGainPercent = unrealizedGain !== null && costBasis
+			? (unrealizedGain / Math.abs(costBasis)) * 100
+			: null;
+
+		return {
+			label: this.accountLabel(account),
+			account,
+			commodity,
+			commodityName,
+			amount,
+			percent: 0,
+			quantity: quantityAmount || null,
+			quantityRaw,
+			costBasis,
+			costBasisRaw,
+			averageCost,
+			unrealizedGain,
+			unrealizedGainPercent,
+			costStatus,
+		};
+	}
+
+	private investmentCostStatus(
+		costBasis: number | null,
+		costBasisRaw: string,
+		costBasisCommodity: string,
+		holdingCommodity: string
+	): ReportRow['costStatus'] {
+		if (costBasis !== null) return 'available';
+		if (!costBasisRaw || costBasisRaw.trim() === '()') return 'missing';
+		if (costBasisCommodity && costBasisCommodity !== holdingCommodity) return 'mixed-currency';
+		return 'missing';
 	}
 
 	private parseTransactionRows(rawCsv: string, counterpartAccounts = new Map<string, string[]>()): ReportTransaction[] {
@@ -691,6 +744,11 @@ export class ReportsController {
 	private parseNumber(value: string): number {
 		const match = (value || '').replace(/,/g, '').match(/-?\d+(\.\d+)?/);
 		return match ? Number(match[0]) : 0;
+	}
+
+	private parseOptionalNumber(value: string): number | null {
+		const match = (value || '').replace(/,/g, '').match(/-?\d+(\.\d+)?/);
+		return match ? Number(match[0]) : null;
 	}
 
 	private roundCurrency(value: number): number {

@@ -110,7 +110,7 @@ export function getLiabilityAllocationQuery(currency: string, rounding: number, 
 }
 
 export function getInvestmentAllocationQuery(currency: string, rounding: number, asOfDate?: string): string {
-	return `SELECT account, currency, currency_meta(currency, 'name') AS _commodityName, round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding}) AS _value WHERE account ~ '^Assets:Investments'${asOfDateClause(asOfDate)}${openAccountClause(asOfDate)} GROUP BY account, currency, currency_meta(currency, 'name') ORDER BY account, currency`;
+	return `SELECT account, currency, currency_meta(currency, 'name') AS _commodityName, round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding}) AS _value, units(sum(position)) AS _quantity, cost(sum(position)) AS _costBasisRaw, round(number(only('${currency}', cost(sum(position)))), ${rounding}) AS _costBasis WHERE account ~ '^Assets:Investments'${asOfDateClause(asOfDate)}${openAccountClause(asOfDate)} GROUP BY account, currency, currency_meta(currency, 'name') ORDER BY account, currency`;
 }
 
 export function getInvestmentTransactionsQuery(account: string, commodity: string, endDate: string, limit = 500): string {
