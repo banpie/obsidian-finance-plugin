@@ -8,7 +8,10 @@
 - Create upstream-facing PR branches from `master` when the change can be isolated cleanly for `mkshp-dev/obsidian-finance-plugin`.
 - Do not open upstream PRs directly from `codex/local-current` unless the intent is to submit every accumulated local optimization in that branch.
 - After upstream `master` changes, sync `master` first, then merge `upstream/master` into `codex/local-current`, resolve conflicts, build, and push.
-- After a feature branch is validated, merge it back into `codex/local-current`. If the same feature should be proposed upstream, prepare a separate minimal PR branch from `master` or cherry-pick the relevant commits.
+- After a feature branch is validated, merge it back into `codex/local-current`, build, push `codex/local-current`, and deploy that branch to Banpie's local Obsidian plugin directory for testing.
+- Banpie's Obsidian test version always comes from `codex/local-current`, not from an isolated feature branch.
+- Use `/Users/banpie/dev/banpie-skills/obsidian-finance-plugin-deploy/scripts/deploy-local.mjs` for local deployment. Do not add machine-specific deploy scripts, package scripts, vault paths, or plugin paths to this repository.
+- If the same feature should be proposed upstream, prepare a separate minimal PR branch from `master` or cherry-pick the relevant commits after Banpie has tested the `codex/local-current` deployment.
 
 Current feature branch:
 
