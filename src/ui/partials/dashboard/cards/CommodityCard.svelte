@@ -150,9 +150,9 @@
 					<span class="value-currency">{operatingCurrency}</span>
 				</div>
 			{:else if commodity?.holdingsRaw && !commodity?.isOperatingCurrency}
-				<!-- Has holdings but no price to convert — show quantity, not a value currency. -->
+				<!-- Has holdings but no price to convert, so no market value is available. -->
 				<div class="value-container" title={commodity.holdingsRaw}>
-					<span class="value-main no-price">{formatQuantity(commodity.holdings)}</span>
+					<span class="value-main no-price">No value</span>
 				</div>
 			{:else}
 				<div class="value-container">
