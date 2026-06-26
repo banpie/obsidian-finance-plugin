@@ -92,6 +92,10 @@
 		return value === null || value === undefined ? '—' : formatCurrency(value);
 	}
 
+	function formatUnitCurrency(value: number): string {
+		return `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} ${state.currency}`;
+	}
+
 	function formatSignedCurrency(value: number): string {
 		const prefix = value > 0 ? '+' : '';
 		return `${prefix}${formatCurrency(value)}`;
@@ -130,6 +134,18 @@
 		return row.quantityRaw || (row.quantity !== null && row.quantity !== undefined && row.commodity ? `${row.quantity} ${row.commodity}` : 'No quantity available');
 	}
 
+	function investmentPrice(row: ReportRow): string {
+		return row.currentPrice !== null && row.currentPrice !== undefined
+			? formatUnitCurrency(row.currentPrice)
+			: '—';
+	}
+
+	function investmentPriceTitle(row: ReportRow): string {
+		if (row.currentPrice === null || row.currentPrice === undefined) return 'No current price available for this holding.';
+		const unit = row.commodity ? `1 ${row.commodity}` : '1 unit';
+		return `Current report-currency price per ${unit}`;
+	}
+
 	function investmentCostBasis(row: ReportRow): string {
 		if (row.costStatus === 'available') return formatOptionalCurrency(row.costBasis);
 		if (row.costStatus === 'mixed-currency' && row.costBasisRaw) return row.costBasisRaw;
@@ -144,7 +160,7 @@
 
 	function investmentAverageCost(row: ReportRow): string {
 		return row.averageCost !== null && row.averageCost !== undefined
-			? formatCurrency(row.averageCost)
+			? formatUnitCurrency(row.averageCost)
 			: '—';
 	}
 
@@ -814,8 +830,9 @@
 							<th>Commodity</th>
 							<th>Ledger Account</th>
 							<th class="align-right">Quantity</th>
-							<th class="align-right">Value</th>
-							<th class="align-right">Cost</th>
+							<th class="align-right">Price</th>
+							<th class="align-right">Market Value</th>
+							<th class="align-right">Cost Basis</th>
 							<th class="align-right">Avg Cost / Unit</th>
 							<th class="align-right">Gain/Loss</th>
 							<th class="align-right">Share</th>
@@ -835,6 +852,7 @@
 								<td>{row.commodity || ''}</td>
 								<td title={row.account || row.label}>{row.label}</td>
 								<td class="align-right" title={investmentQuantityTitle(row)}>{investmentQuantity(row)}</td>
+								<td class="align-right" title={investmentPriceTitle(row)}>{investmentPrice(row)}</td>
 								<td class="align-right">{formatCurrency(row.amount)}</td>
 								<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
 								<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>

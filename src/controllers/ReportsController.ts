@@ -18,6 +18,7 @@ export interface ReportRow {
 	percent: number;
 	quantity?: number | null;
 	quantityRaw?: string;
+	currentPrice?: number | null;
 	costBasis?: number | null;
 	costBasisRaw?: string;
 	averageCost?: number | null;
@@ -438,6 +439,7 @@ export class ReportsController {
 		const aggregateCostBasisRaw = hasNameColumn ? row[5] || '' : '';
 		const aggregateCostBasis = hasNameColumn ? this.parseOptionalNumber(row[6] || '') : null;
 		const quantityAmount = this.parseAmountCommodity(quantityRaw).amount;
+		const currentPrice = quantityAmount ? Math.abs(amount / quantityAmount) : null;
 		const aggregateCostCommodity = this.parseAmountCommodity(aggregateCostBasisRaw).commodity;
 		const derivedCostBasis = costBasisByHolding.get(this.investmentHoldingKey(account, commodity));
 		const aggregateHasCost = aggregateCostCommodity && (aggregateCostCommodity !== commodity || commodity === operatingCurrency);
@@ -470,6 +472,7 @@ export class ReportsController {
 			percent: 0,
 			quantity: quantityAmount || null,
 			quantityRaw,
+			currentPrice,
 			costBasis,
 			costBasisRaw,
 			averageCost,
