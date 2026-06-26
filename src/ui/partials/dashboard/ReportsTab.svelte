@@ -177,7 +177,14 @@
 	}
 
 	function investmentGainClass(row: ReportRow): string {
-		return row.unrealizedGain === null || row.unrealizedGain === undefined ? '' : amountClass(row.unrealizedGain);
+		return investmentReturnClass(row.unrealizedGain);
+	}
+
+	function investmentReturnClass(value: number | null | undefined): string {
+		if (value === null || value === undefined) return '';
+		if (value > 0) return 'investment-gain';
+		if (value < 0) return 'investment-loss';
+		return '';
 	}
 
 	function completeCostRows(rows: ReportRow[]): ReportRow[] {
@@ -979,7 +986,7 @@
 										{#if detailSelection.kind === 'investment'}
 											<td class="align-right">{formatOptionalCurrency(groupCostBasis(group.rows))}</td>
 											<td class="align-right">—</td>
-											<td class={`align-right ${amountClass(groupGain(group.rows) || 0)}`}>{formatOptionalCurrency(groupGain(group.rows))}</td>
+											<td class={`align-right ${investmentReturnClass(groupGain(group.rows))}`}>{formatOptionalCurrency(groupGain(group.rows))}</td>
 										{/if}
 										<td class="align-right">{detailPercent(group.amount, detailSelection.amount)}</td>
 									</tr>
@@ -1756,6 +1763,14 @@
 
 	.negative {
 		color: var(--text-error);
+	}
+
+	.investment-gain {
+		color: var(--text-error);
+	}
+
+	.investment-loss {
+		color: var(--text-success);
 	}
 
 	@media (max-width: 720px) {
