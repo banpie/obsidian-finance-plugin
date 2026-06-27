@@ -95,8 +95,8 @@ export function groupCurrencyOptions(currencies: string[], preferred: Array<stri
     const other = sortCurrencyOptions(options.filter(currency => !isFiatCurrencyCode(currency)), preferredOrder);
     const groups: CurrencyOptionGroup[] = [];
 
-    if (fiat.length > 0) groups.push({ label: 'Fiat currencies', options: fiat });
-    if (other.length > 0) groups.push({ label: 'Other commodities', options: other });
+    if (fiat.length > 0) groups.push({ label: '法定货币', options: fiat });
+    if (other.length > 0) groups.push({ label: '其他商品', options: other });
 
     return groups;
 }

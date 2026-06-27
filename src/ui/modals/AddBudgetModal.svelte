@@ -34,8 +34,8 @@
 		? expenseAccounts.filter(a => a.toLowerCase().includes(accountQuery.toLowerCase()))
 		: expenseAccounts;
 	$: accountSummary = accountQuery
-		? `${filteredAccounts.length} matching expense account${filteredAccounts.length === 1 ? '' : 's'}`
-		: `${expenseAccounts.length} expense account${expenseAccounts.length === 1 ? '' : 's'} available. Type to filter.`;
+		? `找到 ${filteredAccounts.length} 个匹配的支出科目`
+		: `共有 ${expenseAccounts.length} 个支出科目。输入内容可筛选。`;
 	let showDropdown = false;
 	$: currencyGroups = groupCurrencyOptions(currencies, [defaultCurrency, editingIndicator?.currency]);
 
@@ -62,16 +62,16 @@
 		targetError = '';
 
 		if (!name.trim()) {
-			nameError = 'Name is required';
+			nameError = '请输入名称';
 			valid = false;
 		}
 		if (!accountQuery.trim()) {
-			accountError = 'Account is required';
+			accountError = '请选择支出科目';
 			valid = false;
 		}
 		const t = parseFloat(target);
 		if (!target || isNaN(t) || t <= 0) {
-			targetError = 'Enter a positive number';
+			targetError = '请输入大于 0 的金额';
 			valid = false;
 		}
 		return valid;
@@ -103,29 +103,29 @@
 </script>
 
 <div class="indicator-modal">
-	<h2>{editingIndicator ? 'Edit Budget' : 'Add Budget'}</h2>
+	<h2>{editingIndicator ? '编辑预算' : '新增预算'}</h2>
 
 	<div class="form-grid">
 		<div class="form-group full-width">
-			<label for="budget-name">Name <span class="required">*</span></label>
+			<label for="budget-name">名称 <span class="required">*</span></label>
 			<input
 				id="budget-name"
 				type="text"
 				bind:value={name}
-				placeholder="e.g. Total Monthly Expenses"
+				placeholder="例如：每月总支出"
 				class:error={nameError}
 			/>
 			{#if nameError}<span class="error-msg">{nameError}</span>{/if}
 		</div>
 
 		<div class="form-group full-width">
-			<label for="budget-account">Expense Account <span class="required">*</span></label>
+			<label for="budget-account">支出科目 <span class="required">*</span></label>
 			<div class="autocomplete-wrapper">
 				<input
 					id="budget-account"
 					type="text"
 					bind:value={accountQuery}
-					placeholder="e.g. Expenses:Food"
+					placeholder="例如：Expenses:Food"
 					class:error={accountError}
 					on:focus={() => (showDropdown = true)}
 					on:blur={() => setTimeout(() => (showDropdown = false), 150)}
@@ -140,7 +140,7 @@
 								<li on:click={() => selectAccount(acc)}>{acc}</li>
 							{/each}
 						{:else}
-							<li class="autocomplete-empty">No expense accounts match your filter.</li>
+							<li class="autocomplete-empty">没有匹配的支出科目。</li>
 						{/if}
 					</ul>
 				{/if}
@@ -149,17 +149,17 @@
 		</div>
 
 		<div class="form-group">
-			<label for="budget-cycle">Period</label>
+			<label for="budget-cycle">周期</label>
 			<select id="budget-cycle" bind:value={cycle}>
-				<option value="Monthly">Monthly</option>
-				<option value="Weekly">Weekly</option>
-				<option value="Quarterly">Quarterly</option>
-				<option value="Yearly">Yearly</option>
+				<option value="Monthly">每月</option>
+				<option value="Weekly">每周</option>
+				<option value="Quarterly">每季度</option>
+				<option value="Yearly">每年</option>
 			</select>
 		</div>
 
 		<div class="form-group">
-			<label for="budget-target">Target <span class="required">*</span></label>
+			<label for="budget-target">目标金额 <span class="required">*</span></label>
 			<input
 				id="budget-target"
 				type="number"
@@ -173,7 +173,7 @@
 		</div>
 
 		<div class="form-group">
-			<label for="budget-currency">Currency</label>
+			<label for="budget-currency">货币</label>
 			<select id="budget-currency" bind:value={currency}>
 				{#each currencyGroups as group}
 					<optgroup label={group.label}>
@@ -188,32 +188,32 @@
 		<div class="form-group rollover-row">
 			<label class="toggle-label">
 				<input type="checkbox" bind:checked={isRollover} />
-				Roll over
+				结转
 			</label>
 		</div>
 
 		{#if isRollover}
 			<div class="form-group full-width">
-				<label for="budget-start">Start Date</label>
+				<label for="budget-start">开始日期</label>
 				<input id="budget-start" type="date" bind:value={startDate} use:nativeDatePicker />
 			</div>
 		{/if}
 
 		<div class="form-group full-width">
-			<label for="budget-tag">Tag <span class="optional">(optional)</span></label>
+			<label for="budget-tag">标签 <span class="optional">（可选）</span></label>
 			<div class="tag-row">
 				<select id="budget-tag-mode" bind:value={tagMode}>
-					<option value="has">Has tag</option>
-					<option value="not_has">Does not have tag</option>
+					<option value="has">包含标签</option>
+					<option value="not_has">不包含标签</option>
 				</select>
-				<input id="budget-tag" type="text" bind:value={tag} placeholder="e.g. groceries" />
+				<input id="budget-tag" type="text" bind:value={tag} placeholder="例如：groceries" />
 			</div>
 		</div>
 	</div>
 
 	<div class="modal-footer">
-		<button class="cancel-btn" on:click={handleCancel}>Cancel</button>
-		<button class="save-btn" on:click={handleSave}>{editingIndicator ? 'Save Changes' : 'Save Budget'}</button>
+		<button class="cancel-btn" on:click={handleCancel}>取消</button>
+		<button class="save-btn" on:click={handleSave}>{editingIndicator ? '保存修改' : '保存预算'}</button>
 	</div>
 </div>
 

@@ -32,7 +32,7 @@ export class AddBudgetModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         this.modalEl.setCssStyles({ maxWidth: '560px', width: '90vw' });
-        this.setTitle(this.editingIndicator ? 'Edit Budget' : 'Add Budget');
+        this.setTitle(this.editingIndicator ? '编辑预算' : '新增预算');
 
         const operatingCurrency = this.plugin.settings.operatingCurrency || 'USD';
         // Fetch accounts and currencies from the ledger, fall back silently on error
@@ -109,15 +109,15 @@ export class AddBudgetModal extends Modal {
                     }
 
                     if (result.success) {
-                        new Notice(this.editingIndicator ? `Budget "${name}" updated successfully` : `Budget "${name}" created successfully`);
+                        new Notice(this.editingIndicator ? `预算“${name}”已更新` : `预算“${name}”已创建`);
                         this.close();
                         if (this.onSuccess) this.onSuccess();
                     } else {
-                        new Notice(`Failed to save budget: ${result.error || 'Unknown error'}`);
+                        new Notice(`保存预算失败：${result.error || '未知错误'}`);
                     }
                 } catch (error) {
                     Logger.error('[AddBudgetModal] Error saving budget:', error);
-                    new Notice(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    new Notice(`错误：${error instanceof Error ? error.message : '未知错误'}`);
                 }
             })();
         });

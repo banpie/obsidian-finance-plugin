@@ -32,7 +32,7 @@ export class AddTargetModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         this.modalEl.setCssStyles({ maxWidth: '560px', width: '90vw' });
-        this.setTitle(this.editingIndicator ? 'Edit Target' : 'Add Target');
+        this.setTitle(this.editingIndicator ? '编辑目标' : '新增目标');
 
         const operatingCurrency = this.plugin.settings.operatingCurrency || 'USD';
         // Fetch accounts and currencies from the ledger, fall back silently on error
@@ -109,15 +109,15 @@ export class AddTargetModal extends Modal {
                     }
 
                     if (result.success) {
-                        new Notice(this.editingIndicator ? `Target "${name}" updated successfully` : `Target "${name}" created successfully`);
+                        new Notice(this.editingIndicator ? `目标“${name}”已更新` : `目标“${name}”已创建`);
                         this.close();
                         if (this.onSuccess) this.onSuccess();
                     } else {
-                        new Notice(`Failed to save target: ${result.error || 'Unknown error'}`);
+                        new Notice(`保存目标失败：${result.error || '未知错误'}`);
                     }
                 } catch (error) {
                     Logger.error('[AddTargetModal] Error saving target:', error);
-                    new Notice(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    new Notice(`错误：${error instanceof Error ? error.message : '未知错误'}`);
                 }
             })();
         });
