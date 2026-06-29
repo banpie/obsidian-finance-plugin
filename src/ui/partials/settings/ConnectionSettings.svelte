@@ -183,7 +183,8 @@
 		try {
 			const systemDetector = SystemDetector.getInstance();
 			const testResult = await systemDetector.testCommand(
-				commandTests.beanQuery.command,
+				optimalCommands.beanQuery,
+				[filePath, "SELECT TRUE LIMIT 1"],
 				15000,
 			);
 
@@ -213,7 +214,8 @@
 		try {
 			const systemDetector = SystemDetector.getInstance();
 			const testResult = await systemDetector.testCommand(
-				commandTests.beanQueryCsv.command,
+				optimalCommands.beanQuery,
+				["-f", "csv", filePath, "SELECT TRUE LIMIT 1"],
 				15000,
 			);
 
@@ -286,7 +288,8 @@
 		if (plugin.settings.beancountCommand) {
 			try {
 				const versionResult = await systemDetector.testCommand(
-					`${plugin.settings.beancountCommand} --version`,
+					plugin.settings.beancountCommand,
+					["--version"],
 				);
 				if (versionResult.success && versionResult.output) {
 					const versionMatch =
@@ -304,7 +307,8 @@
 			detectedBeanPriceCommand = plugin.settings.beanPriceCommand;
 			try {
 				const versionResult = await systemDetector.testCommand(
-					`${plugin.settings.beanPriceCommand} --version`,
+					plugin.settings.beanPriceCommand,
+					["--version"],
 				);
 				if (versionResult.success && versionResult.output) {
 					const versionMatch =
@@ -388,8 +392,11 @@
 		commandVerificationMessage = "Verifying...";
 		try {
 			const systemDetector = SystemDetector.getInstance();
-			const command = `${commandToVerify.trim()} -f csv "${plugin.settings.beancountFilePath}" "SELECT TRUE LIMIT 1"`;
-			const result = await systemDetector.testCommand(command, 15000);
+			const result = await systemDetector.testCommand(
+				commandToVerify.trim(),
+				["-f", "csv", plugin.settings.beancountFilePath, "SELECT TRUE LIMIT 1"],
+				15000,
+			);
 			if (result.success) {
 				commandVerificationStatus = "success";
 				commandVerificationMessage = "✅ Command verified successfully";

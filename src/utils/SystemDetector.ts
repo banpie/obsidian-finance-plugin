@@ -284,6 +284,29 @@ export class SystemDetector {
      * @returns {Promise<ExecutableInfo>} Information about the found executable.
      */
     async findExecutable(executableName: string): Promise<ExecutableInfo> {
+        const testCandidate = async (execPath: string): Promise<ExecutableInfo | null> => {
+            let version = null;
+            let accessible = false;
+            try {
+                const { stdout: versionOutput } = await execSafe(execPath, ['--version'], { timeout: 5000 });
+                version = versionOutput.trim();
+                accessible = true;
+            } catch {
+                try {
+                    await execSafe(execPath, ['--help'], { timeout: 3000 });
+                    accessible = true;
+                } catch {
+                    return null;
+                }
+            }
+            return {
+                found: true,
+                path: execPath,
+                version,
+                accessible
+            };
+        };
+
         try {
             // Try direct execution first
             const isWindows = platform() === 'win32';
@@ -294,44 +317,34 @@ export class SystemDetector {
             );
 
             const execPath = whichOutput.split('\n')[0].trim();
-            
-            if (execPath) {
-                // Try to get version
-                let version = null;
-                let accessible = false;
-                try {
-                    const { stdout: versionOutput } = await execSafe(execPath, ['--version'], { timeout: 5000 });
-                    version = versionOutput.trim();
-                    accessible = true;
-                } catch {
-                    // Try to execute with --help to verify it runs
-                    try {
-                        await execSafe(execPath, ['--help'], { timeout: 3000 });
-                        accessible = true;
-                    } catch {
-                        // Not accessible/runnable
-                    }
-                }
 
-                if (accessible) {
-                    return {
-                        found: true,
-                        path: execPath,
-                        version,
-                        accessible: true
-                    };
-                } else {
-                    return {
-                        found: true,
-                        path: execPath,
-                        version: null,
-                        accessible: false,
-                        errorMessage: 'Found but not accessible'
-                    };
-                }
+            if (execPath) {
+                const executable = await testCandidate(execPath);
+                if (executable) return executable;
+                return {
+                    found: true,
+                    path: execPath,
+                    version: null,
+                    accessible: false,
+                    errorMessage: 'Found but not accessible'
+                };
             }
         } catch {
             // Executable not found in PATH
+        }
+
+        if (platform() !== 'win32') {
+            const home = homedir();
+            const candidates = [
+                `${home}/.local/bin/${executableName}`,
+                `${home}/.pyenv/shims/${executableName}`,
+                `/opt/homebrew/bin/${executableName}`,
+                `/usr/local/bin/${executableName}`,
+            ];
+            for (const candidate of candidates) {
+                const executable = await testCandidate(candidate);
+                if (executable) return executable;
+            }
         }
 
         return {

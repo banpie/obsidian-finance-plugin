@@ -18,6 +18,7 @@ import { JournalService } from './services/journal.service';
 import { PriceService } from './services/price.service';
 import { createJournalStore } from './stores/journal.store';
 import { Logger } from './utils/logger';
+import { SystemDetector } from './utils/SystemDetector';
 
 // --------------------------------------------------
 
@@ -48,6 +49,8 @@ export default class BeancountPlugin extends Plugin {
 		// Initialize Logger
 		Logger.setDebugMode(this.settings.debugMode);
 		Logger.log('Plugin loading...');
+
+		await this.ensureBeancountCommand();
 
 		// Expose public API for other plugins
 		this.api = createPluginApi(this);
@@ -302,6 +305,32 @@ export default class BeancountPlugin extends Plugin {
 			// Persist migrated value
 			await this.saveSettings();
 		}
+	}
+
+	private async ensureBeancountCommand(): Promise<void> {
+		if (!this.settings.beancountCommand) {
+			return;
+		}
+
+		const detector = SystemDetector.getInstance();
+		const savedCommand = this.settings.beancountCommand;
+		const versionResult = await detector.testCommand(savedCommand, ['--version'], 5000);
+		if (versionResult.success) {
+			return;
+		}
+
+		Logger.warn(`Configured bean-query command is not usable: ${savedCommand}`);
+		const detected = await detector.detectBeanQueryCommand(false, this.settings.beancountFilePath || undefined);
+		if (detected.isValid && detected.command) {
+			this.settings.beancountCommand = detected.command;
+			await this.saveSettings();
+			new Notice(`Updated Beancount command to ${detected.command}`);
+			return;
+		}
+
+		this.settings.beancountCommand = '';
+		await this.saveSettings();
+		new Notice('Beancount command is not configured. Install beanquery and set bean-query in plugin settings.');
 	}
 
 	async saveSettings() {
