@@ -104,8 +104,7 @@ export class IncomeStatementController {
 	 */
 	private buildAccountHierarchy(
 		accounts: [string, number, string][],
-		accountType: 'Income' | 'Expenses',
-		valuationMethod: 'convert' | 'cost' | 'units' = 'convert'
+		accountType: 'Income' | 'Expenses'
 	): AccountItem[] {
 		const reportingCurrency = this.plugin.settings.operatingCurrency;
 		const accountMap = new Map<string, AccountItem>();
@@ -465,8 +464,8 @@ export class IncomeStatementController {
 				}
 			}
 
-			const incomeHierarchy = this.buildAccountHierarchy(tempIncome, 'Income', valuationMethod);
-			const expensesHierarchy = this.buildAccountHierarchy(tempExpenses, 'Expenses', valuationMethod);
+			const incomeHierarchy = this.buildAccountHierarchy(tempIncome, 'Income');
+			const expensesHierarchy = this.buildAccountHierarchy(tempExpenses, 'Expenses');
 
 			const totalIncome = this.calculateCategoryTotals(incomeHierarchy, reportingCurrency);
 			const totalExpenses = this.calculateCategoryTotals(expensesHierarchy, reportingCurrency);

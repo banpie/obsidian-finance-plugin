@@ -1,10 +1,12 @@
 // src/settings.ts
 
-import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, TFolder } from 'obsidian';
 import type BeancountPlugin from './main';
 import ConnectionSettings from './ui/partials/settings/ConnectionSettings.svelte';
 import { updateOperatingCurrency } from './utils/index';
 import type { LintMode } from './lang/beancount-lint';
+import * as path from 'path';
+import { Logger } from './utils/logger';
 
 /**
  * Interface defining the plugin settings.
@@ -104,6 +106,8 @@ export const DEFAULT_SETTINGS: BeancountPluginSettings = {
 export class BeancountSettingTab extends PluginSettingTab {
     plugin: BeancountPlugin;
     private activeTab = 'general';
+    private isEditingFolderName = false;
+    private tempFolderName = '';
 
     constructor(app: App, plugin: BeancountPlugin) {
         super(app, plugin);
@@ -485,16 +489,65 @@ export class BeancountSettingTab extends PluginSettingTab {
         });
 
         // Folder name setting
-        new Setting(containerEl)
+        const folderNameSetting = new Setting(containerEl)
             .setName('Folder name')
-            .setDesc('Name of the folder containing your structured Beancount files.')
-            .addText(text => text
-                .setPlaceholder('Finances')
-                .setValue(this.plugin.settings.structuredFolderName)
-                .onChange(async (value) => {
-                    this.plugin.settings.structuredFolderName = value || 'Finances';
-                    await this.plugin.saveSettings();
-                }));
+            .setDesc('Name of the folder containing your structured Beancount files.');
+
+        if (this.isEditingFolderName) {
+            folderNameSetting.addText(text => {
+                text.setValue(this.tempFolderName)
+                    .setPlaceholder('Finances')
+                    .onChange(value => {
+                        this.tempFolderName = value.trim();
+                    });
+
+                // Add keydown listener to support Enter to Save, Escape to Cancel
+                text.inputEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void this.saveFolderNameRename();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        this.isEditingFolderName = false;
+                        this.displayTab();
+                    }
+                });
+
+                window.setTimeout(() => text.inputEl.focus(), 50);
+                return text;
+            });
+
+            folderNameSetting.addButton(btn => {
+                btn.setButtonText('Save')
+                   .setCta()
+                   .onClick(async () => {
+                       await this.saveFolderNameRename();
+                   });
+            });
+
+            folderNameSetting.addButton(btn => {
+                btn.setButtonText('Cancel')
+                   .onClick(() => {
+                       this.isEditingFolderName = false;
+                       this.displayTab();
+                   });
+            });
+        } else {
+            folderNameSetting.addText(text => {
+                text.setValue(this.plugin.settings.structuredFolderName)
+                    .setDisabled(true);
+                return text;
+            });
+
+            folderNameSetting.addButton(btn => {
+                btn.setButtonText('Edit')
+                   .onClick(() => {
+                       this.isEditingFolderName = true;
+                       this.tempFolderName = this.plugin.settings.structuredFolderName;
+                       this.displayTab();
+                   });
+            });
+        }
 
         // File organization setting
         new Setting(containerEl)
@@ -565,21 +618,6 @@ export class BeancountSettingTab extends PluginSettingTab {
         }
     }
 
-    private renderAdvancedTab(containerEl: HTMLElement): void {
-        new Setting(containerEl).setName('Advanced').setHeading();
-
-        new Setting(containerEl)
-            .setName('Debug mode')
-            .setDesc('Enable detailed logging to the developer console for troubleshooting.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.debugMode)
-                .onChange(async (value) => {
-                    this.plugin.settings.debugMode = value;
-                    await this.plugin.saveSettings();
-                    const { Logger } = await import('./utils/logger');
-                    Logger.setDebugMode(value);
-                }));
-    }
 
     private validateCurrency(currency: string): { isValid: boolean; message: string } {
         if (!currency.trim()) {
@@ -628,220 +666,81 @@ export class BeancountSettingTab extends PluginSettingTab {
         });
     }
 
-    private setupFileAutocomplete(input: HTMLInputElement) {
-        let suggestionContainer: HTMLElement | null = null;
+    private async saveFolderNameRename(): Promise<void> {
+        if (!this.tempFolderName) {
+            new Notice('Folder name cannot be empty.');
+            return;
+        }
 
-        const showSuggestions = (files: string[]) => {
-            this.hideSuggestions();
+        const oldFolderName = this.plugin.settings.structuredFolderName;
+        if (this.tempFolderName === oldFolderName) {
+            this.isEditingFolderName = false;
+            this.displayTab();
+            return;
+        }
 
-            if (files.length === 0) return;
+        // Validate illegal characters in folder name
+        const invalidCharsRegex = /[\\/:*?"<>|]/;
+        if (invalidCharsRegex.test(this.tempFolderName)) {
+            new Notice('Folder name contains invalid characters: \\ / : * ? " < > |');
+            return;
+        }
 
-            suggestionContainer = activeDocument.createElement('div');
-            suggestionContainer.className = 'bql-file-suggestions';
-            suggestionContainer.setCssStyles({
-                position: 'absolute',
-                top: '100%',
-                left: '0',
-                right: '0',
-                background: 'var(--background-primary)',
-                border: '1px solid var(--background-modifier-border)',
-                borderRadius: '6px',
-                boxShadow: 'var(--shadow-s)',
-                maxHeight: '200px',
-                overflowY: 'auto',
-                zIndex: '1000'
-            });
+        if (this.tempFolderName.startsWith('.') || this.tempFolderName.includes('..')) {
+            new Notice('Folder name cannot start with a dot or contain ".."');
+            return;
+        }
 
-            files.forEach((file, index) => {
-                const item = activeDocument.createElement('div');
-                item.className = 'bql-file-suggestion-item';
-                item.textContent = file;
-                item.setCssStyles({
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    borderBottom: '1px solid var(--background-modifier-border-hover)'
-                });
+        // Check if the target folder/file already exists in the vault
+        const targetExists = this.app.vault.getAbstractFileByPath(this.tempFolderName);
+        if (targetExists) {
+            new Notice(`Error: A folder or file named "${this.tempFolderName}" already exists in the vault. Please choose a different name.`);
+            return;
+        }
 
-                item.addEventListener('click', () => {
-                    input.value = file;
-                    input.dispatchEvent(new Event('input'));
-                    this.hideSuggestions();
-                });
-
-                if (index === files.length - 1) {
-                    item.setCssStyles({ borderBottom: 'none' });
+        // Check and rename the physical folder
+        const oldFolder = this.app.vault.getAbstractFileByPath(oldFolderName);
+        if (oldFolder) {
+            if (oldFolder instanceof TFolder) {
+                try {
+                    await this.app.vault.rename(oldFolder, this.tempFolderName);
+                    new Notice(`Folder renamed from "${oldFolderName}" to "${this.tempFolderName}"`);
+                } catch (renameError) {
+                    Logger.error('Failed to rename structured layout folder in vault:', renameError);
+                    new Notice(`Failed to rename folder: ${renameError instanceof Error ? renameError.message : String(renameError)}`);
+                    return;
                 }
-
-                suggestionContainer!.appendChild(item);
-            });
-
-            const parent = input.parentElement!;
-            parent.setCssStyles({ position: 'relative' });
-            parent.appendChild(suggestionContainer);
-        };
-
-        this.hideSuggestions = () => {
-            if (suggestionContainer) {
-                suggestionContainer.remove();
-                suggestionContainer = null;
-            }
-        };
-
-        input.addEventListener('input', () => {
-            const value = input.value.toLowerCase();
-            if (value.length < 1) {
-                this.hideSuggestions();
+            } else {
+                new Notice(`Error: "${oldFolderName}" exists but is not a folder.`);
                 return;
             }
+        } else {
+            Logger.log(`Structured folder "${oldFolderName}" not found in vault. Skipping physical rename.`);
+        }
 
-            const markdownFiles = this.app.vault.getMarkdownFiles()
-                .map(file => file.path)
-                .filter(path => path.toLowerCase().includes(value))
-                .slice(0, 10);
+        // Update settings paths
+        // @ts-ignore
+        const vaultRoot = this.app.vault.adapter.getBasePath();
+        const newMainLedgerPath = path.join(vaultRoot, this.tempFolderName, 'ledger.beancount');
 
-            showSuggestions(markdownFiles);
-        });
+        this.plugin.settings.structuredFolderName = this.tempFolderName;
+        this.plugin.settings.structuredFolderPath = newMainLedgerPath;
+        this.plugin.settings.beancountFilePath = newMainLedgerPath;
 
-        activeDocument.addEventListener('click', (event) => {
-            if (!input.contains(event.target as Node) && !suggestionContainer?.contains(event.target as Node)) {
-                this.hideSuggestions();
+        await this.plugin.saveSettings();
+
+        // Refresh journal store if it exists
+        if (this.plugin.journalStore && typeof this.plugin.journalStore.refresh === 'function') {
+            try {
+                await this.plugin.journalStore.refresh();
+            } catch (err) {
+                Logger.error('Failed to refresh journal store after rename:', err);
             }
-        });
+        }
+
+        this.isEditingFolderName = false;
+        this.displayTab();
     }
 
-    private hideSuggestions: () => void = () => { };
 
-    private showFileSuggestModal(input: HTMLInputElement) {
-        const modal = activeDocument.createElement('div');
-        modal.className = 'bql-file-modal';
-        modal.setCssStyles({
-            position: 'fixed',
-            top: '0',
-            left: '0',
-            width: '100%',
-            height: '100%',
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: '9999'
-        });
-
-        const modalContent = modal.createEl('div', {
-            cls: 'bql-file-modal-content'
-        });
-        modalContent.setCssStyles({
-            background: 'var(--background-primary)',
-            padding: '24px',
-            borderRadius: '8px',
-            maxWidth: '600px',
-            width: '90%',
-            maxHeight: '80%',
-            overflowY: 'auto',
-            border: '1px solid var(--background-modifier-border)'
-        });
-
-        new Setting(modalContent).setName('Select template file').setHeading();
-
-        const searchInput = modalContent.createEl('input', {
-            type: 'text',
-            placeholder: 'Search markdown files...'
-        });
-        searchInput.setCssStyles({
-            width: '100%',
-            padding: '8px',
-            marginBottom: '16px',
-            border: '1px solid var(--background-modifier-border)',
-            borderRadius: '4px',
-            background: 'var(--background-secondary)',
-            color: 'var(--text-normal)'
-        });
-
-        const fileList = modalContent.createEl('div', {
-            cls: 'bql-file-list'
-        });
-        fileList.setCssStyles({
-            maxHeight: '300px',
-            overflowY: 'auto',
-            border: '1px solid var(--background-modifier-border)',
-            borderRadius: '4px'
-        });
-
-        const updateFileList = (filter = '') => {
-            fileList.empty();
-
-            const markdownFiles = this.app.vault.getMarkdownFiles()
-                .filter(file => filter === '' || file.path.toLowerCase().includes(filter.toLowerCase()))
-                .slice(0, 50);
-
-            if (markdownFiles.length === 0) {
-                const noFiles = fileList.createEl('div', {
-                    text: 'No Markdown files found',
-                    cls: 'bql-no-files'
-                });
-                noFiles.setCssStyles({
-                    padding: '16px',
-                    textAlign: 'center',
-                    color: 'var(--text-muted)',
-                    fontStyle: 'italic'
-                });
-                return;
-            }
-
-            markdownFiles.forEach(file => {
-                const item = fileList.createEl('div', {
-                    text: file.path,
-                    cls: 'bql-file-item'
-                });
-                item.setCssStyles({
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    borderBottom: '1px solid var(--background-modifier-border-hover)'
-                });
-
-                item.addEventListener('click', () => {
-                    input.value = file.path;
-                    input.dispatchEvent(new Event('input'));
-                    modal.remove();
-                });
-            });
-        };
-
-        updateFileList();
-
-        searchInput.addEventListener('input', () => {
-            updateFileList(searchInput.value);
-        });
-
-        const buttonContainer = modalContent.createEl('div');
-        buttonContainer.setCssStyles({
-            display: 'flex',
-            justifyContent: 'flex-end',
-            marginTop: '16px',
-            gap: '8px'
-        });
-
-        const closeButton = buttonContainer.createEl('button', {
-            text: 'Cancel'
-        });
-        closeButton.setCssStyles({
-            padding: '8px 16px',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            background: 'var(--interactive-normal)',
-            color: 'var(--text-normal)',
-            border: '1px solid var(--background-modifier-border)'
-        });
-        closeButton.addEventListener('click', () => {
-            modal.remove();
-        });
-
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.remove();
-            }
-        });
-
-        activeDocument.body.appendChild(modal);
-    }
 }

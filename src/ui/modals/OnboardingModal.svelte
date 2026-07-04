@@ -379,23 +379,31 @@
 							<p>📖 <a href="https://beancount.github.io/docs/installing_beancount.html" target="_blank">Official Beancount Installation Guide</a></p>
 						</div>
 					</div>
+
+					<div class="info-section warning-banner" style="border-left: 4px solid var(--text-warning);">
+						<h4 class="error-text">⚠ Beancount Environment Not Detected</h4>
+						<p style="font-size: var(--font-ui-small); margin: 4px 0;">
+							The system check could not find <code>python</code> or <code>bean-query</code> in your system PATH.
+						</p>
+						<p style="font-size: var(--font-ui-smaller); color: var(--text-muted); margin: 4px 0;">
+							You can still proceed with the File Setup, but dashboard queries and file migrations will fail until you configure your python/beancount command paths in <strong>Settings → Connection</strong>.
+						</p>
+					</div>
 				{/if}
 			{/if}
 
 			<!-- Action Buttons -->
 			<div class="action-buttons-row">
-				<button class="mod-warning" on:click={skipOnboarding}>Skip (Manual Config)</button>
+				<button class="mod-warning" on:click={() => currentStep = 'file-setup'}>Skip Prerequisites →</button>
 				
 				<div class="main-buttons">
 					<button class="mod-cta" on:click={checkPrerequisites} disabled={isCheckingPrereqs}>
 						{isCheckingPrereqs ? '⏳ Checking...' : '🔍 Check Prerequisites'}
 					</button>
 
-					{#if pythonValid && beanQueryValid}
-						<button class="mod-cta next-btn" on:click={() => currentStep = 'file-setup'}>
-							Next: File Setup →
-						</button>
-					{/if}
+					<button class="mod-cta next-btn" on:click={() => currentStep = 'file-setup'}>
+						Next: File Setup →
+					</button>
 				</div>
 			</div>
 
@@ -457,7 +465,7 @@
 									<div class="setting-item-info">
 										<div class="setting-item-name">Beancount file path</div>
 										<div class="setting-item-description">
-											Absolute or vault-relative path to your ledger file.
+											Vault-relative path to your ledger file (must be inside your vault).
 											{#if beancountFiles.length > 0}
 												<!-- svelte-ignore a11y-click-events-have-key-events -->
 												<!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -466,7 +474,7 @@
 										</div>
 									</div>
 									<div class="setting-item-control">
-										<input type="text" bind:value={existingFilePath} placeholder="/path/to/your/ledger.beancount" />
+										<input type="text" bind:value={existingFilePath} placeholder="ledger.beancount" />
 									</div>
 								</div>
 							{/if}
@@ -524,9 +532,12 @@
 				<!-- Action Buttons -->
 				<div class="action-buttons-row">
 					<button on:click={() => currentStep = 'prerequisites'}>← Back</button>
-					<button class="mod-cta" on:click={handleFinish} disabled={isSubmitting || !dataChoice}>
-						{isSubmitting ? '⏳ Setting up...' : 'Start Setup'}
-					</button>
+					<div class="main-buttons">
+						<button class="mod-warning" on:click={() => modal.close()}>Cancel</button>
+						<button class="mod-cta" on:click={handleFinish} disabled={isSubmitting || !dataChoice}>
+							{isSubmitting ? '⏳ Setting up...' : 'Start Setup'}
+						</button>
+					</div>
 				</div>
 
 			{:else if currentStep === 'verification'}
