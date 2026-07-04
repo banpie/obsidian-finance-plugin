@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+## 2.2.1 - 2026-07-04
+
 ## 2.2.0 - 2026-06-21
 
 - **Multi-Currency Warning: Clarify warning column wording** — Updated the multi-currency warnings on the Balance Sheet and Income Statement to reference the specific reporting currency name instead of positional column descriptions like 'first column' and 'second column' to prevent user confusion. Merged PR #230.
