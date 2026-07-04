@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+- **File Organization: Safe Folder name renaming with validation** — Redesigned the **Folder name** setting field with an interactive Edit/Save/Cancel lifecycle. Added validation checks for folder existence and invalid characters, physically renaming the structured layout folder in the Obsidian vault, and dynamically updating configuration paths (`beancountFilePath` and `structuredFolderPath`) under the hood to prevent write/query path mismatches.
+
 - **Codebase Cleanup: Remove obsolete settings, unused parameters, and redundant scripts** — Removed dead advanced settings panels and file autocomplete modal helpers from the settings view, eliminated unused parameters and variables from controllers, processors, and layout utilities, and removed redundant script files (`test-build.js` and the checked-in detection script artifact) to simplify the codebase and improve maintainability.
 
 ## 2.2.1 - 2026-07-04
