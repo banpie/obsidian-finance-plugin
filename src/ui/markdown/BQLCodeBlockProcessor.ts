@@ -20,8 +20,8 @@ export class BQLCodeBlockProcessor {
 	}
 
 	getProcessor() {
-		return async (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
-			await this.processCodeBlock(source, el, ctx);
+		return async (source: string, el: HTMLElement, _ctx: MarkdownPostProcessorContext) => {
+			await this.processCodeBlock(source, el);
 		};
 	}
 	
@@ -32,12 +32,12 @@ export class BQLCodeBlockProcessor {
 			const source = (element as BQLHTMLElement)._bqlSource;
 			if (source) {
 				// Reprocess the block with current settings
-				void this.processCodeBlock(source, element, {} as MarkdownPostProcessorContext);
+				void this.processCodeBlock(source, element);
 			}
 		});
 	}
 
-	private async processCodeBlock(source: string, element: HTMLElement, context: MarkdownPostProcessorContext) {
+	private async processCodeBlock(source: string, element: HTMLElement) {
 		const query = source.trim();
 		if (!query) return;
 

@@ -9,7 +9,6 @@ export default defineConfig([
       "**/docs-site/",
       "**/scripts/",
       "main.js",
-      "test-build.js",
       "esbuild.config.mjs",
       "version-bump.mjs",
       "eslint.config.mjs",

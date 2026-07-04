@@ -124,11 +124,9 @@ export class BalanceSheetController {
 	/**
 	 * Builds a hierarchical structure from flat account entries.
 	 * @param {[string, number, string][]} accounts - List of [accountName, amountNumber, otherCurrencies] tuples.
-	 * @param {string} accountType - The root account type (e.g. 'Assets').
-	 * @param {'convert' | 'cost' | 'units'} [valuationMethod='convert'] - The valuation method.
 	 * @returns {AccountItem[]} The list of root account items.
 	 */
-	private buildAccountHierarchy(accounts: [string, number, string][], accountType: string, valuationMethod: 'convert' | 'cost' | 'units' = 'convert'): AccountItem[] {
+	private buildAccountHierarchy(accounts: [string, number, string][]): AccountItem[] {
 		const reportingCurrency = this.plugin.settings.operatingCurrency;
 		const accountMap = new Map<string, AccountItem>();
 		const rootAccounts: AccountItem[] = [];
@@ -451,9 +449,9 @@ export class BalanceSheetController {
 			}
 
 			// Build hierarchical structures
-			const assetsHierarchy = this.buildAccountHierarchy(tempAssets, 'Assets', valuationMethod);
-			const liabilitiesHierarchy = this.buildAccountHierarchy(tempLiab, 'Liabilities', valuationMethod);
-			const equityHierarchy = this.buildAccountHierarchy(tempEquity, 'Equity', valuationMethod);
+			const assetsHierarchy = this.buildAccountHierarchy(tempAssets);
+			const liabilitiesHierarchy = this.buildAccountHierarchy(tempLiab);
+			const equityHierarchy = this.buildAccountHierarchy(tempEquity);
 
 			// Calculate totals - always use reporting currency
 			const totalAssets = this.calculateCategoryTotals(assetsHierarchy, reportingCurrency);
