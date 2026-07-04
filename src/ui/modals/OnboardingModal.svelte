@@ -88,7 +88,7 @@
 			if (!beanQueryResult.isValid && plugin.settings.beancountCommand) {
 				Logger.log('[Onboarding] Auto-detection failed; trying saved beancountCommand...');
 				const savedCmd = plugin.settings.beancountCommand;
-				const savedResult = await detector.testCommand(`${savedCmd} --version`);
+				const savedResult = await detector.testCommand(savedCmd, ['--version']);
 				if (savedResult.success) {
 					const versionMatch = (savedResult.output || '').match(/(\d+\.\d+\.\d+)/);
 					beanQueryResult = {
