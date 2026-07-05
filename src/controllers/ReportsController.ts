@@ -19,6 +19,9 @@ export interface ReportRow {
 	quantity?: number | null;
 	quantityRaw?: string;
 	currentPrice?: number | null;
+	nativePrice?: number | null;
+	nativePriceCurrency?: string;
+	nativePriceDate?: string;
 	costBasis?: number | null;
 	costBasisRaw?: string;
 	averageCost?: number | null;
@@ -130,6 +133,12 @@ interface InvestmentCostBasis {
 	rawAmount: number;
 	rawCommodity: string;
 	source: 'cost' | 'total-price' | 'cashflow';
+}
+
+interface InvestmentNativePrice {
+	price: number;
+	currency: string;
+	date: string;
 }
 
 interface InvestmentPostingRow {
@@ -318,6 +327,7 @@ export class ReportsController {
 				investmentsCsv,
 				investmentCostPostingsCsv,
 				investmentCashflowPostingsCsv,
+				investmentNativePricesCsv,
 			] = await Promise.all([
 				this.plugin.runQuery(queries.getPeriodIncomeBreakdownQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodExpenseBreakdownQuery(currency, 2, range.startDate, range.endDate)),
@@ -335,6 +345,7 @@ export class ReportsController {
 				this.plugin.runQuery(queries.getInvestmentAllocationQuery(currency, 2, range.endDate, range.valuationDate)),
 				this.plugin.runQuery(queries.getInvestmentCostPostingsQuery(currency, range.endDate, range.valuationDate)),
 				this.plugin.runQuery(queries.getInvestmentCashflowPostingsQuery(currency, range.endDate, range.valuationDate)),
+				this.plugin.runQuery(queries.getInvestmentNativePricesQuery(range.valuationDate)),
 			]);
 
 			const incomeByAccount = this.parseAccountRows(incomeCsv);
@@ -347,7 +358,8 @@ export class ReportsController {
 			const liabilitiesByCategory = this.groupRows(liabilitiesByAccount, row => this.accountSegment(row.account, 1), true);
 			const investmentCostBasis = this.parseInvestmentCostBasisRows(investmentCostPostingsCsv, currency);
 			this.addInvestmentCashflowBasisRows(investmentCostBasis, investmentCashflowPostingsCsv, currency);
-			const investmentRows = this.parseInvestmentRows(investmentsCsv, investmentCostBasis, currency);
+			const investmentNativePrices = this.parseInvestmentNativePrices(investmentNativePricesCsv, currency);
+			const investmentRows = this.parseInvestmentRows(investmentsCsv, investmentCostBasis, investmentNativePrices, currency);
 			const investmentsByType = this.groupRows(investmentRows, row => this.investmentType(row.account), true);
 			const topInvestments = this.withPercent(
 				investmentRows
@@ -425,15 +437,25 @@ export class ReportsController {
 			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 	}
 
-	private parseInvestmentRows(rawCsv: string, costBasisByHolding = new Map<string, InvestmentCostBasis>(), operatingCurrency = this.plugin.settings.operatingCurrency): ReportRow[] {
+	private parseInvestmentRows(
+		rawCsv: string,
+		costBasisByHolding = new Map<string, InvestmentCostBasis>(),
+		nativePriceByCommodity = new Map<string, InvestmentNativePrice>(),
+		operatingCurrency = this.plugin.settings.operatingCurrency
+	): ReportRow[] {
 		return this.parseRows(rawCsv)
 			.filter(row => row.length >= 3)
-			.map(row => this.parseInvestmentRow(row, costBasisByHolding, operatingCurrency))
+			.map(row => this.parseInvestmentRow(row, costBasisByHolding, nativePriceByCommodity, operatingCurrency))
 			.filter(row => row.amount >= 0.01)
 			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 	}
 
-	private parseInvestmentRow(row: CsvRow, costBasisByHolding: Map<string, InvestmentCostBasis>, operatingCurrency: string): ReportRow {
+	private parseInvestmentRow(
+		row: CsvRow,
+		costBasisByHolding: Map<string, InvestmentCostBasis>,
+		nativePriceByCommodity: Map<string, InvestmentNativePrice>,
+		operatingCurrency: string
+	): ReportRow {
 		const hasNameColumn = row.length >= 4;
 		const account = row[0];
 		const commodity = row[1];
@@ -444,6 +466,7 @@ export class ReportsController {
 		const aggregateCostBasis = hasNameColumn ? this.parseOptionalNumber(row[6] || '') : null;
 		const quantityAmount = this.parseAmountCommodity(quantityRaw).amount;
 		const currentPrice = quantityAmount ? Math.abs(amount / quantityAmount) : null;
+		const nativePrice = nativePriceByCommodity.get(commodity);
 		const aggregateCostCommodity = this.parseAmountCommodity(aggregateCostBasisRaw).commodity;
 		const aggregateHasCost = aggregateCostCommodity && (aggregateCostCommodity !== commodity || commodity === operatingCurrency);
 		const aggregateCostBasisAvailable = aggregateHasCost && aggregateCostBasis !== null;
@@ -461,7 +484,7 @@ export class ReportsController {
 			: aggregateCostBasisRaw;
 		const costBasisCommodity = aggregateCostBasisAvailable ? aggregateCostCommodity : derivedCostBasis ? operatingCurrency : aggregateCostCommodity;
 		const costStatus = this.investmentCostStatus(costBasis, costBasisRaw, costBasisCommodity, commodity, amount, costBasisSource);
-		const averageCost = costStatus === 'available' && costBasis !== null && quantityAmount
+		const averageCost = (costStatus === 'available' || costStatus === 'cashflow') && costBasis !== null && quantityAmount
 			? Math.abs(costBasis / quantityAmount)
 			: null;
 		const hasReturnBasis = (costStatus === 'available' || costStatus === 'cashflow') && costBasis !== null;
@@ -482,6 +505,9 @@ export class ReportsController {
 			quantity: quantityAmount || null,
 			quantityRaw,
 			currentPrice,
+			nativePrice: nativePrice?.price ?? null,
+			nativePriceCurrency: nativePrice?.currency,
+			nativePriceDate: nativePrice?.date,
 			costBasis,
 			costBasisRaw,
 			averageCost,
@@ -609,6 +635,34 @@ export class ReportsController {
 				source: 'cashflow',
 			});
 		}
+	}
+
+	private parseInvestmentNativePrices(rawCsv: string, operatingCurrency: string): Map<string, InvestmentNativePrice> {
+		const nativePrices = new Map<string, InvestmentNativePrice>();
+		const fallbackPrices = new Map<string, InvestmentNativePrice>();
+
+		for (const row of this.parseRows(rawCsv)) {
+			if (row.length < 5) continue;
+			const [commodity, nativeCurrencyRaw, date, priceRaw, priceCurrencyRaw] = row;
+			const price = this.parseOptionalNumber(priceRaw);
+			const priceCurrency = (priceCurrencyRaw || '').trim();
+			const nativeCurrency = (nativeCurrencyRaw || '').trim();
+			if (!commodity || !date || price === null || !priceCurrency) continue;
+
+			const pricePoint = { price, currency: priceCurrency, date };
+			if (nativeCurrency && priceCurrency === nativeCurrency) {
+				nativePrices.set(commodity, pricePoint);
+				continue;
+			}
+			if (!nativeCurrency && priceCurrency !== operatingCurrency) {
+				fallbackPrices.set(commodity, pricePoint);
+			}
+		}
+
+		for (const [commodity, pricePoint] of fallbackPrices) {
+			if (!nativePrices.has(commodity)) nativePrices.set(commodity, pricePoint);
+		}
+		return nativePrices;
 	}
 
 	private investmentHoldingKey(account: string, commodity: string): string {

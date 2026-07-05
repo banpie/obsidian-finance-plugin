@@ -96,6 +96,10 @@
 		return `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} ${state.currency}`;
 	}
 
+	function formatUnitAmount(value: number, currency: string): string {
+		return `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} ${currency}`;
+	}
+
 	function formatSignedCurrency(value: number): string {
 		const prefix = value > 0 ? '+' : '';
 		return `${prefix}${formatCurrency(value)}`;
@@ -140,10 +144,17 @@
 			: '—';
 	}
 
+	function investmentNativePrice(row: ReportRow): string {
+		if (row.nativePrice === null || row.nativePrice === undefined || !row.nativePriceCurrency || row.nativePriceCurrency === state.currency) return '';
+		return formatUnitAmount(row.nativePrice, row.nativePriceCurrency);
+	}
+
 	function investmentPriceTitle(row: ReportRow): string {
 		if (row.currentPrice === null || row.currentPrice === undefined) return 'No current price available for this holding.';
 		const unit = row.commodity ? `1 ${row.commodity}` : '1 unit';
-		return `Current report-currency price per ${unit}`;
+		const nativePrice = investmentNativePrice(row);
+		const nativeLine = nativePrice ? `\nOriginal quote: ${nativePrice}${row.nativePriceDate ? ` on ${row.nativePriceDate}` : ''}` : '';
+		return `Current report-currency price per ${unit}${nativeLine}`;
 	}
 
 	function investmentCostBasis(row: ReportRow): string {
@@ -168,6 +179,7 @@
 
 	function investmentAverageCostTitle(row: ReportRow): string {
 		if (row.averageCost === null || row.averageCost === undefined) return 'No average cost available for this holding.';
+		if (row.costStatus === 'cashflow') return row.commodity ? `Average cash-flow basis per 1 ${row.commodity}` : 'Average cash-flow basis per unit';
 		return row.commodity ? `Average cost per 1 ${row.commodity}` : 'Average cost per unit';
 	}
 
@@ -196,7 +208,7 @@
 	}
 
 	function completeCostRows(rows: ReportRow[]): ReportRow[] {
-		return rows.filter(row => Math.abs(row.amount) >= 0.01 && row.costStatus === 'available' && row.costBasis !== null && row.costBasis !== undefined);
+		return rows.filter(row => Math.abs(row.amount) >= 0.01 && (row.costStatus === 'available' || row.costStatus === 'cashflow') && row.costBasis !== null && row.costBasis !== undefined);
 	}
 
 	function groupCostBasis(rows: ReportRow[]): number | null {
@@ -867,7 +879,12 @@
 								<td>{row.commodity || ''}</td>
 								<td title={row.account || row.label}>{row.label}</td>
 								<td class="align-right" title={investmentQuantityTitle(row)}>{investmentQuantity(row)}</td>
-								<td class="align-right" title={investmentPriceTitle(row)}>{investmentPrice(row)}</td>
+								<td class="align-right price-cell" title={investmentPriceTitle(row)}>
+									<span class="cell-primary">{investmentPrice(row)}</span>
+									{#if investmentNativePrice(row)}
+										<span class="cell-secondary">{investmentNativePrice(row)}</span>
+									{/if}
+								</td>
 								<td class="align-right">{formatCurrency(row.amount)}</td>
 								<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
 								<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
@@ -1567,6 +1584,22 @@
 	.reports-table td:first-child {
 		max-width: 360px;
 		overflow-wrap: anywhere;
+	}
+
+	.price-cell {
+		white-space: nowrap;
+	}
+
+	.cell-primary,
+	.cell-secondary {
+		display: block;
+	}
+
+	.cell-secondary {
+		margin-top: 2px;
+		color: var(--text-muted);
+		font-size: var(--font-ui-smaller);
+		line-height: 1.2;
 	}
 
 	.table-link {

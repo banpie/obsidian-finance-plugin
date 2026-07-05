@@ -121,6 +121,11 @@ export function getInvestmentCashflowPostingsQuery(currency: string, asOfDate: s
 	return `SELECT date, payee, narration, account, position, units(position), cost(position), number(convert(position, '${currency}'${valuationDateArgument(valuationDate)})) AS _value WHERE account ~ '^(Assets|Liabilities)' AND date < ${asOfDate} ORDER BY date, lineno LIMIT ${limit}`;
 }
 
+export function getInvestmentNativePricesQuery(valuationDate?: string, limit = 50000): string {
+	const dateClause = valuationDate ? ` WHERE date <= ${valuationDate}` : '';
+	return `SELECT currency, currency_meta(currency, 'investment_currency') AS _nativeCurrency, date, number(amount) AS _price, currency(amount) AS _priceCurrency FROM #prices${dateClause} ORDER BY currency, date LIMIT ${limit}`;
+}
+
 export function getInvestmentTransactionsQuery(account: string, commodity: string, endDate: string, limit = 500): string {
 	const escapedAccount = account.replace(/'/g, "''");
 	const escapedCommodity = commodity.replace(/'/g, "''");
