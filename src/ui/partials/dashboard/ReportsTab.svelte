@@ -833,8 +833,8 @@
 				<table class="reports-table">
 					<thead>
 						<tr>
-							<th>Commodity Name</th>
-							<th>Commodity</th>
+							<th>Holding</th>
+							<th>Unit</th>
 							<th>Ledger Account</th>
 							<th class="align-right">Quantity</th>
 							<th class="align-right">Price</th>
@@ -965,8 +965,8 @@
 							<tr>
 								<th>Category</th>
 								{#if detailSelection.kind === 'investment'}
-									<th>Commodity Name</th>
-									<th>Commodity</th>
+									<th>Holding</th>
+									<th>Unit</th>
 								{/if}
 								<th class="align-right">Amount</th>
 								{#if detailSelection.kind === 'investment'}
@@ -1087,7 +1087,7 @@
 			<header class="detail-modal-header">
 				<div>
 					<h3>{commodityNameLabel(holdingSelection)}</h3>
-					<div class="period-label">{holdingSelection.commodity || ''} · {holdingSelection.label}</div>
+					<div class="period-label">Unit: {holdingSelection.commodity || '—'} · {holdingSelection.label}</div>
 				</div>
 				<div class="detail-modal-actions">
 					<strong class={amountClass(holdingSelection.amount)}>{formatCurrency(holdingSelection.amount)}</strong>
