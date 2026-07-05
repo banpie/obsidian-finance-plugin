@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+## 2.2.2 - 2026-07-04
+
 - **Onboarding Wizard: Improve UI/UX flow and navigation gating** — Updated the setup wizard to allow users to skip or proceed past the Python/prerequisites check step. Added a warning callout if Beancount is missing while allowing layout setup to proceed, clarified that ledger files must be vault-relative, updated placeholders, and added Cancel/Exit button triggers to Step 2.
 
 - **File Organization: Safe Folder name renaming with validation** — Redesigned the **Folder name** setting field with an interactive Edit/Save/Cancel lifecycle. Added validation checks for folder existence and invalid characters, physically renaming the structured layout folder in the Obsidian vault, and dynamically updating configuration paths (`beancountFilePath` and `structuredFolderPath`) under the hood to prevent write/query path mismatches.
