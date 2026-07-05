@@ -24,7 +24,7 @@ export interface ReportRow {
 	averageCost?: number | null;
 	unrealizedGain?: number | null;
 	unrealizedGainPercent?: number | null;
-	costStatus?: 'available' | 'missing' | 'mixed-currency';
+	costStatus?: 'available' | 'missing' | 'mixed-currency' | 'cashflow';
 }
 
 export interface ReportTransaction {
@@ -129,7 +129,7 @@ interface InvestmentCostBasis {
 	amount: number;
 	rawAmount: number;
 	rawCommodity: string;
-	source: 'cost' | 'total-price';
+	source: 'cost' | 'total-price' | 'cashflow';
 }
 
 interface InvestmentPostingRow {
@@ -140,6 +140,7 @@ interface InvestmentPostingRow {
 	position: string;
 	units: string;
 	cost: string;
+	convertedAmount?: number | null;
 }
 
 const CHART_COLORS = [
@@ -316,6 +317,7 @@ export class ReportsController {
 				liabilitiesCsv,
 				investmentsCsv,
 				investmentCostPostingsCsv,
+				investmentCashflowPostingsCsv,
 			] = await Promise.all([
 				this.plugin.runQuery(queries.getPeriodIncomeBreakdownQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodExpenseBreakdownQuery(currency, 2, range.startDate, range.endDate)),
@@ -332,6 +334,7 @@ export class ReportsController {
 				this.plugin.runQuery(queries.getLiabilityAllocationQuery(currency, 2, range.endDate, range.valuationDate)),
 				this.plugin.runQuery(queries.getInvestmentAllocationQuery(currency, 2, range.endDate, range.valuationDate)),
 				this.plugin.runQuery(queries.getInvestmentCostPostingsQuery(currency, range.endDate, range.valuationDate)),
+				this.plugin.runQuery(queries.getInvestmentCashflowPostingsQuery(currency, range.endDate, range.valuationDate)),
 			]);
 
 			const incomeByAccount = this.parseAccountRows(incomeCsv);
@@ -343,6 +346,7 @@ export class ReportsController {
 			const assetsByCategory = this.groupRows(assetsByAccount, row => this.accountSegment(row.account, 1), true);
 			const liabilitiesByCategory = this.groupRows(liabilitiesByAccount, row => this.accountSegment(row.account, 1), true);
 			const investmentCostBasis = this.parseInvestmentCostBasisRows(investmentCostPostingsCsv, currency);
+			this.addInvestmentCashflowBasisRows(investmentCostBasis, investmentCashflowPostingsCsv, currency);
 			const investmentRows = this.parseInvestmentRows(investmentsCsv, investmentCostBasis, currency);
 			const investmentsByType = this.groupRows(investmentRows, row => this.investmentType(row.account), true);
 			const topInvestments = this.withPercent(
@@ -444,6 +448,7 @@ export class ReportsController {
 		const aggregateHasCost = aggregateCostCommodity && (aggregateCostCommodity !== commodity || commodity === operatingCurrency);
 		const aggregateCostBasisAvailable = aggregateHasCost && aggregateCostBasis !== null;
 		const derivedCostBasis = aggregateCostBasisAvailable ? undefined : costBasisByHolding.get(this.investmentHoldingKey(account, commodity));
+		const costBasisSource = aggregateCostBasisAvailable ? 'cost' : derivedCostBasis?.source;
 		const costBasis = aggregateCostBasisAvailable
 			? aggregateCostBasis
 			: derivedCostBasis
@@ -455,11 +460,12 @@ export class ReportsController {
 			? this.formatInvestmentCostBasisRaw(derivedCostBasis, operatingCurrency)
 			: aggregateCostBasisRaw;
 		const costBasisCommodity = aggregateCostBasisAvailable ? aggregateCostCommodity : derivedCostBasis ? operatingCurrency : aggregateCostCommodity;
-		const costStatus = this.investmentCostStatus(costBasis, costBasisRaw, costBasisCommodity, commodity, amount);
+		const costStatus = this.investmentCostStatus(costBasis, costBasisRaw, costBasisCommodity, commodity, amount, costBasisSource);
 		const averageCost = costStatus === 'available' && costBasis !== null && quantityAmount
 			? Math.abs(costBasis / quantityAmount)
 			: null;
-		const unrealizedGain = costStatus === 'available' && costBasis !== null
+		const hasReturnBasis = (costStatus === 'available' || costStatus === 'cashflow') && costBasis !== null;
+		const unrealizedGain = hasReturnBasis
 			? this.roundCurrency(amount - costBasis)
 			: null;
 		const unrealizedGainPercent = unrealizedGain !== null && costBasis
@@ -490,14 +496,15 @@ export class ReportsController {
 		costBasisRaw: string,
 		costBasisCommodity: string,
 		holdingCommodity: string,
-		currentValue: number
+		currentValue: number,
+		costBasisSource?: InvestmentCostBasis['source']
 	): ReportRow['costStatus'] {
 		const hasCurrentValue = Math.abs(currentValue) >= 0.01;
 		const normalizedCostRaw = costBasisRaw.trim();
 		if (hasCurrentValue && costBasis === 0) {
 			return 'missing';
 		}
-		if (costBasis !== null) return 'available';
+		if (costBasis !== null) return costBasisSource === 'cashflow' ? 'cashflow' : 'available';
 		if (!normalizedCostRaw || normalizedCostRaw === '()') return 'missing';
 		if (costBasisCommodity && costBasisCommodity !== holdingCommodity) return 'mixed-currency';
 		return 'missing';
@@ -544,6 +551,64 @@ export class ReportsController {
 			});
 		}
 		return costByHolding;
+	}
+
+	private addInvestmentCashflowBasisRows(costByHolding: Map<string, InvestmentCostBasis>, rawCsv: string, operatingCurrency: string): void {
+		const grouped = this.groupByTransaction(
+			this.parseRows(rawCsv)
+				.filter(row => row.length >= 8 && /^\d{4}-\d{2}-\d{2}$/.test(row[0]))
+				.map(row => ({
+					date: row[0],
+					payee: row[1],
+					narration: row[2],
+					account: row[3],
+					position: row[4],
+					units: row[5] || '',
+					cost: row[6] || '',
+					convertedAmount: this.parseOptionalNumber(row[7] || ''),
+				}))
+				.filter(row => row.position)
+		);
+
+		const netCashByHolding = new Map<string, number>();
+		for (const postings of grouped.values()) {
+			const investmentHoldings = new Map<string, { account: string; commodity: string; quantity: number }>();
+			for (const posting of postings) {
+				if (!posting.account.startsWith('Assets:Investments:')) continue;
+				const quantity = this.parseAmountCommodity(posting.units || posting.position);
+				if (!quantity.commodity || !quantity.amount) continue;
+				const key = this.investmentHoldingKey(posting.account, quantity.commodity);
+				const current = investmentHoldings.get(key);
+				investmentHoldings.set(key, {
+					account: posting.account,
+					commodity: quantity.commodity,
+					quantity: (current?.quantity || 0) + quantity.amount,
+				});
+			}
+
+			for (const [key, holding] of investmentHoldings) {
+				if (!holding.quantity) continue;
+				const netCash = postings
+					.filter(posting => /^(Assets|Liabilities):/.test(posting.account))
+					.filter(posting => !posting.account.startsWith('Assets:Investments:'))
+					.filter(posting => !this.positionUsesCommodity(posting.position, holding.commodity))
+					.reduce((sum, posting) => sum + (posting.convertedAmount || 0), 0);
+				if (!netCash) continue;
+				netCashByHolding.set(key, (netCashByHolding.get(key) || 0) + netCash);
+			}
+		}
+
+		for (const [key, netCash] of netCashByHolding) {
+			if (costByHolding.has(key)) continue;
+			const netInvested = this.roundCurrency(-netCash);
+			if (netInvested <= 0) continue;
+			costByHolding.set(key, {
+				amount: netInvested,
+				rawAmount: netInvested,
+				rawCommodity: operatingCurrency,
+				source: 'cashflow',
+			});
+		}
 	}
 
 	private investmentHoldingKey(account: string, commodity: string): string {

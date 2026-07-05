@@ -148,12 +148,14 @@
 
 	function investmentCostBasis(row: ReportRow): string {
 		if (row.costStatus === 'available') return formatOptionalCurrency(row.costBasis);
+		if (row.costStatus === 'cashflow') return formatOptionalCurrency(row.costBasis);
 		if (row.costStatus === 'mixed-currency' && row.costBasisRaw) return row.costBasisRaw;
 		return '—';
 	}
 
 	function investmentCostTitle(row: ReportRow): string {
 		if (row.costStatus === 'available') return row.costBasisRaw || investmentCostBasis(row);
+		if (row.costStatus === 'cashflow') return `Cash-flow basis: net invested after buy and sell cash flows. This is not a Beancount lot cost.`;
 		if (row.costStatus === 'mixed-currency') return `Cost is not in ${state.currency}: ${row.costBasisRaw || 'mixed cost inventory'}`;
 		return 'No cost basis available for this holding.';
 	}
@@ -174,6 +176,12 @@
 		const percent = formatOptionalPercent(row.unrealizedGainPercent);
 		const percentPrefix = row.unrealizedGainPercent !== null && row.unrealizedGainPercent !== undefined && row.unrealizedGainPercent > 0 ? '+' : '';
 		return `${formatSignedCurrency(row.unrealizedGain)} (${percentPrefix}${percent})`;
+	}
+
+	function investmentGainTitle(row: ReportRow): string {
+		if (row.costStatus === 'cashflow') return 'Cash-flow return: current value minus net invested cash flow.';
+		if (row.costStatus === 'available') return 'Unrealized gain/loss based on holding cost basis.';
+		return 'No return basis available for this holding.';
 	}
 
 	function investmentGainClass(row: ReportRow): string {
@@ -863,7 +871,7 @@
 								<td class="align-right">{formatCurrency(row.amount)}</td>
 								<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
 								<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
-								<td class={`align-right ${investmentGainClass(row)}`}>{investmentGain(row)}</td>
+								<td class={`align-right ${investmentGainClass(row)}`} title={investmentGainTitle(row)}>{investmentGain(row)}</td>
 								<td class="align-right">{formatPercent(row.percent)}</td>
 							</tr>
 						{/each}
@@ -1008,7 +1016,7 @@
 											{#if detailSelection.kind === 'investment'}
 												<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
 												<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
-												<td class={`align-right ${investmentGainClass(row)}`}>{investmentGain(row)}</td>
+												<td class={`align-right ${investmentGainClass(row)}`} title={investmentGainTitle(row)}>{investmentGain(row)}</td>
 											{/if}
 											<td class="align-right">{detailPercent(row.amount, detailSelection.amount)}</td>
 										</tr>
@@ -1032,7 +1040,7 @@
 										{#if detailSelection.kind === 'investment'}
 											<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
 											<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
-											<td class={`align-right ${investmentGainClass(row)}`}>{investmentGain(row)}</td>
+											<td class={`align-right ${investmentGainClass(row)}`} title={investmentGainTitle(row)}>{investmentGain(row)}</td>
 										{/if}
 										<td class="align-right">{detailPercent(row.amount, detailSelection.amount)}</td>
 									</tr>

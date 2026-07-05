@@ -117,6 +117,10 @@ export function getInvestmentCostPostingsQuery(currency: string, asOfDate: strin
 	return `SELECT account, currency, position, units(position), cost(position), number(convert(cost(position), '${currency}'${valuationDateArgument(valuationDate)})) AS _costBasis, meta('source_price') AS _sourcePrice, meta('confirmed_price') AS _confirmedPrice WHERE account ~ '^Assets:Investments' AND date < ${asOfDate} ORDER BY date, lineno LIMIT ${limit}`;
 }
 
+export function getInvestmentCashflowPostingsQuery(currency: string, asOfDate: string, valuationDate = asOfDate, limit = 50000): string {
+	return `SELECT date, payee, narration, account, position, units(position), cost(position), number(convert(position, '${currency}'${valuationDateArgument(valuationDate)})) AS _value WHERE account ~ '^(Assets|Liabilities)' AND date < ${asOfDate} ORDER BY date, lineno LIMIT ${limit}`;
+}
+
 export function getInvestmentTransactionsQuery(account: string, commodity: string, endDate: string, limit = 500): string {
 	const escapedAccount = account.replace(/'/g, "''");
 	const escapedCommodity = commodity.replace(/'/g, "''");
