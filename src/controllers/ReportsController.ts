@@ -441,17 +441,20 @@ export class ReportsController {
 		const quantityAmount = this.parseAmountCommodity(quantityRaw).amount;
 		const currentPrice = quantityAmount ? Math.abs(amount / quantityAmount) : null;
 		const aggregateCostCommodity = this.parseAmountCommodity(aggregateCostBasisRaw).commodity;
-		const derivedCostBasis = costBasisByHolding.get(this.investmentHoldingKey(account, commodity));
 		const aggregateHasCost = aggregateCostCommodity && (aggregateCostCommodity !== commodity || commodity === operatingCurrency);
-		const costBasis = derivedCostBasis
+		const aggregateCostBasisAvailable = aggregateHasCost && aggregateCostBasis !== null;
+		const derivedCostBasis = aggregateCostBasisAvailable ? undefined : costBasisByHolding.get(this.investmentHoldingKey(account, commodity));
+		const costBasis = aggregateCostBasisAvailable
+			? aggregateCostBasis
+			: derivedCostBasis
 			? this.roundCurrency(derivedCostBasis.amount)
-			: aggregateHasCost
-				? aggregateCostBasis
-				: null;
-		const costBasisRaw = derivedCostBasis
+			: null;
+		const costBasisRaw = aggregateCostBasisAvailable
+			? aggregateCostBasisRaw
+			: derivedCostBasis
 			? this.formatInvestmentCostBasisRaw(derivedCostBasis, operatingCurrency)
 			: aggregateCostBasisRaw;
-		const costBasisCommodity = derivedCostBasis ? operatingCurrency : aggregateCostCommodity;
+		const costBasisCommodity = aggregateCostBasisAvailable ? aggregateCostCommodity : derivedCostBasis ? operatingCurrency : aggregateCostCommodity;
 		const costStatus = this.investmentCostStatus(costBasis, costBasisRaw, costBasisCommodity, commodity, amount);
 		const averageCost = costStatus === 'available' && costBasis !== null && quantityAmount
 			? Math.abs(costBasis / quantityAmount)
@@ -504,28 +507,20 @@ export class ReportsController {
 		const costByHolding = new Map<string, InvestmentCostBasis>();
 		for (const row of this.parseRows(rawCsv)) {
 			if (row.length < 6) continue;
-			const [account, commodity, position, units, costRaw, costConvertedRaw, sourcePriceRaw, confirmedPriceRaw] = row;
+			const [account, commodity, position, units, costRaw, costConvertedRaw] = row;
 			const quantity = this.parseAmountCommodity(units || position);
 			if (!account || !commodity || !quantity.amount) continue;
 
 			const costRawAmount = this.parseAmountCommodity(costRaw);
 			const convertedCost = this.parseOptionalNumber(costConvertedRaw);
-			const sourcePrice = this.parseOptionalNumber(sourcePriceRaw || '');
-			const confirmedPrice = this.parseOptionalNumber(confirmedPriceRaw || '');
 			let costAmount: number | null = null;
 			let rawAmount: number | null = null;
 			let rawCommodity = '';
-			let source: InvestmentCostBasis['source'] = 'cost';
 
 			if (costRawAmount.commodity && costRawAmount.commodity !== commodity && convertedCost !== null) {
 				costAmount = convertedCost;
 				rawAmount = costRawAmount.amount;
 				rawCommodity = costRawAmount.commodity;
-			} else if (sourcePrice !== null || confirmedPrice !== null) {
-				costAmount = quantity.amount * (sourcePrice ?? confirmedPrice ?? 0);
-				rawAmount = costAmount;
-				rawCommodity = operatingCurrency;
-				source = 'total-price';
 			} else if (commodity === operatingCurrency && costRawAmount.commodity === operatingCurrency) {
 				costAmount = costRawAmount.amount;
 				rawAmount = costRawAmount.amount;
@@ -545,7 +540,7 @@ export class ReportsController {
 						: nextAmount
 					: rawAmount,
 				rawCommodity: canKeepRawCost ? rawCommodity : operatingCurrency,
-				source: current?.source === 'cost' && source === 'cost' ? 'cost' : source,
+				source: 'cost',
 			});
 		}
 		return costByHolding;
