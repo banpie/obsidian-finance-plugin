@@ -347,7 +347,7 @@ export class ReportsController {
 			const investmentsByType = this.groupRows(investmentRows, row => this.investmentType(row.account), true);
 			const topInvestments = this.withPercent(
 				investmentRows
-					.filter(row => Math.abs(row.amount) >= 0.01)
+					.filter(row => row.amount >= 0.01)
 					.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
 					.slice(0, 20),
 				investmentRows.reduce((sum, row) => sum + row.amount, 0)
@@ -425,7 +425,7 @@ export class ReportsController {
 		return this.parseRows(rawCsv)
 			.filter(row => row.length >= 3)
 			.map(row => this.parseInvestmentRow(row, costBasisByHolding, operatingCurrency))
-			.filter(row => Math.abs(row.amount) >= 0.01)
+			.filter(row => row.amount >= 0.01)
 			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 	}
 
