@@ -585,8 +585,9 @@ export class BeancountSettingTab extends PluginSettingTab {
             '📄 prices.beancount - Price directives',
             '📄 pads.beancount - Pad directives',
             '📄 balances.beancount - Balance assertions',
+            '📄 queries.beancount - Named query directives',
             '📄 notes.beancount - Note directives',
-            '📄 events.beancount - Event directives',
+            '📄 events.beancount - Event directives (+ holds financial indicator details)',
             '📁 transactions/ - Folder with transaction files organized by year or month'
         ];
 
