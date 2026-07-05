@@ -20,8 +20,8 @@ export interface TransactionFilters {
 // --- Query Functions ---
 
 
-function valuationDateArgument(asOfDate?: string): string {
-	return asOfDate ? `, ${asOfDate}` : '';
+function valuationDateArgument(valuationDate?: string): string {
+	return valuationDate ? `, ${valuationDate}` : '';
 }
 
 function asOfDateClause(asOfDate?: string): string {
@@ -32,16 +32,16 @@ function openAccountClause(asOfDate?: string): string {
 	return asOfDate ? '' : ' AND NOT close_date(account)';
 }
 
-export function getTotalAssetsQuery(currency: string, rounding: number, asOfDate?: string): string {
-	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding}) AS _totalAssets WHERE account ~ '^Assets'${asOfDateClause(asOfDate)}`;
+export function getTotalAssetsQuery(currency: string, rounding: number, asOfDate?: string, valuationDate = asOfDate): string {
+	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(valuationDate)}))), ${rounding}) AS _totalAssets WHERE account ~ '^Assets'${asOfDateClause(asOfDate)}`;
 }
 
-export function getTotalLiabilitiesQuery(currency: string, rounding: number, asOfDate?: string): string {
-	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding})) AS _totalLiabilities WHERE account ~ '^Liabilities'${asOfDateClause(asOfDate)}`;
+export function getTotalLiabilitiesQuery(currency: string, rounding: number, asOfDate?: string, valuationDate = asOfDate): string {
+	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(valuationDate)}))), ${rounding})) AS _totalLiabilities WHERE account ~ '^Liabilities'${asOfDateClause(asOfDate)}`;
 }
 
-export function getTotalWorthQuery(currency: string, rounding: number, asOfDate?: string): string {
-	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding}) AS _totalWorth WHERE account ~ '^(Assets|Liabilities)'${asOfDateClause(asOfDate)}`;
+export function getTotalWorthQuery(currency: string, rounding: number, asOfDate?: string, valuationDate = asOfDate): string {
+	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(valuationDate)}))), ${rounding}) AS _totalWorth WHERE account ~ '^(Assets|Liabilities)'${asOfDateClause(asOfDate)}`;
 }
 
 // This Month Queries
@@ -101,20 +101,20 @@ export function getPeriodProjectTransactionsQuery(currency: string, rounding: nu
 	return `SELECT date, payee, narration, account, entry_meta('project_label') AS _projectLabel, entry_meta('project_tag') AS _projectTag, round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _amount WHERE account ~ '^(Income|Expenses)' AND date >= ${startDate} AND date < ${endDate} GROUP BY date, payee, narration, account, _projectLabel, _projectTag ORDER BY date DESC`;
 }
 
-export function getAssetAllocationQuery(currency: string, rounding: number, asOfDate?: string): string {
-	return `SELECT account, round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding}) AS _value WHERE account ~ '^Assets'${asOfDateClause(asOfDate)}${openAccountClause(asOfDate)} GROUP BY account ORDER BY account`;
+export function getAssetAllocationQuery(currency: string, rounding: number, asOfDate?: string, valuationDate = asOfDate): string {
+	return `SELECT account, round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(valuationDate)}))), ${rounding}) AS _value WHERE account ~ '^Assets'${asOfDateClause(asOfDate)}${openAccountClause(asOfDate)} GROUP BY account ORDER BY account`;
 }
 
-export function getLiabilityAllocationQuery(currency: string, rounding: number, asOfDate?: string): string {
-	return `SELECT account, neg(round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding})) AS _value WHERE account ~ '^Liabilities'${asOfDateClause(asOfDate)}${openAccountClause(asOfDate)} GROUP BY account ORDER BY account`;
+export function getLiabilityAllocationQuery(currency: string, rounding: number, asOfDate?: string, valuationDate = asOfDate): string {
+	return `SELECT account, neg(round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(valuationDate)}))), ${rounding})) AS _value WHERE account ~ '^Liabilities'${asOfDateClause(asOfDate)}${openAccountClause(asOfDate)} GROUP BY account ORDER BY account`;
 }
 
-export function getInvestmentAllocationQuery(currency: string, rounding: number, asOfDate?: string): string {
-	return `SELECT account, currency, currency_meta(currency, 'name') AS _commodityName, round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding}) AS _value, units(sum(position)) AS _quantity, cost(sum(position)) AS _costBasisRaw, round(number(only('${currency}', convert(cost(sum(position)), '${currency}'${valuationDateArgument(asOfDate)}))), ${rounding}) AS _costBasis WHERE account ~ '^Assets:Investments'${asOfDateClause(asOfDate)}${openAccountClause(asOfDate)} GROUP BY account, currency, currency_meta(currency, 'name') ORDER BY account, currency`;
+export function getInvestmentAllocationQuery(currency: string, rounding: number, asOfDate?: string, valuationDate = asOfDate): string {
+	return `SELECT account, currency, currency_meta(currency, 'name') AS _commodityName, round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(valuationDate)}))), ${rounding}) AS _value, units(sum(position)) AS _quantity, cost(sum(position)) AS _costBasisRaw, round(number(only('${currency}', convert(cost(sum(position)), '${currency}'${valuationDateArgument(valuationDate)}))), ${rounding}) AS _costBasis WHERE account ~ '^Assets:Investments'${asOfDateClause(asOfDate)}${openAccountClause(asOfDate)} GROUP BY account, currency, currency_meta(currency, 'name') ORDER BY account, currency`;
 }
 
-export function getInvestmentCostPostingsQuery(currency: string, asOfDate: string, limit = 20000): string {
-	return `SELECT account, currency, position, units(position), cost(position), number(convert(cost(position), '${currency}'${valuationDateArgument(asOfDate)})) AS _costBasis, meta('source_price') AS _sourcePrice, meta('confirmed_price') AS _confirmedPrice WHERE account ~ '^Assets:Investments' AND date < ${asOfDate} ORDER BY date, lineno LIMIT ${limit}`;
+export function getInvestmentCostPostingsQuery(currency: string, asOfDate: string, valuationDate = asOfDate, limit = 20000): string {
+	return `SELECT account, currency, position, units(position), cost(position), number(convert(cost(position), '${currency}'${valuationDateArgument(valuationDate)})) AS _costBasis, meta('source_price') AS _sourcePrice, meta('confirmed_price') AS _confirmedPrice WHERE account ~ '^Assets:Investments' AND date < ${asOfDate} ORDER BY date, lineno LIMIT ${limit}`;
 }
 
 export function getInvestmentTransactionsQuery(account: string, commodity: string, endDate: string, limit = 500): string {

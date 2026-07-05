@@ -319,19 +319,19 @@ export class ReportsController {
 			] = await Promise.all([
 				this.plugin.runQuery(queries.getPeriodIncomeBreakdownQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodExpenseBreakdownQuery(currency, 2, range.startDate, range.endDate)),
-				this.plugin.runQuery(queries.getTotalAssetsQuery(currency, 2, range.endDate)),
-				this.plugin.runQuery(queries.getTotalLiabilitiesQuery(currency, 2, range.endDate)),
-				this.plugin.runQuery(queries.getTotalWorthQuery(currency, 2, range.endDate)),
+				this.plugin.runQuery(queries.getTotalAssetsQuery(currency, 2, range.endDate, range.valuationDate)),
+				this.plugin.runQuery(queries.getTotalLiabilitiesQuery(currency, 2, range.endDate, range.valuationDate)),
+				this.plugin.runQuery(queries.getTotalWorthQuery(currency, 2, range.endDate, range.valuationDate)),
 				this.plugin.runQuery(queries.getPeriodIncomeTransactionsQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodExpenseTransactionsQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodCounterpartAccountsQuery(range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodProjectIncomeQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodProjectExpenseQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodProjectTransactionsQuery(currency, 2, range.startDate, range.endDate)),
-				this.plugin.runQuery(queries.getAssetAllocationQuery(currency, 2, range.endDate)),
-				this.plugin.runQuery(queries.getLiabilityAllocationQuery(currency, 2, range.endDate)),
-				this.plugin.runQuery(queries.getInvestmentAllocationQuery(currency, 2, range.endDate)),
-				this.plugin.runQuery(queries.getInvestmentCostPostingsQuery(currency, range.endDate)),
+				this.plugin.runQuery(queries.getAssetAllocationQuery(currency, 2, range.endDate, range.valuationDate)),
+				this.plugin.runQuery(queries.getLiabilityAllocationQuery(currency, 2, range.endDate, range.valuationDate)),
+				this.plugin.runQuery(queries.getInvestmentAllocationQuery(currency, 2, range.endDate, range.valuationDate)),
+				this.plugin.runQuery(queries.getInvestmentCostPostingsQuery(currency, range.endDate, range.valuationDate)),
 			]);
 
 			const incomeByAccount = this.parseAccountRows(incomeCsv);
@@ -898,19 +898,26 @@ export class ReportsController {
 		return `${label || 'Unassigned'}\u001f${tag || ''}`;
 	}
 
-	private getPeriodRange(periodMode: ReportsPeriodMode, year: number, month: number): { startDate: string; endDate: string; label: string } {
+	private getPeriodRange(periodMode: ReportsPeriodMode, year: number, month: number): { startDate: string; endDate: string; valuationDate: string; label: string } {
 		if (periodMode === 'year') {
+			const end = new Date(year + 1, 0, 1);
+			const valuation = new Date(end);
+			valuation.setDate(valuation.getDate() - 1);
 			return {
 				startDate: `${year}-01-01`,
-				endDate: `${year + 1}-01-01`,
+				endDate: this.formatDate(end),
+				valuationDate: this.formatDate(valuation),
 				label: `${year}`,
 			};
 		}
 		const start = new Date(year, month - 1, 1);
 		const end = new Date(year, month, 1);
+		const valuation = new Date(end);
+		valuation.setDate(valuation.getDate() - 1);
 		return {
 			startDate: this.formatDate(start),
 			endDate: this.formatDate(end),
+			valuationDate: this.formatDate(valuation),
 			label: `${year}-${this.pad2(month)}`,
 		};
 	}
