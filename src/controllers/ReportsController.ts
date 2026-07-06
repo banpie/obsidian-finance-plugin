@@ -7,7 +7,7 @@ import { Logger } from '../utils/logger';
 
 export type ReportsPeriodMode = 'month' | 'year';
 export type ReportsPeriodPreset = 'this-month' | 'last-month' | 'this-year' | 'last-year' | 'custom-month' | 'custom-year';
-export type ReportsView = 'cashflow' | 'assets' | 'projects';
+export type ReportsView = 'cashflow' | 'assets' | 'loans' | 'projects';
 
 export interface ReportRow {
 	label: string;
@@ -46,6 +46,17 @@ export interface ReportProjectRow {
 	expenses: number;
 	netIncome: number;
 	transactionCount: number;
+}
+
+export interface ReportLoanRow {
+	label: string;
+	account: string;
+	receivable: number;
+	payable: number;
+	netAmount: number;
+	amount: number;
+	percent: number;
+	direction: 'receivable' | 'payable';
 }
 
 export interface ReportProjectTransaction extends ReportTransaction {
@@ -113,6 +124,7 @@ export interface ReportsState {
 	investmentsByType: ReportRow[];
 	investmentsByAccount: ReportRow[];
 	topInvestments: ReportRow[];
+	loans: ReportLoanRow[];
 	projects: ReportProjectRow[];
 	projectTransactions: ReportProjectTransaction[];
 	incomeChartConfig: ChartConfiguration | null;
@@ -209,6 +221,7 @@ export class ReportsController {
 			investmentsByType: [],
 			investmentsByAccount: [],
 			topInvestments: [],
+			loans: [],
 			projects: [],
 			projectTransactions: [],
 			incomeChartConfig: null,
@@ -324,6 +337,8 @@ export class ReportsController {
 				projectTransactionsCsv,
 				assetsCsv,
 				liabilitiesCsv,
+				loanBalancesCsv,
+				loanNamesCsv,
 				investmentsCsv,
 				investmentCostPostingsCsv,
 				investmentCashflowPostingsCsv,
@@ -342,6 +357,8 @@ export class ReportsController {
 				this.plugin.runQuery(queries.getPeriodProjectTransactionsQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getAssetAllocationQuery(currency, 2, range.endDate, range.valuationDate)),
 				this.plugin.runQuery(queries.getLiabilityAllocationQuery(currency, 2, range.endDate, range.valuationDate)),
+				this.plugin.runQuery(queries.getLoanBalancesQuery(currency, 2, range.endDate, range.valuationDate)),
+				this.plugin.runQuery(queries.getLoanAccountNamesQuery(range.endDate)),
 				this.plugin.runQuery(queries.getInvestmentAllocationQuery(currency, 2, range.endDate, range.valuationDate)),
 				this.plugin.runQuery(queries.getInvestmentCostPostingsQuery(currency, range.endDate, range.valuationDate)),
 				this.plugin.runQuery(queries.getInvestmentCashflowPostingsQuery(currency, range.endDate, range.valuationDate)),
@@ -377,6 +394,7 @@ export class ReportsController {
 			const counterpartAccounts = this.parseCounterpartRows(counterpartAccountsCsv);
 			const projectTransactions = this.parseProjectTransactionRows(projectTransactionsCsv, counterpartAccounts);
 			const projects = this.buildProjectRows(projectIncomeCsv, projectExpensesCsv, projectTransactions);
+			const loans = this.parseLoanRows(loanBalancesCsv, loanNamesCsv);
 
 			this.state.update(s => ({
 				...s,
@@ -401,6 +419,7 @@ export class ReportsController {
 				investmentsByType: this.withPercent(investmentsByType, investmentRows.reduce((sum, row) => sum + row.amount, 0)),
 				investmentsByAccount: this.withPercent(investmentRows, investmentRows.reduce((sum, row) => sum + row.amount, 0)),
 				topInvestments,
+				loans,
 				projects,
 				projectTransactions,
 				incomeChartConfig: this.buildDoughnutConfig('Income', incomeByCategory, totalIncome, currency),
@@ -435,6 +454,40 @@ export class ReportsController {
 			}))
 			.filter(row => Math.abs(row.amount) >= 0.01)
 			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+	}
+
+	private parseLoanRows(balancesCsv: string, namesCsv: string): ReportLoanRow[] {
+		const labelsByAccount = new Map<string, string>();
+		for (const row of this.parseRows(namesCsv)) {
+			if (row.length < 2 || !row[0] || !row[1]) continue;
+			labelsByAccount.set(row[0], row[1]);
+		}
+
+		const rows = this.parseRows(balancesCsv)
+			.filter(row => row.length >= 2)
+			.map(row => {
+				const account = row[0];
+				const balance = this.parseNumber(row[1]);
+				const receivable = Math.max(balance, 0);
+				const payable = Math.max(-balance, 0);
+				const netAmount = receivable - payable;
+				return {
+					label: labelsByAccount.get(account) || this.accountLabel(account),
+					account,
+					receivable: this.roundCurrency(receivable),
+					payable: this.roundCurrency(payable),
+					netAmount: this.roundCurrency(netAmount),
+					amount: this.roundCurrency(Math.max(receivable, payable)),
+					percent: 0,
+					direction: netAmount >= 0 ? 'receivable' as const : 'payable' as const,
+				};
+			})
+			.filter(row => row.amount >= 0.01)
+			.sort((a, b) => Math.abs(b.netAmount) - Math.abs(a.netAmount));
+
+		const totalExposure = rows.reduce((sum, row) => sum + row.amount, 0);
+		if (!totalExposure) return rows;
+		return rows.map(row => ({ ...row, percent: (row.amount / totalExposure) * 100 }));
 	}
 
 	private parseInvestmentRows(

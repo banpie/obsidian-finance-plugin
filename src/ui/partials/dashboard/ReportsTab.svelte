@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { writable, type Writable } from 'svelte/store';
-	import type { ReportsController, ReportsState, ReportRow, ReportTransaction, ReportInvestmentTransaction, ReportAccountTransaction, ReportProjectRow, ReportProjectTransaction, ReportsView } from '../../../controllers/ReportsController';
+	import type { ReportsController, ReportsState, ReportRow, ReportTransaction, ReportInvestmentTransaction, ReportAccountTransaction, ReportProjectRow, ReportProjectTransaction, ReportLoanRow, ReportsView } from '../../../controllers/ReportsController';
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
@@ -57,6 +57,7 @@
 		investmentsByType: [],
 		investmentsByAccount: [],
 		topInvestments: [],
+		loans: [],
 		projects: [],
 		projectTransactions: [],
 		incomeChartConfig: null,
@@ -478,14 +479,14 @@
 		expandedHoldingTransactions = new Set();
 	}
 
-	async function openAccountTransactions(row: ReportRow) {
+	async function openAccountTransactions(row: ReportRow, startDate = state.startDate, endDate = state.endDate) {
 		if (!canOpenAccountTransactions(row)) return;
 		accountSelection = row;
 		accountTransactions = [];
 		accountTransactionsError = null;
 		accountTransactionsLoading = true;
 		try {
-			accountTransactions = controller ? await controller.loadAccountTransactions(row, state.startDate, state.endDate) : [];
+			accountTransactions = controller ? await controller.loadAccountTransactions(row, startDate, endDate) : [];
 		} catch (error) {
 			accountTransactionsError = error instanceof Error ? error.message : String(error);
 		} finally {
@@ -516,6 +517,34 @@
 
 	function accountTransactionLabel(transaction: ReportAccountTransaction): string {
 		return transaction.narration || transaction.payee || '';
+	}
+
+	function loanDirectionLabel(row: ReportLoanRow): string {
+		return row.direction === 'receivable' ? 'To receive' : 'To pay';
+	}
+
+	function loanDirectionClass(row: ReportLoanRow): string {
+		return row.direction === 'receivable' ? 'positive' : 'negative';
+	}
+
+	function loanAccountLabel(account: string): string {
+		const parts = account.split(':');
+		return parts.slice(2).join(':') || account;
+	}
+
+	function openLoanTransactions(row: ReportLoanRow) {
+		openAccountTransactions({
+			label: row.label,
+			account: row.account,
+			amount: row.netAmount,
+			percent: row.percent,
+		}, '0001-01-01', state.endDate);
+	}
+
+	function handleLoanRowKeydown(event: KeyboardEvent, row: ReportLoanRow) {
+		if (event.key !== 'Enter' && event.key !== ' ') return;
+		event.preventDefault();
+		openLoanTransactions(row);
 	}
 
 	function handleHoldingRowKeydown(event: KeyboardEvent, row: ReportRow) {
@@ -626,6 +655,9 @@
 	$: projectIncomeTotal = state.projects.reduce((sum, row) => sum + row.income, 0);
 	$: projectExpensesTotal = state.projects.reduce((sum, row) => sum + row.expenses, 0);
 	$: projectNetIncomeTotal = state.projects.reduce((sum, row) => sum + row.netIncome, 0);
+	$: loanReceivableTotal = state.loans.reduce((sum, row) => sum + row.receivable, 0);
+	$: loanPayableTotal = state.loans.reduce((sum, row) => sum + row.payable, 0);
+	$: loanNetTotal = loanReceivableTotal - loanPayableTotal;
 
 	function handleViewChange(view: ReportsView) {
 		controller?.setActiveView(view);
@@ -667,6 +699,7 @@
 			<div class="segmented-control primary-switch" aria-label="Report view">
 				<button class:active={state.activeView === 'cashflow'} on:click={() => handleViewChange('cashflow')}>Cash Flow</button>
 				<button class:active={state.activeView === 'assets'} on:click={() => handleViewChange('assets')}>Assets</button>
+				<button class:active={state.activeView === 'loans'} on:click={() => handleViewChange('loans')}>Loans</button>
 				<button class:active={state.activeView === 'projects'} on:click={() => handleViewChange('projects')}>Projects</button>
 			</div>
 		</div>
@@ -890,6 +923,71 @@
 								<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
 								<td class={`align-right ${investmentGainClass(row)}`} title={investmentGainTitle(row)}>{investmentGain(row)}</td>
 								<td class="align-right">{formatPercent(row.percent)}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</section>
+	{:else if state.activeView === 'loans'}
+		<div class="metric-grid">
+			<div class="metric-card">
+				<span>To Receive</span>
+				<strong>{formatCurrency(loanReceivableTotal)}</strong>
+			</div>
+			<div class="metric-card">
+				<span>To Pay</span>
+				<strong>{formatCurrency(loanPayableTotal)}</strong>
+			</div>
+			<div class="metric-card">
+				<span>Net Position</span>
+				<strong class={amountClass(loanNetTotal)}>{formatCurrency(loanNetTotal)}</strong>
+			</div>
+			<div class="metric-card">
+				<span>Open Loans</span>
+				<strong>{state.loans.length}</strong>
+			</div>
+		</div>
+
+		<section class="report-section">
+			<div class="section-header">
+				<h3>Loan Balances</h3>
+				<span>{state.periodLabel}</span>
+			</div>
+			<div class="detail-table-wrap">
+				<table class="reports-table">
+					<thead>
+						<tr>
+							<th>Loan</th>
+							<th>Direction</th>
+							<th>Ledger Account</th>
+							<th class="align-right">To Receive</th>
+							<th class="align-right">To Pay</th>
+							<th class="align-right">Net</th>
+							<th class="align-right">Share</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each state.loans as row}
+							<tr
+								class="clickable-row"
+								role="button"
+								tabindex="0"
+								on:click={() => openLoanTransactions(row)}
+								on:keydown={(event) => handleLoanRowKeydown(event, row)}
+								title="View loan transactions"
+							>
+								<td><span class="table-link">{row.label}</span></td>
+								<td class={loanDirectionClass(row)}>{loanDirectionLabel(row)}</td>
+								<td title={row.account}>{loanAccountLabel(row.account)}</td>
+								<td class="align-right">{row.receivable ? formatCurrency(row.receivable) : '—'}</td>
+								<td class="align-right">{row.payable ? formatCurrency(row.payable) : '—'}</td>
+								<td class={`align-right ${amountClass(row.netAmount)}`}>{formatCurrency(row.netAmount)}</td>
+								<td class="align-right">{formatPercent(row.percent)}</td>
+							</tr>
+						{:else}
+							<tr>
+								<td colspan="7">No open loan balances for this period.</td>
 							</tr>
 						{/each}
 					</tbody>

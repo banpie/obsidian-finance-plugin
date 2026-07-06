@@ -109,6 +109,14 @@ export function getLiabilityAllocationQuery(currency: string, rounding: number, 
 	return `SELECT account, neg(round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(valuationDate)}))), ${rounding})) AS _value WHERE account ~ '^Liabilities'${asOfDateClause(asOfDate)}${openAccountClause(asOfDate)} GROUP BY account ORDER BY account`;
 }
 
+export function getLoanBalancesQuery(currency: string, rounding: number, asOfDate?: string, valuationDate = asOfDate): string {
+	return `SELECT account, round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(valuationDate)}))), ${rounding}) AS _balance WHERE account ~ '^(Assets|Liabilities):Loans'${asOfDateClause(asOfDate)} GROUP BY account ORDER BY account`;
+}
+
+export function getLoanAccountNamesQuery(asOfDate?: string, limit = 20000): string {
+	return `SELECT account, entry_meta('loan') AS _loan WHERE account ~ '^(Assets|Liabilities):Loans' AND entry_meta('loan')${asOfDateClause(asOfDate)} ORDER BY date, lineno LIMIT ${limit}`;
+}
+
 export function getInvestmentAllocationQuery(currency: string, rounding: number, asOfDate?: string, valuationDate = asOfDate): string {
 	return `SELECT account, currency, currency_meta(currency, 'name') AS _commodityName, round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(valuationDate)}))), ${rounding}) AS _value, units(sum(position)) AS _quantity, cost(sum(position)) AS _costBasisRaw, round(number(only('${currency}', convert(cost(sum(position)), '${currency}'${valuationDateArgument(valuationDate)}))), ${rounding}) AS _costBasis WHERE account ~ '^Assets:Investments'${asOfDateClause(asOfDate)}${openAccountClause(asOfDate)} GROUP BY account, currency, currency_meta(currency, 'name') ORDER BY account, currency`;
 }
