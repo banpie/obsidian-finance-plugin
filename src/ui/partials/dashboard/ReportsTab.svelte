@@ -8,13 +8,16 @@
 
 	export let controller: ReportsController;
 
-	type DetailKind = 'income' | 'expense' | 'asset' | 'liability' | 'networth' | 'investment' | 'project';
+	type DetailKind = 'income' | 'expense' | 'asset' | 'liability' | 'networth' | 'investment' | 'loan' | 'project';
+	type LoanDetailFilter = 'receivable' | 'payable' | 'net' | 'all';
 
 	interface DetailSelection {
 		kind: DetailKind;
 		title: string;
 		amount: number;
 		category: string | null;
+		valueLabel?: string;
+		loanFilter?: LoanDetailFilter;
 		projectTag?: string;
 		projectType?: 'Income' | 'Expense';
 		summary?: boolean;
@@ -281,9 +284,18 @@
 	function detailSectionTitle(kind: DetailKind): string {
 		if (kind === 'investment') return detailSelection?.summary ? 'Holdings by Type' : 'Current Holdings';
 		if (kind === 'asset' || kind === 'liability' || kind === 'networth') return detailSelection?.summary ? 'Balances by Category' : 'Current Balances';
+		if (kind === 'loan') return 'Loan Balances';
 		if (kind === 'project') return 'Project Transactions';
 		if (detailSelection?.category) return 'Selected Category';
 		return 'Category Breakdown';
+	}
+
+	function detailValue(selection: DetailSelection): string {
+		return selection.valueLabel || formatCurrency(selection.amount);
+	}
+
+	function detailValueClass(selection: DetailSelection): string {
+		return selection.valueLabel ? '' : amountClass(selection.amount);
 	}
 
 	function detailRowLabel(row: ReportRow): string {
@@ -388,6 +400,18 @@
 			amount,
 			category: null,
 			projectType,
+			summary: true,
+		});
+	}
+
+	function openLoanSummaryDetails(title: string, amount: number, loanFilter: LoanDetailFilter, valueLabel?: string) {
+		pushDetailSelection({
+			kind: 'loan',
+			title,
+			amount,
+			category: null,
+			loanFilter,
+			valueLabel,
 			summary: true,
 		});
 	}
@@ -541,10 +565,36 @@
 		}, '0001-01-01', state.endDate);
 	}
 
+	function handleLoanRowClick(event: MouseEvent, row: ReportLoanRow) {
+		const selection = window.getSelection();
+		if (selection && selection.toString()) return;
+		if (event.detail === 0) return;
+		openLoanTransactions(row);
+	}
+
 	function handleLoanRowKeydown(event: KeyboardEvent, row: ReportLoanRow) {
 		if (event.key !== 'Enter' && event.key !== ' ') return;
 		event.preventDefault();
 		openLoanTransactions(row);
+	}
+
+	function loanRowsForDetail(selection: DetailSelection | null): ReportLoanRow[] {
+		const filter = selection?.loanFilter || 'all';
+		if (filter === 'receivable') return state.loans.filter(row => row.receivable > 0);
+		if (filter === 'payable') return state.loans.filter(row => row.payable > 0);
+		return state.loans;
+	}
+
+	function loanDetailBaseAmount(row: ReportLoanRow, selection: DetailSelection | null): number {
+		const filter = selection?.loanFilter || 'all';
+		if (filter === 'receivable') return row.receivable;
+		if (filter === 'payable') return row.payable;
+		if (filter === 'net') return Math.abs(row.netAmount);
+		return row.amount;
+	}
+
+	function loanDetailTotal(selection: DetailSelection | null): number {
+		return loanRowsForDetail(selection).reduce((sum, row) => sum + loanDetailBaseAmount(row, selection), 0);
 	}
 
 	function handleHoldingRowKeydown(event: KeyboardEvent, row: ReportRow) {
@@ -931,22 +981,22 @@
 		</section>
 	{:else if state.activeView === 'loans'}
 		<div class="metric-grid">
-			<div class="metric-card">
+			<button type="button" class="metric-card interactive-card" on:click={() => openLoanSummaryDetails('To Receive', loanReceivableTotal, 'receivable')}>
 				<span>To Receive</span>
 				<strong>{formatCurrency(loanReceivableTotal)}</strong>
-			</div>
-			<div class="metric-card">
+			</button>
+			<button type="button" class="metric-card interactive-card" on:click={() => openLoanSummaryDetails('To Pay', loanPayableTotal, 'payable')}>
 				<span>To Pay</span>
 				<strong>{formatCurrency(loanPayableTotal)}</strong>
-			</div>
-			<div class="metric-card">
+			</button>
+			<button type="button" class="metric-card interactive-card" on:click={() => openLoanSummaryDetails('Net Position', loanNetTotal, 'net')}>
 				<span>Net Position</span>
 				<strong class={amountClass(loanNetTotal)}>{formatCurrency(loanNetTotal)}</strong>
-			</div>
-			<div class="metric-card">
+			</button>
+			<button type="button" class="metric-card interactive-card" on:click={() => openLoanSummaryDetails('Open Loans', state.loans.length, 'all', String(state.loans.length))}>
 				<span>Open Loans</span>
 				<strong>{state.loans.length}</strong>
-			</div>
+			</button>
 		</div>
 
 		<section class="report-section">
@@ -973,7 +1023,7 @@
 								class="clickable-row"
 								role="button"
 								tabindex="0"
-								on:click={() => openLoanTransactions(row)}
+								on:click={(event) => handleLoanRowClick(event, row)}
 								on:keydown={(event) => handleLoanRowKeydown(event, row)}
 								title="View loan transactions"
 							>
@@ -1071,14 +1121,57 @@
 					</div>
 				</div>
 				<div class="detail-modal-actions">
-					<strong class={amountClass(detailSelection.amount)}>{formatCurrency(detailSelection.amount)}</strong>
+					<strong class={detailValueClass(detailSelection)}>{detailValue(detailSelection)}</strong>
 					<button type="button" class="close-button" on:click={closeDetails} aria-label="Close details">Close</button>
 				</div>
 			</header>
 
 			<div class="detail-modal-body" role="presentation" on:click={(event) => closeOnBlankClick(event, closeDetails)}>
 				<div class="detail-modal-content" role="presentation" on:click={(event) => closeOnBlankClick(event, closeDetails)}>
-				{#if detailSelection.kind !== 'project'}
+				{#if detailSelection.kind === 'loan'}
+					<div class="detail-table-wrap">
+						<div class="detail-section-heading">
+							<h4>{detailSectionTitle(detailSelection.kind)}</h4>
+						</div>
+						<table class="reports-table">
+							<thead>
+								<tr>
+									<th>Loan</th>
+									<th>Direction</th>
+									<th>Ledger Account</th>
+									<th class="align-right">To Receive</th>
+									<th class="align-right">To Pay</th>
+									<th class="align-right">Net</th>
+									<th class="align-right">Share</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each loanRowsForDetail(detailSelection) as row}
+									<tr
+										class="clickable-row"
+										role="button"
+										tabindex="0"
+										on:click={(event) => handleLoanRowClick(event, row)}
+										on:keydown={(event) => handleLoanRowKeydown(event, row)}
+										title="View loan transactions"
+									>
+										<td><span class="table-link">{row.label}</span></td>
+										<td class={loanDirectionClass(row)}>{loanDirectionLabel(row)}</td>
+										<td title={row.account}>{loanAccountLabel(row.account)}</td>
+										<td class="align-right">{row.receivable ? formatCurrency(row.receivable) : '—'}</td>
+										<td class="align-right">{row.payable ? formatCurrency(row.payable) : '—'}</td>
+										<td class={`align-right ${amountClass(row.netAmount)}`}>{formatCurrency(row.netAmount)}</td>
+										<td class="align-right">{detailPercent(loanDetailBaseAmount(row, detailSelection), loanDetailTotal(detailSelection))}</td>
+									</tr>
+								{:else}
+									<tr>
+										<td colspan="7">No matching loan balances for this period.</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				{:else if detailSelection.kind !== 'project'}
 					<div class="detail-table-wrap">
 					<div class="detail-section-heading">
 						<h4>{detailSectionTitle(detailSelection.kind)}</h4>
