@@ -552,19 +552,21 @@ function getEmptyFileContents(): Record<FileType, string> {
  * 
  * @param plugin - The Beancount plugin instance
  * @param targetFolderName - Name of folder to create for structured layout
+ * @param sourcePath - Absolute or vault-relative path to the source beancount file
  * @returns Promise with success status
  */
 export async function migrateToStructuredLayout(
     plugin: BeancountPlugin,
-    targetFolderName = 'Finances'
+    targetFolderName = 'Finances',
+    sourcePath?: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
         Logger.log('[Migration] Starting migration to structured layout');
 
         // Validate that we have a source file
-        const sourceFile = plugin.settings.beancountFilePath;
+        const sourceFile = sourcePath;
         if (!sourceFile) {
-            return { success: false, error: 'No source Beancount file configured' };
+            return { success: false, error: 'No source Beancount file provided for migration' };
         }
 
         Logger.log(`[Migration] Source file: ${sourceFile}`);
@@ -711,11 +713,9 @@ export async function migrateToStructuredLayout(
         await new Promise(resolve => window.setTimeout(resolve, 100));
         await updateLedgerIncludes(plugin, targetFolderName);
 
-        // Step 6: Update plugin settings
+        // Step 6: Update plugin settings.
+        // Only structuredFolderName is persisted; all paths are derived from it at runtime.
         plugin.settings.structuredFolderName = targetFolderName;
-        const mainLedgerPath = getMainLedgerPath(plugin);
-        plugin.settings.structuredFolderPath = mainLedgerPath;
-        plugin.settings.beancountFilePath = mainLedgerPath;
         await plugin.saveSettings();
 
         Logger.log('[Migration] ✓ Migration completed successfully!');

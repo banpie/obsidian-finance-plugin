@@ -57,9 +57,9 @@ export default class BeancountPlugin extends Plugin {
 		this.priceService = new PriceService(this);
 		this.journalStore = createJournalStore(this.journalService);
 
-		// Check for onboarding
-		if (!this.settings.beancountFilePath) {
-			Logger.log('No Beancount file configured. Triggering onboarding.');
+		// Check for onboarding — structuredFolderName is the source of truth for setup completion
+		if (!this.settings.structuredFolderName) {
+			Logger.log('No Beancount folder configured. Triggering onboarding.');
 			this.app.workspace.onLayoutReady(() => {
 				new OnboardingModal(this.app, this).open();
 			});

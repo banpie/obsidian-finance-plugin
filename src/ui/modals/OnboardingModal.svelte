@@ -205,14 +205,12 @@
 		}
 
 		// @ts-ignore
-		const absolutePath = adapter.getFullPath(tempFile.path);
+		const tempAbsolutePath = adapter.getFullPath(tempFile.path);
 
-		// Temporarily configure plugin path to temp file for migration
-		plugin.settings.beancountFilePath = absolutePath;
 		plugin.settings.fileOrganization = fileOrganization;
 		await plugin.saveSettings();
 
-		const result = await migrateToStructuredLayout(plugin, structuredFolderName);
+		const result = await migrateToStructuredLayout(plugin, structuredFolderName, tempAbsolutePath);
 		if (!result.success) {
 			throw new Error(`Migration failed: ${result.error}`);
 		}
@@ -227,24 +225,23 @@
 
 	async function handleExistingStructured() {
 		Logger.log('Onboarding: Existing + Structured Setup');
-		let absolutePath = existingFilePath;
+		let sourcePath = existingFilePath;
 
 		// Convert vault-relative to absolute if needed
-		if (!absolutePath.match(/^[a-zA-Z]:[\\\/]/) && !absolutePath.startsWith('/')) {
-			const file = app.vault.getAbstractFileByPath(absolutePath);
+		if (!sourcePath.match(/^[a-zA-Z]:[\\\/]/) && !sourcePath.startsWith('/')) {
+			const file = app.vault.getAbstractFileByPath(sourcePath);
 			if (file && file instanceof TFile) {
 				// @ts-ignore
-				absolutePath = app.vault.adapter.getFullPath(file.path);
+				sourcePath = app.vault.adapter.getFullPath(file.path);
 			} else {
-				throw new Error(`Could not find file in vault: ${absolutePath}`);
+				throw new Error(`Could not find file in vault: ${sourcePath}`);
 			}
 		}
 
-		plugin.settings.beancountFilePath = absolutePath;
 		plugin.settings.fileOrganization = fileOrganization;
 		await plugin.saveSettings();
 
-		const result = await migrateToStructuredLayout(plugin, structuredFolderName);
+		const result = await migrateToStructuredLayout(plugin, structuredFolderName, sourcePath);
 		if (!result.success) {
 			throw new Error(`Migration failed: ${result.error}`);
 		}
