@@ -34,6 +34,7 @@
 		error: null,
 		currency: 'USD',
 		activeView: 'cashflow',
+		showClosedItems: false,
 		periodPreset: 'this-month',
 		periodMode: 'month',
 		year: new Date().getFullYear(),
@@ -130,6 +131,33 @@
 		if (value > 0) return 'positive';
 		if (value < 0) return 'negative';
 		return '';
+	}
+
+	function statusLabel(row: { status?: string; closeDate?: string }): string {
+		if (row.status === 'needs-review') return 'Needs review';
+		if (row.status === 'closed') return 'Closed';
+		if (row.status === 'zero-balance') return 'Zero balance';
+		if (row.status === 'inactive') return 'No activity';
+		return 'Active';
+	}
+
+	function statusTitle(row: { status?: string; closeDate?: string }): string {
+		if (row.status === 'needs-review') return row.closeDate ? `Closed on ${row.closeDate}, but still has a non-zero balance.` : 'Non-zero balance needs review.';
+		if (row.status === 'closed') return row.closeDate ? `Closed on ${row.closeDate}.` : 'Closed.';
+		if (row.status === 'zero-balance') return 'No balance as of the selected period.';
+		if (row.status === 'inactive') return 'No transactions in the selected period.';
+		return 'Active in the selected period.';
+	}
+
+	function statusClass(row: { status?: string }): string {
+		if (row.status === 'needs-review') return 'status-review';
+		if (row.status === 'closed') return 'status-closed';
+		if (row.status === 'zero-balance' || row.status === 'inactive') return 'status-muted';
+		return 'status-active';
+	}
+
+	function isInactiveRow(row: { status?: string }): boolean {
+		return row.status === 'closed' || row.status === 'zero-balance' || row.status === 'inactive';
 	}
 
 	function investmentQuantity(row: ReportRow): string {
@@ -542,10 +570,13 @@
 	}
 
 	function loanDirectionLabel(row: ReportLoanRow): string {
+		if (row.status === 'closed') return 'Closed';
+		if (row.status === 'zero-balance') return 'Zero balance';
 		return row.direction === 'receivable' ? 'To receive' : 'To pay';
 	}
 
 	function loanDirectionClass(row: ReportLoanRow): string {
+		if (row.status === 'closed' || row.status === 'zero-balance') return 'muted';
 		return row.direction === 'receivable' ? 'positive' : 'negative';
 	}
 
@@ -706,6 +737,9 @@
 	$: loanReceivableTotal = state.loans.reduce((sum, row) => sum + row.receivable, 0);
 	$: loanPayableTotal = state.loans.reduce((sum, row) => sum + row.payable, 0);
 	$: loanNetTotal = loanReceivableTotal - loanPayableTotal;
+	$: activeLoanCount = state.loans.filter(row => row.status === 'active' || row.status === 'needs-review').length;
+	$: activeProjectCount = state.projects.filter(row => row.label !== 'Unassigned' && row.status === 'active').length;
+	$: displayedInvestmentRows = state.showClosedItems ? state.investmentsByAccount : state.topInvestments;
 
 	function handleViewChange(view: ReportsView) {
 		controller?.setActiveView(view);
@@ -713,6 +747,11 @@
 
 	async function handleRefresh() {
 		if (controller) await controller.loadData();
+	}
+
+	function handleShowClosedChange(event: Event) {
+		const target = event.currentTarget as HTMLInputElement;
+		void controller?.setShowClosedItems(target.checked);
 	}
 </script>
 
@@ -751,6 +790,10 @@
 				<button class:active={state.activeView === 'projects'} on:click={() => handleViewChange('projects')}>Projects</button>
 			</div>
 		</div>
+		<label class="toggle-control" title="Show closed, zero-balance, and inactive report rows for audit.">
+			<input type="checkbox" checked={state.showClosedItems} disabled={state.isLoading} on:change={handleShowClosedChange} />
+			<span>Show closed</span>
+		</label>
 	</div>
 
 	{#if state.isLoading}
@@ -927,16 +970,17 @@
 
 		<section class="report-section">
 			<div class="section-header">
-				<h3>Top Holdings</h3>
+				<h3>{state.showClosedItems ? 'Investment Holdings' : 'Top Holdings'}</h3>
 			</div>
 			<div class="detail-table-wrap">
-				<h4>Current Holdings</h4>
+				<h4>{state.showClosedItems ? 'Current and Closed Holdings' : 'Current Holdings'}</h4>
 				<table class="reports-table">
 					<thead>
 						<tr>
 							<th>Holding</th>
 							<th>Code</th>
 							<th>Ledger Account</th>
+							<th>Status</th>
 							<th class="align-right">Quantity</th>
 							<th class="align-right">Price</th>
 							<th class="align-right">Market Value</th>
@@ -947,9 +991,10 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each state.topInvestments as row}
+						{#each displayedInvestmentRows as row}
 							<tr
 								class="clickable-row"
+								class:inactive-row={isInactiveRow(row)}
 								role="button"
 								tabindex="0"
 								on:click={(event) => handleHoldingRowClick(event, row)}
@@ -959,6 +1004,7 @@
 								<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 								<td>{row.commodity || ''}</td>
 								<td title={row.account || row.label}>{row.label}</td>
+								<td><span class={`status-pill ${statusClass(row)}`} title={statusTitle(row)}>{statusLabel(row)}</span></td>
 								<td class="align-right" title={investmentQuantityTitle(row)}>{investmentQuantity(row)}</td>
 								<td class="align-right price-cell" title={investmentPriceTitle(row)}>
 									<span class="cell-primary">{investmentPrice(row)}</span>
@@ -991,9 +1037,9 @@
 				<span>Net Position</span>
 				<strong class={amountClass(loanNetTotal)}>{formatCurrency(loanNetTotal)}</strong>
 			</button>
-			<button type="button" class="metric-card interactive-card" on:click={() => openLoanSummaryDetails('Open Loans', state.loans.length, 'all', String(state.loans.length))}>
+			<button type="button" class="metric-card interactive-card" on:click={() => openLoanSummaryDetails('Open Loans', activeLoanCount, 'all', String(activeLoanCount))}>
 				<span>Open Loans</span>
-				<strong>{state.loans.length}</strong>
+				<strong>{activeLoanCount}</strong>
 			</button>
 		</div>
 
@@ -1008,6 +1054,7 @@
 						<tr>
 							<th>Loan</th>
 							<th>Direction</th>
+							<th>Status</th>
 							<th>Ledger Account</th>
 							<th class="align-right">To Receive</th>
 							<th class="align-right">To Pay</th>
@@ -1019,6 +1066,7 @@
 						{#each state.loans as row}
 							<tr
 								class="clickable-row"
+								class:inactive-row={isInactiveRow(row)}
 								role="button"
 								tabindex="0"
 								on:click={(event) => handleLoanRowClick(event, row)}
@@ -1027,6 +1075,7 @@
 							>
 								<td><span class="table-link">{row.label}</span></td>
 								<td class={loanDirectionClass(row)}>{loanDirectionLabel(row)}</td>
+								<td><span class={`status-pill ${statusClass(row)}`} title={statusTitle(row)}>{statusLabel(row)}</span></td>
 								<td title={row.account}>{loanAccountLabel(row.account)}</td>
 								<td class="align-right">{row.receivable ? formatCurrency(row.receivable) : '—'}</td>
 								<td class="align-right">{row.payable ? formatCurrency(row.payable) : '—'}</td>
@@ -1035,7 +1084,7 @@
 							</tr>
 						{:else}
 							<tr>
-								<td colspan="7">No open loan balances for this period.</td>
+								<td colspan="8">No open loan balances for this period.</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -1058,7 +1107,7 @@
 			</button>
 			<div class="metric-card">
 				<span>Projects</span>
-				<strong>{state.projects.filter(row => row.label !== 'Unassigned').length}</strong>
+				<strong>{activeProjectCount}</strong>
 			</div>
 		</div>
 
@@ -1072,6 +1121,7 @@
 						<tr>
 							<th>Project</th>
 							<th>Tag</th>
+							<th>Status</th>
 							<th class="align-right">Income</th>
 							<th class="align-right">Expenses</th>
 							<th class="align-right">Net Income</th>
@@ -1082,6 +1132,7 @@
 						{#each state.projects as project}
 							<tr
 								class="clickable-row"
+								class:inactive-row={isInactiveRow(project)}
 								role="button"
 								tabindex="0"
 								on:click={() => openProjectDetails(project)}
@@ -1090,6 +1141,7 @@
 							>
 								<td><span class="table-link">{project.label}</span></td>
 								<td>{project.tag || '—'}</td>
+								<td><span class={`status-pill ${statusClass(project)}`} title={statusTitle(project)}>{statusLabel(project)}</span></td>
 								<td class="align-right">{formatCurrency(project.income)}</td>
 								<td class="align-right">{formatCurrency(project.expenses)}</td>
 								<td class={`align-right ${amountClass(project.netIncome)}`}>{formatCurrency(project.netIncome)}</td>
@@ -1136,6 +1188,7 @@
 								<tr>
 									<th>Loan</th>
 									<th>Direction</th>
+									<th>Status</th>
 									<th>Ledger Account</th>
 									<th class="align-right">To Receive</th>
 									<th class="align-right">To Pay</th>
@@ -1147,6 +1200,7 @@
 								{#each loanRowsForDetail(detailSelection) as row}
 									<tr
 										class="clickable-row"
+										class:inactive-row={isInactiveRow(row)}
 										role="button"
 										tabindex="0"
 										on:click={(event) => handleLoanRowClick(event, row)}
@@ -1155,6 +1209,7 @@
 									>
 										<td><span class="table-link">{row.label}</span></td>
 										<td class={loanDirectionClass(row)}>{loanDirectionLabel(row)}</td>
+										<td><span class={`status-pill ${statusClass(row)}`} title={statusTitle(row)}>{statusLabel(row)}</span></td>
 										<td title={row.account}>{loanAccountLabel(row.account)}</td>
 										<td class="align-right">{row.receivable ? formatCurrency(row.receivable) : '—'}</td>
 										<td class="align-right">{row.payable ? formatCurrency(row.payable) : '—'}</td>
@@ -1163,7 +1218,7 @@
 									</tr>
 								{:else}
 									<tr>
-										<td colspan="7">No matching loan balances for this period.</td>
+										<td colspan="8">No matching loan balances for this period.</td>
 									</tr>
 								{/each}
 							</tbody>
@@ -1181,6 +1236,7 @@
 								{#if detailSelection.kind === 'investment'}
 									<th>Holding</th>
 									<th>Code</th>
+									<th>Status</th>
 								{/if}
 								<th class="align-right">Amount</th>
 								{#if detailSelection.kind === 'investment'}
@@ -1195,7 +1251,7 @@
 							{#if detailGroups.length}
 								{#each detailGroups as group}
 									<tr class="group-row">
-										<td colspan={detailSelection.kind === 'investment' ? 3 : 1}>{group.label}</td>
+										<td colspan={detailSelection.kind === 'investment' ? 4 : 1}>{group.label}</td>
 										<td class={`align-right ${detailSelection.kind === 'investment' ? '' : amountClass(group.amount)}`}>{formatCurrency(group.amount)}</td>
 										{#if detailSelection.kind === 'investment'}
 											<td class="align-right">{formatOptionalCurrency(groupCostBasis(group.rows))}</td>
@@ -1207,6 +1263,7 @@
 									{#each group.rows as row}
 										<tr
 											class:clickable-row={canOpenDetailRow(row)}
+											class:inactive-row={isInactiveRow(row)}
 											role={canOpenDetailRow(row) ? 'button' : undefined}
 											tabindex={canOpenDetailRow(row) ? 0 : undefined}
 											on:click={(event) => handleHoldingRowClick(event, row)}
@@ -1217,6 +1274,7 @@
 											{#if detailSelection.kind === 'investment'}
 												<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 												<td>{row.commodity || ''}</td>
+												<td><span class={`status-pill ${statusClass(row)}`} title={statusTitle(row)}>{statusLabel(row)}</span></td>
 											{/if}
 											<td class={`align-right ${detailSelection.kind === 'investment' ? '' : amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
 											{#if detailSelection.kind === 'investment'}
@@ -1232,6 +1290,7 @@
 								{#each detailAccounts as row}
 									<tr
 										class:clickable-row={canOpenDetailRow(row) || canOpenCashFlowCategory(row)}
+										class:inactive-row={isInactiveRow(row)}
 										role={canOpenDetailRow(row) || canOpenCashFlowCategory(row) ? 'button' : undefined}
 										tabindex={canOpenDetailRow(row) || canOpenCashFlowCategory(row) ? 0 : undefined}
 										on:click={(event) => canOpenCashFlowCategory(row) ? handleCashFlowCategoryRow(row) : handleHoldingRowClick(event, row)}
@@ -1241,6 +1300,7 @@
 										{#if detailSelection.kind === 'investment'}
 											<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 											<td>{row.commodity || ''}</td>
+											<td><span class={`status-pill ${statusClass(row)}`} title={statusTitle(row)}>{statusLabel(row)}</span></td>
 										{/if}
 										<td class={`align-right ${detailSelection.kind === 'investment' ? '' : amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
 										{#if detailSelection.kind === 'investment'}
@@ -1488,7 +1548,10 @@
 
 	.reports-subnav {
 		display: flex;
-		justify-content: flex-start;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--size-4-3);
+		flex-wrap: wrap;
 		margin-top: calc(-1 * var(--size-4-2));
 	}
 
@@ -1539,6 +1602,23 @@
 		background: var(--interactive-normal);
 		color: var(--text-normal);
 		font-weight: 500;
+	}
+
+	.toggle-control {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--size-4-2);
+		min-height: 30px;
+		color: var(--text-muted);
+		font-size: var(--font-ui-small);
+		user-select: none;
+	}
+
+	.toggle-control input {
+		width: 16px;
+		height: 16px;
+		min-height: 0;
+		margin: 0;
 	}
 
 	select,
@@ -1748,6 +1828,11 @@
 		font-weight: 650;
 	}
 
+	.reports-table .inactive-row td {
+		color: var(--text-muted);
+		background: color-mix(in srgb, var(--background-secondary) 45%, transparent);
+	}
+
 	.reports-table .child-row td:first-child {
 		padding-left: 24px;
 	}
@@ -1789,6 +1874,36 @@
 		color: var(--text-muted);
 		font-size: var(--font-ui-smaller);
 		line-height: 1.2;
+	}
+
+	.status-pill {
+		display: inline-flex;
+		align-items: center;
+		max-width: 100%;
+		min-height: 20px;
+		padding: 1px 7px;
+		border: 1px solid var(--background-modifier-border);
+		border-radius: var(--radius-s);
+		background: var(--background-secondary);
+		color: var(--text-muted);
+		font-size: var(--font-ui-smaller);
+		line-height: 1.2;
+		white-space: nowrap;
+	}
+
+	.status-active {
+		border-color: color-mix(in srgb, var(--text-success) 35%, var(--background-modifier-border));
+		color: var(--text-success);
+	}
+
+	.status-review {
+		border-color: color-mix(in srgb, var(--text-warning) 45%, var(--background-modifier-border));
+		color: var(--text-warning);
+	}
+
+	.status-closed,
+	.status-muted {
+		color: var(--text-muted);
 	}
 
 	.table-link {
@@ -1993,6 +2108,10 @@
 
 	.negative {
 		color: var(--text-error);
+	}
+
+	.muted {
+		color: var(--text-muted);
 	}
 
 	@media (max-width: 720px) {

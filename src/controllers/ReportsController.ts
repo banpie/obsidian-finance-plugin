@@ -8,6 +8,7 @@ import { Logger } from '../utils/logger';
 export type ReportsPeriodMode = 'month' | 'year';
 export type ReportsPeriodPreset = 'this-month' | 'last-month' | 'this-year' | 'last-year' | 'custom-month' | 'custom-year';
 export type ReportsView = 'cashflow' | 'assets' | 'loans' | 'projects';
+export type ReportLifecycleStatus = 'active' | 'closed' | 'zero-balance' | 'inactive' | 'needs-review';
 
 export interface ReportRow {
 	label: string;
@@ -28,6 +29,8 @@ export interface ReportRow {
 	unrealizedGain?: number | null;
 	unrealizedGainPercent?: number | null;
 	costStatus?: 'available' | 'missing' | 'mixed-currency' | 'cashflow';
+	status?: ReportLifecycleStatus;
+	closeDate?: string;
 }
 
 export interface ReportTransaction {
@@ -46,6 +49,7 @@ export interface ReportProjectRow {
 	expenses: number;
 	netIncome: number;
 	transactionCount: number;
+	status: ReportLifecycleStatus;
 }
 
 export interface ReportLoanRow {
@@ -57,6 +61,8 @@ export interface ReportLoanRow {
 	amount: number;
 	percent: number;
 	direction: 'receivable' | 'payable';
+	status: ReportLifecycleStatus;
+	closeDate?: string;
 }
 
 export interface ReportProjectTransaction extends ReportTransaction {
@@ -98,6 +104,7 @@ export interface ReportsState {
 	error: string | null;
 	currency: string;
 	activeView: ReportsView;
+	showClosedItems: boolean;
 	periodPreset: ReportsPeriodPreset;
 	periodMode: ReportsPeriodMode;
 	year: number;
@@ -195,6 +202,7 @@ export class ReportsController {
 			error: null,
 			currency: plugin.settings.operatingCurrency || 'USD',
 			activeView: 'cashflow',
+			showClosedItems: false,
 			periodPreset: defaultPreset,
 			periodMode: defaultPeriod.mode,
 			year: defaultPeriod.year,
@@ -233,6 +241,11 @@ export class ReportsController {
 
 	setActiveView(activeView: ReportsView) {
 		this.state.update(s => ({ ...s, activeView }));
+	}
+
+	async setShowClosedItems(showClosedItems: boolean) {
+		this.state.update(s => ({ ...s, showClosedItems }));
+		await this.loadData();
 	}
 
 	async loadInvestmentTransactions(row: ReportRow, endDate: string): Promise<ReportInvestmentTransaction[]> {
@@ -308,6 +321,7 @@ export class ReportsController {
 		const normalizedYear = Number.isFinite(year) ? Math.max(1, Math.trunc(year)) : new Date().getFullYear();
 		const normalizedMonth = Number.isFinite(month) ? Math.min(12, Math.max(1, Math.trunc(month))) : new Date().getMonth() + 1;
 		const range = this.getPeriodRange(periodMode, normalizedYear, normalizedMonth);
+		const showClosedItems = get(this.state).showClosedItems;
 		this.state.update(s => ({
 			...s,
 			isLoading: true,
@@ -335,6 +349,7 @@ export class ReportsController {
 				projectIncomeCsv,
 				projectExpensesCsv,
 				projectTransactionsCsv,
+				projectNamesCsv,
 				assetsCsv,
 				liabilitiesCsv,
 				loanBalancesCsv,
@@ -355,6 +370,7 @@ export class ReportsController {
 				this.plugin.runQuery(queries.getPeriodProjectIncomeQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodProjectExpenseQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodProjectTransactionsQuery(currency, 2, range.startDate, range.endDate)),
+				this.plugin.runQuery(queries.getProjectNamesQuery(range.endDate)),
 				this.plugin.runQuery(queries.getAssetAllocationQuery(currency, 2, range.endDate, range.valuationDate)),
 				this.plugin.runQuery(queries.getLiabilityAllocationQuery(currency, 2, range.endDate, range.valuationDate)),
 				this.plugin.runQuery(queries.getLoanBalancesQuery(currency, 2, range.endDate, range.valuationDate)),
@@ -376,13 +392,13 @@ export class ReportsController {
 			const investmentCostBasis = this.parseInvestmentCostBasisRows(investmentCostPostingsCsv, currency);
 			this.addInvestmentCashflowBasisRows(investmentCostBasis, investmentCashflowPostingsCsv, currency);
 			const investmentNativePrices = this.parseInvestmentNativePrices(investmentNativePricesCsv, currency);
-			const investmentRows = this.parseInvestmentRows(investmentsCsv, investmentCostBasis, investmentNativePrices, currency);
-			const investmentsByType = this.groupRows(investmentRows, row => this.investmentType(row.account), true);
+			const investmentRows = this.parseInvestmentRows(investmentsCsv, investmentCostBasis, investmentNativePrices, currency, showClosedItems);
+			const investmentsByType = this.groupRows(investmentRows, row => this.investmentType(row.account), true, showClosedItems);
 			const topInvestments = this.withPercent(
 				investmentRows
-					.filter(row => row.amount >= 0.01)
+					.filter(row => showClosedItems || Math.abs(row.amount) >= 0.01)
 					.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
-					.slice(0, 20),
+					.slice(0, showClosedItems ? 200 : 20),
 				investmentRows.reduce((sum, row) => sum + row.amount, 0)
 			);
 
@@ -393,8 +409,8 @@ export class ReportsController {
 			const netWorth = this.parseSingleNumber(netWorthCsv);
 			const counterpartAccounts = this.parseCounterpartRows(counterpartAccountsCsv);
 			const projectTransactions = this.parseProjectTransactionRows(projectTransactionsCsv, counterpartAccounts);
-			const projects = this.buildProjectRows(projectIncomeCsv, projectExpensesCsv, projectTransactions);
-			const loans = this.parseLoanRows(loanBalancesCsv, loanNamesCsv);
+			const projects = this.buildProjectRows(projectIncomeCsv, projectExpensesCsv, projectTransactions, projectNamesCsv, showClosedItems);
+			const loans = this.parseLoanRows(loanBalancesCsv, loanNamesCsv, showClosedItems);
 
 			this.state.update(s => ({
 				...s,
@@ -456,51 +472,72 @@ export class ReportsController {
 			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 	}
 
-	private parseLoanRows(balancesCsv: string, namesCsv: string): ReportLoanRow[] {
-		const labelsByAccount = new Map<string, string>();
+	private parseLoanRows(balancesCsv: string, namesCsv: string, includeClosed = false): ReportLoanRow[] {
+		const labelsByAccount = new Map<string, { label: string; closeDate?: string }>();
 		for (const row of this.parseRows(namesCsv)) {
 			if (row.length < 2 || !row[0] || !row[1]) continue;
-			labelsByAccount.set(row[0], row[1]);
+			labelsByAccount.set(row[0], { label: row[1], closeDate: row[2] || undefined });
 		}
 
-		const rows = this.parseRows(balancesCsv)
+		const rowsByAccount = new Map<string, ReportLoanRow>();
+		for (const row of this.parseRows(balancesCsv)
 			.filter(row => row.length >= 2)
-			.map(row => {
-				const account = row[0];
-				const balance = this.parseNumber(row[1]);
-				const receivable = Math.max(balance, 0);
-				const payable = Math.max(-balance, 0);
-				const netAmount = receivable - payable;
-				return {
-					label: labelsByAccount.get(account) || this.accountLabel(account),
-					account,
-					receivable: this.roundCurrency(receivable),
-					payable: this.roundCurrency(payable),
-					netAmount: this.roundCurrency(netAmount),
-					amount: this.roundCurrency(Math.max(receivable, payable)),
-					percent: 0,
-					direction: netAmount >= 0 ? 'receivable' as const : 'payable' as const,
-				};
-			})
-			.filter(row => row.amount >= 0.01)
-			.sort((a, b) => Math.abs(b.netAmount) - Math.abs(a.netAmount));
+		) {
+			const account = row[0];
+			const balance = this.parseNumber(row[1]);
+			const accountMeta = labelsByAccount.get(account);
+			const closeDate = row[2] || accountMeta?.closeDate;
+			rowsByAccount.set(account, this.buildLoanRow(account, balance, accountMeta?.label, closeDate));
+		}
+
+		if (includeClosed) {
+			for (const [account, accountMeta] of labelsByAccount.entries()) {
+				if (!rowsByAccount.has(account)) {
+					rowsByAccount.set(account, this.buildLoanRow(account, 0, accountMeta.label, accountMeta.closeDate));
+				}
+			}
+		}
+
+		const rows = Array.from(rowsByAccount.values())
+			.filter(row => includeClosed || this.isLifecycleVisibleByDefault(row.status))
+			.sort((a, b) => this.lifecycleSort(a.status, b.status) || Math.abs(b.netAmount) - Math.abs(a.netAmount) || a.label.localeCompare(b.label));
 
 		const totalExposure = rows.reduce((sum, row) => sum + row.amount, 0);
 		if (!totalExposure) return rows;
 		return rows.map(row => ({ ...row, percent: (row.amount / totalExposure) * 100 }));
 	}
 
+	private buildLoanRow(account: string, balance: number, label: string | undefined, closeDate: string | undefined): ReportLoanRow {
+		const receivable = Math.max(balance, 0);
+		const payable = Math.max(-balance, 0);
+		const netAmount = this.roundCurrency(receivable - payable);
+		const amount = this.roundCurrency(Math.max(receivable, payable));
+		return {
+			label: label || this.accountLabel(account),
+			account,
+			receivable: this.roundCurrency(receivable),
+			payable: this.roundCurrency(payable),
+			netAmount,
+			amount,
+			percent: 0,
+			direction: netAmount >= 0 ? 'receivable' as const : 'payable' as const,
+			status: this.balanceLifecycleStatus(amount, closeDate),
+			closeDate,
+		};
+	}
+
 	private parseInvestmentRows(
 		rawCsv: string,
 		costBasisByHolding = new Map<string, InvestmentCostBasis>(),
 		nativePriceByCommodity = new Map<string, InvestmentNativePrice>(),
-		operatingCurrency = this.plugin.settings.operatingCurrency
+		operatingCurrency = this.plugin.settings.operatingCurrency,
+		includeClosed = false
 	): ReportRow[] {
 		return this.parseRows(rawCsv)
 			.filter(row => row.length >= 3)
 			.map(row => this.parseInvestmentRow(row, costBasisByHolding, nativePriceByCommodity, operatingCurrency))
-			.filter(row => row.amount >= 0.01)
-			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+			.filter(row => includeClosed || this.isLifecycleVisibleByDefault(row.status))
+			.sort((a, b) => this.lifecycleSort(a.status, b.status) || Math.abs(b.amount) - Math.abs(a.amount) || a.label.localeCompare(b.label));
 	}
 
 	private parseInvestmentRow(
@@ -517,6 +554,7 @@ export class ReportsController {
 		const quantityRaw = hasNameColumn ? row[4] || '' : '';
 		const aggregateCostBasisRaw = hasNameColumn ? row[5] || '' : '';
 		const aggregateCostBasis = hasNameColumn ? this.parseOptionalNumber(row[6] || '') : null;
+		const closeDate = hasNameColumn ? row[7] || undefined : undefined;
 		const quantityAmount = this.parseAmountCommodity(quantityRaw).amount;
 		const currentPrice = quantityAmount ? Math.abs(amount / quantityAmount) : null;
 		const nativePrice = nativePriceByCommodity.get(commodity);
@@ -567,6 +605,8 @@ export class ReportsController {
 			unrealizedGain,
 			unrealizedGainPercent,
 			costStatus,
+			status: this.balanceLifecycleStatus(amount, closeDate),
+			closeDate,
 		};
 	}
 
@@ -760,7 +800,9 @@ export class ReportsController {
 	private buildProjectRows(
 		incomeCsv: string,
 		expensesCsv: string,
-		transactions: ReportProjectTransaction[]
+		transactions: ReportProjectTransaction[],
+		projectNamesCsv = '',
+		includeInactive = false
 	): ReportProjectRow[] {
 		const projects = new Map<string, ReportProjectRow>();
 		const ensureProject = (label: string, tag: string): ReportProjectRow => {
@@ -776,10 +818,17 @@ export class ReportsController {
 				expenses: 0,
 				netIncome: 0,
 				transactionCount: 0,
+				status: 'inactive' as const,
 			};
 			projects.set(key, row);
 			return row;
 		};
+
+		if (includeInactive) {
+			for (const row of this.parseRows(projectNamesCsv).filter(row => row.length >= 2)) {
+				ensureProject(row[0], row[1]);
+			}
+		}
 
 		for (const row of this.parseRows(incomeCsv).filter(row => row.length >= 3)) {
 			const project = ensureProject(row[0], row[1]);
@@ -808,8 +857,16 @@ export class ReportsController {
 				netIncome: this.roundCurrency(row.income - row.expenses),
 				transactionCount: transactionKeysByProject.get(this.projectKey(row.label, row.tag))?.size || 0,
 			}))
-			.filter(row => Math.abs(row.income) >= 0.01 || Math.abs(row.expenses) >= 0.01 || row.transactionCount > 0)
+			.map(row => ({
+				...row,
+				status: Math.abs(row.income) >= 0.01 || Math.abs(row.expenses) >= 0.01 || row.transactionCount > 0
+					? 'active' as const
+					: 'inactive' as const,
+			}))
+			.filter(row => includeInactive || row.status === 'active')
 			.sort((a, b) => {
+				const lifecycleOrder = this.lifecycleSort(a.status, b.status);
+				if (lifecycleOrder) return lifecycleOrder;
 				if (a.label === 'Unassigned') return 1;
 				if (b.label === 'Unassigned') return -1;
 				return Math.abs(b.netIncome) - Math.abs(a.netIncome);
@@ -1022,16 +1079,16 @@ export class ReportsController {
 		return Math.round(value * 100) / 100;
 	}
 
-	private groupRows(rows: ReportRow[], labelFor: (row: ReportRow) => string, excludeNegative = false): ReportRow[] {
+	private groupRows(rows: ReportRow[], labelFor: (row: ReportRow) => string, excludeNegative = false, includeZero = false): ReportRow[] {
 		const grouped = new Map<string, number>();
 		for (const row of rows) {
-			if (excludeNegative && row.amount <= 0) continue;
+			if (excludeNegative && (includeZero ? row.amount < 0 : row.amount <= 0)) continue;
 			const label = labelFor(row);
 			grouped.set(label, (grouped.get(label) || 0) + row.amount);
 		}
 		return Array.from(grouped.entries())
 			.map(([label, amount]) => ({ label, amount, percent: 0 }))
-			.filter(row => Math.abs(row.amount) >= 0.01)
+			.filter(row => includeZero || Math.abs(row.amount) >= 0.01)
 			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 	}
 
@@ -1068,6 +1125,26 @@ export class ReportsController {
 
 	private projectKey(label: string, tag: string): string {
 		return `${label || 'Unassigned'}\u001f${tag || ''}`;
+	}
+
+	private balanceLifecycleStatus(amount: number, closeDate?: string): ReportLifecycleStatus {
+		if (Math.abs(amount) >= 0.01) return closeDate ? 'needs-review' : 'active';
+		return closeDate ? 'closed' : 'zero-balance';
+	}
+
+	private isLifecycleVisibleByDefault(status: ReportLifecycleStatus | undefined): boolean {
+		return status === undefined || status === 'active' || status === 'needs-review';
+	}
+
+	private lifecycleSort(left: ReportLifecycleStatus | undefined, right: ReportLifecycleStatus | undefined): number {
+		const order: Record<ReportLifecycleStatus, number> = {
+			'needs-review': 0,
+			active: 1,
+			'zero-balance': 2,
+			inactive: 3,
+			closed: 4,
+		};
+		return (order[left || 'active'] ?? 1) - (order[right || 'active'] ?? 1);
 	}
 
 	private getPeriodRange(periodMode: ReportsPeriodMode, year: number, month: number): { startDate: string; endDate: string; valuationDate: string; label: string } {
