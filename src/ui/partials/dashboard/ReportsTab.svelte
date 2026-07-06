@@ -749,9 +749,8 @@
 		if (controller) await controller.loadData();
 	}
 
-	function handleShowClosedChange(event: Event) {
-		const target = event.currentTarget as HTMLInputElement;
-		void controller?.setShowClosedItems(target.checked);
+	function toggleShowClosedItems() {
+		void controller?.setShowClosedItems(!state.showClosedItems);
 	}
 </script>
 
@@ -790,10 +789,17 @@
 				<button class:active={state.activeView === 'projects'} on:click={() => handleViewChange('projects')}>Projects</button>
 			</div>
 		</div>
-		<label class="toggle-control" title="Show closed, zero-balance, and inactive report rows for audit.">
-			<input type="checkbox" checked={state.showClosedItems} disabled={state.isLoading} on:change={handleShowClosedChange} />
-			<span>Show closed</span>
-		</label>
+		<button
+			type="button"
+			class="toggle-button"
+			class:active={state.showClosedItems}
+			disabled={state.isLoading}
+			aria-pressed={state.showClosedItems}
+			on:click={toggleShowClosedItems}
+			title="Show closed, zero-balance, and inactive report rows for audit."
+		>
+			Show closed
+		</button>
 	</div>
 
 	{#if state.isLoading}
@@ -1604,21 +1610,38 @@
 		font-weight: 500;
 	}
 
-	.toggle-control {
+	.toggle-button {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--size-4-2);
+		justify-content: center;
 		min-height: 30px;
+		padding: 4px 12px;
+		border: 1px solid var(--background-modifier-border);
+		border-radius: var(--radius-s);
+		background: var(--interactive-normal);
 		color: var(--text-muted);
+		box-shadow: none;
+		cursor: pointer;
 		font-size: var(--font-ui-small);
+		font-weight: 500;
 		user-select: none;
 	}
 
-	.toggle-control input {
-		width: 16px;
-		height: 16px;
-		min-height: 0;
-		margin: 0;
+	.toggle-button:hover,
+	.toggle-button:focus-visible {
+		border-color: var(--interactive-accent);
+		color: var(--text-normal);
+	}
+
+	.toggle-button.active {
+		border-color: var(--interactive-accent);
+		background: var(--interactive-accent);
+		color: var(--text-on-accent);
+	}
+
+	.toggle-button:disabled {
+		cursor: default;
+		opacity: 0.72;
 	}
 
 	select,

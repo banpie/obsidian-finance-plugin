@@ -392,7 +392,7 @@ export class ReportsController {
 			const investmentCostBasis = this.parseInvestmentCostBasisRows(investmentCostPostingsCsv, currency);
 			this.addInvestmentCashflowBasisRows(investmentCostBasis, investmentCashflowPostingsCsv, currency);
 			const investmentNativePrices = this.parseInvestmentNativePrices(investmentNativePricesCsv, currency);
-			const investmentRows = this.parseInvestmentRows(investmentsCsv, investmentCostBasis, investmentNativePrices, currency, showClosedItems);
+			const investmentRows = this.parseInvestmentRows(investmentsCsv, investmentCostBasis, investmentNativePrices, currency, showClosedItems, range.endDate);
 			const investmentsByType = this.groupRows(investmentRows, row => this.investmentType(row.account), true, showClosedItems);
 			const topInvestments = this.withPercent(
 				investmentRows
@@ -410,7 +410,7 @@ export class ReportsController {
 			const counterpartAccounts = this.parseCounterpartRows(counterpartAccountsCsv);
 			const projectTransactions = this.parseProjectTransactionRows(projectTransactionsCsv, counterpartAccounts);
 			const projects = this.buildProjectRows(projectIncomeCsv, projectExpensesCsv, projectTransactions, projectNamesCsv, showClosedItems);
-			const loans = this.parseLoanRows(loanBalancesCsv, loanNamesCsv, showClosedItems);
+			const loans = this.parseLoanRows(loanBalancesCsv, loanNamesCsv, showClosedItems, range.endDate);
 
 			this.state.update(s => ({
 				...s,
@@ -472,7 +472,7 @@ export class ReportsController {
 			.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 	}
 
-	private parseLoanRows(balancesCsv: string, namesCsv: string, includeClosed = false): ReportLoanRow[] {
+	private parseLoanRows(balancesCsv: string, namesCsv: string, includeClosed = false, asOfDate?: string): ReportLoanRow[] {
 		const labelsByAccount = new Map<string, { label: string; closeDate?: string }>();
 		for (const row of this.parseRows(namesCsv)) {
 			if (row.length < 2 || !row[0] || !row[1]) continue;
@@ -487,13 +487,13 @@ export class ReportsController {
 			const balance = this.parseNumber(row[1]);
 			const accountMeta = labelsByAccount.get(account);
 			const closeDate = row[2] || accountMeta?.closeDate;
-			rowsByAccount.set(account, this.buildLoanRow(account, balance, accountMeta?.label, closeDate));
+			rowsByAccount.set(account, this.buildLoanRow(account, balance, accountMeta?.label, closeDate, asOfDate));
 		}
 
 		if (includeClosed) {
 			for (const [account, accountMeta] of labelsByAccount.entries()) {
 				if (!rowsByAccount.has(account)) {
-					rowsByAccount.set(account, this.buildLoanRow(account, 0, accountMeta.label, accountMeta.closeDate));
+					rowsByAccount.set(account, this.buildLoanRow(account, 0, accountMeta.label, accountMeta.closeDate, asOfDate));
 				}
 			}
 		}
@@ -507,7 +507,7 @@ export class ReportsController {
 		return rows.map(row => ({ ...row, percent: (row.amount / totalExposure) * 100 }));
 	}
 
-	private buildLoanRow(account: string, balance: number, label: string | undefined, closeDate: string | undefined): ReportLoanRow {
+	private buildLoanRow(account: string, balance: number, label: string | undefined, closeDate: string | undefined, asOfDate?: string): ReportLoanRow {
 		const receivable = Math.max(balance, 0);
 		const payable = Math.max(-balance, 0);
 		const netAmount = this.roundCurrency(receivable - payable);
@@ -521,7 +521,7 @@ export class ReportsController {
 			amount,
 			percent: 0,
 			direction: netAmount >= 0 ? 'receivable' as const : 'payable' as const,
-			status: this.balanceLifecycleStatus(amount, closeDate),
+			status: this.balanceLifecycleStatus(amount, closeDate, asOfDate),
 			closeDate,
 		};
 	}
@@ -531,11 +531,12 @@ export class ReportsController {
 		costBasisByHolding = new Map<string, InvestmentCostBasis>(),
 		nativePriceByCommodity = new Map<string, InvestmentNativePrice>(),
 		operatingCurrency = this.plugin.settings.operatingCurrency,
-		includeClosed = false
+		includeClosed = false,
+		asOfDate?: string
 	): ReportRow[] {
 		return this.parseRows(rawCsv)
 			.filter(row => row.length >= 3)
-			.map(row => this.parseInvestmentRow(row, costBasisByHolding, nativePriceByCommodity, operatingCurrency))
+			.map(row => this.parseInvestmentRow(row, costBasisByHolding, nativePriceByCommodity, operatingCurrency, asOfDate))
 			.filter(row => includeClosed || this.isLifecycleVisibleByDefault(row.status))
 			.sort((a, b) => this.lifecycleSort(a.status, b.status) || Math.abs(b.amount) - Math.abs(a.amount) || a.label.localeCompare(b.label));
 	}
@@ -544,7 +545,8 @@ export class ReportsController {
 		row: CsvRow,
 		costBasisByHolding: Map<string, InvestmentCostBasis>,
 		nativePriceByCommodity: Map<string, InvestmentNativePrice>,
-		operatingCurrency: string
+		operatingCurrency: string,
+		asOfDate?: string
 	): ReportRow {
 		const hasNameColumn = row.length >= 4;
 		const account = row[0];
@@ -605,7 +607,7 @@ export class ReportsController {
 			unrealizedGain,
 			unrealizedGainPercent,
 			costStatus,
-			status: this.balanceLifecycleStatus(amount, closeDate),
+			status: this.balanceLifecycleStatus(amount, closeDate, asOfDate),
 			closeDate,
 		};
 	}
@@ -1127,9 +1129,10 @@ export class ReportsController {
 		return `${label || 'Unassigned'}\u001f${tag || ''}`;
 	}
 
-	private balanceLifecycleStatus(amount: number, closeDate?: string): ReportLifecycleStatus {
-		if (Math.abs(amount) >= 0.01) return closeDate ? 'needs-review' : 'active';
-		return closeDate ? 'closed' : 'zero-balance';
+	private balanceLifecycleStatus(amount: number, closeDate?: string, asOfDate?: string): ReportLifecycleStatus {
+		const isClosedAsOf = Boolean(closeDate && (!asOfDate || closeDate < asOfDate));
+		if (Math.abs(amount) >= 0.01) return isClosedAsOf ? 'needs-review' : 'active';
+		return isClosedAsOf ? 'closed' : 'zero-balance';
 	}
 
 	private isLifecycleVisibleByDefault(status: ReportLifecycleStatus | undefined): boolean {
