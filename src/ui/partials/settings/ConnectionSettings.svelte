@@ -184,6 +184,7 @@
 			const systemDetector = SystemDetector.getInstance();
 			const testResult = await systemDetector.testCommand(
 				commandTests.beanQuery.command,
+				[],
 				15000,
 			);
 
@@ -214,6 +215,7 @@
 			const systemDetector = SystemDetector.getInstance();
 			const testResult = await systemDetector.testCommand(
 				commandTests.beanQueryCsv.command,
+				[],
 				15000,
 			);
 
