@@ -206,9 +206,7 @@
 
 	function investmentReturnClass(value: number | null | undefined): string {
 		if (value === null || value === undefined) return '';
-		if (value > 0) return 'investment-gain';
-		if (value < 0) return 'investment-loss';
-		return '';
+		return amountClass(value);
 	}
 
 	function completeCostRows(rows: ReportRow[]): ReportRow[] {
@@ -1995,14 +1993,6 @@
 
 	.negative {
 		color: var(--text-error);
-	}
-
-	.investment-gain {
-		color: var(--text-error);
-	}
-
-	.investment-loss {
-		color: var(--text-success);
 	}
 
 	@media (max-width: 720px) {
