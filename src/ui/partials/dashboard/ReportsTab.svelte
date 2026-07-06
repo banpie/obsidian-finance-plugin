@@ -570,13 +570,12 @@
 	}
 
 	function loanDirectionLabel(row: ReportLoanRow): string {
-		if (row.status === 'closed') return 'Closed';
-		if (row.status === 'zero-balance') return 'Zero balance';
+		if (!row.receivable && !row.payable) return 'Settled';
 		return row.direction === 'receivable' ? 'To receive' : 'To pay';
 	}
 
 	function loanDirectionClass(row: ReportLoanRow): string {
-		if (row.status === 'closed' || row.status === 'zero-balance') return 'muted';
+		if (!row.receivable && !row.payable) return 'muted';
 		return row.direction === 'receivable' ? 'positive' : 'negative';
 	}
 
