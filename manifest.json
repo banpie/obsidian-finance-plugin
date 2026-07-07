@@ -5,7 +5,7 @@
 	"minAppVersion": "1.7.2",
 	"description": "Manage your Beancount ledger from your vault. Supports live BQL queries, transaction management, net worth tracking, balance sheets, income statements, and automated price fetching.",
 	"author": "mkshp",
-	"authorUrl": "https://community.obsidian.md/users/mkshp-dev",
+	"authorUrl": "https://github.com/mkshp-dev",
 	"fundingUrl": "https://buymeacoffee.com/mkshp",
 	"isDesktopOnly": true
 }
