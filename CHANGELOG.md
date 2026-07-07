@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+- **Settings: Remove redundant path fields for cross-device portability** — Removed `beancountFilePath` and `structuredFolderPath` from the plugin settings interface and `data.json`. Both fields stored absolute OS-level paths that broke portability when settings were synced across machines with different usernames or directory layouts. Since v2.0.0 enforces vault-only file access, the main ledger path can always be derived at runtime as `structuredFolderName + "/ledger.beancount"` via the existing `getMainLedgerPath()` utility. Updated all call sites (`directives.ts`, `sidebar-view.ts`, `beancount-lint.ts`, `ConnectionSettings.svelte`, `OnboardingModal.svelte`) to use `getMainLedgerPath()` or guard on `structuredFolderName` instead. Added an explicit `sourcePath` parameter to `migrateToStructuredLayout()` so onboarding no longer needs to write a temporary path into settings. The onboarding trigger in `main.ts` now checks `structuredFolderName` as the source of truth for setup completion. Addresses portability concern raised in discussion #245.
+
+## 2.2.2 - 2026-07-04
+
 - **Onboarding Wizard: Improve UI/UX flow and navigation gating** — Updated the setup wizard to allow users to skip or proceed past the Python/prerequisites check step. Added a warning callout if Beancount is missing while allowing layout setup to proceed, clarified that ledger files must be vault-relative, updated placeholders, and added Cancel/Exit button triggers to Step 2.
 
 - **File Organization: Safe Folder name renaming with validation** — Redesigned the **Folder name** setting field with an interactive Edit/Save/Cancel lifecycle. Added validation checks for folder existence and invalid characters, physically renaming the structured layout folder in the Obsidian vault, and dynamically updating configuration paths (`beancountFilePath` and `structuredFolderPath`) under the hood to prevent write/query path mismatches.

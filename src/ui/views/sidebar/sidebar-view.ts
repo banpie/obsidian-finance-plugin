@@ -3,6 +3,7 @@ import { ItemView, WorkspaceLeaf, Notice } from 'obsidian';
 import type BeancountPlugin from '../../../main';
 import BeancountViewComponent from './SidebarView.svelte'; // Assuming this is the correct Svelte component for the sidebar
 import { runQuery, execSafe } from '../../../utils/index';
+import { getMainLedgerPath } from '../../../utils/structuredLayout';
 import * as queries from '../../../queries/index';
 import { Logger } from '../../../utils/logger';
 // ----------------------------------------
@@ -134,7 +135,7 @@ export class BeancountView extends ItemView {
 
 	// --- Runs bean-check (using ERRORS query) ---
 	async runBeanCheck(): Promise<{ status: "ok" | "error"; message: string | null; errorCount: number; errorList: string[] }> {
-		const filePath = this.plugin.settings.beancountFilePath;
+		const filePath = getMainLedgerPath(this.plugin);
 		const commandBase = this.plugin.settings.beancountCommand;
 		Logger.log('[runBeanCheck] Starting validation check');
 		Logger.log('[runBeanCheck] File path:', filePath);

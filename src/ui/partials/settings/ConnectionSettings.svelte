@@ -3,6 +3,7 @@
 	import { Notice } from "obsidian";
 	import type BeancountPlugin from "../../../main";
 	import { SystemDetector } from "../../../utils/SystemDetector";
+	import { getMainLedgerPath } from "../../../utils/structuredLayout";
 
 	export let plugin: BeancountPlugin;
 
@@ -123,7 +124,7 @@
 			const systemDetector = SystemDetector.getInstance();
 
 			const results = await systemDetector.detectOptimalBeancountSetup(
-				plugin.settings.beancountFilePath || undefined,
+				getMainLedgerPath(plugin) || undefined,
 				false,
 			);
 			autoDetectionResults = results;
@@ -169,7 +170,7 @@
 
 	// Test individual commands
 	async function testBeanQuery() {
-		const filePath = plugin.settings.beancountFilePath;
+		const filePath = getMainLedgerPath(plugin);
 		if (!optimalCommands.beanQuery || !filePath) {
 			commandTests.beanQuery.error =
 				"Bean-query command or file path not available";
@@ -184,6 +185,7 @@
 			const systemDetector = SystemDetector.getInstance();
 			const testResult = await systemDetector.testCommand(
 				commandTests.beanQuery.command,
+				[],
 				15000,
 			);
 
@@ -199,7 +201,7 @@
 	}
 
 	async function testBeanQueryCsv() {
-		const filePath = plugin.settings.beancountFilePath;
+		const filePath = getMainLedgerPath(plugin);
 		if (!optimalCommands.beanQuery || !filePath) {
 			commandTests.beanQueryCsv.error =
 				"Bean-query command or file path not available";
@@ -214,6 +216,7 @@
 			const systemDetector = SystemDetector.getInstance();
 			const testResult = await systemDetector.testCommand(
 				commandTests.beanQueryCsv.command,
+				[],
 				15000,
 			);
 
@@ -229,11 +232,11 @@
 	}
 
 	async function runAllTests() {
-		if (!plugin.settings.beancountFilePath) {
+		if (!plugin.settings.structuredFolderName) {
 			validationResult = {
 				isValid: false,
 				message:
-					"No beancount file configured. Please run onboarding first.",
+					"No beancount folder configured. Please run onboarding first.",
 			};
 			return;
 		}
@@ -380,9 +383,9 @@
 			commandVerificationMessage = "No command to verify";
 			return;
 		}
-		if (!plugin.settings.beancountFilePath) {
+		if (!plugin.settings.structuredFolderName) {
 			commandVerificationStatus = "error";
-			commandVerificationMessage = "No beancount file configured.";
+			commandVerificationMessage = "No beancount folder configured.";
 			return;
 		}
 		isVerifyingCommand = true;
@@ -392,7 +395,7 @@
 			const systemDetector = SystemDetector.getInstance();
 			const result = await systemDetector.testCommand(
 				commandToVerify.trim(),
-				['-f', 'csv', plugin.settings.beancountFilePath, 'SELECT TRUE LIMIT 1'],
+				['-f', 'csv', getMainLedgerPath(plugin), 'SELECT TRUE LIMIT 1'],
 				15000,
 			);
 			if (result.success) {

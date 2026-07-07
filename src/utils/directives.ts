@@ -168,8 +168,8 @@ export async function updateBalance(
     balanceData: BalanceData
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        if (!plugin.settings.beancountFilePath)
-            return { success: false, error: 'Beancount file path not configured' };
+        if (!plugin.settings.structuredFolderName)
+            return { success: false, error: 'Beancount folder not configured' };
 
         const parts = balanceId.split('_');
         if (parts.length < 3 || parts[0] !== 'balance')
@@ -217,8 +217,8 @@ export async function deleteBalance(
     balanceId: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        if (!plugin.settings.beancountFilePath)
-            return { success: false, error: 'Beancount file path not configured' };
+        if (!plugin.settings.structuredFolderName)
+            return { success: false, error: 'Beancount folder not configured' };
 
         const parts = balanceId.split('_');
         if (parts.length < 3 || parts[0] !== 'balance')
@@ -299,8 +299,8 @@ export async function updateNote(
     noteData: NoteData
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        if (!plugin.settings.beancountFilePath)
-            return { success: false, error: 'Beancount file path not configured' };
+        if (!plugin.settings.structuredFolderName)
+            return { success: false, error: 'Beancount folder not configured' };
 
         const parts = noteId.split('_');
         if (parts.length < 3 || parts[0] !== 'note')
@@ -349,8 +349,8 @@ export async function deleteNote(
     noteId: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        if (!plugin.settings.beancountFilePath)
-            return { success: false, error: 'Beancount file path not configured' };
+        if (!plugin.settings.structuredFolderName)
+            return { success: false, error: 'Beancount folder not configured' };
 
         const parts = noteId.split('_');
         if (parts.length < 3 || parts[0] !== 'note')
@@ -701,8 +701,8 @@ export async function updateTransaction(
     transactionData: TransactionData
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        if (!plugin.settings.beancountFilePath)
-            return { success: false, error: 'Beancount file path not configured' };
+        if (!plugin.settings.structuredFolderName)
+            return { success: false, error: 'Beancount folder not configured' };
 
         const csv = await runQuery(plugin, `SELECT filename, lineno FROM postings WHERE id = "${transactionId}" LIMIT 1`);
         const records = parseCsv(csv, { columns: true, skip_empty_lines: true, trim: true }) as unknown as FileLineRow[];
@@ -742,8 +742,8 @@ export async function deleteTransaction(
     transactionId: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        if (!plugin.settings.beancountFilePath)
-            return { success: false, error: 'Beancount file path not configured' };
+        if (!plugin.settings.structuredFolderName)
+            return { success: false, error: 'Beancount folder not configured' };
 
         const csv = await runQuery(plugin, `SELECT filename, lineno FROM postings WHERE id = "${transactionId}" LIMIT 1`);
         const records = parseCsv(csv, { columns: true, skip_empty_lines: true, trim: true }) as unknown as FileLineRow[];

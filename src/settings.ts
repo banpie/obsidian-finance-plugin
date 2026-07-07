@@ -5,8 +5,8 @@ import type BeancountPlugin from './main';
 import ConnectionSettings from './ui/partials/settings/ConnectionSettings.svelte';
 import { updateOperatingCurrency } from './utils/index';
 import type { LintMode } from './lang/beancount-lint';
-import * as path from 'path';
 import { Logger } from './utils/logger';
+
 
 /**
  * Interface defining the plugin settings.
@@ -17,8 +17,6 @@ export type FileOrganization = "yearly" | "monthly";
 export type DashboardDefaultPeriod = "this-month" | "last-month" | "this-year" | "last-year";
 
 export interface BeancountPluginSettings {
-    /** Path to the main Beancount file. */
-    beancountFilePath: string;
     /** Command to run Beancount/Python (e.g. "bean-query", "python3"). */
     beancountCommand: string;
     /** The primary currency for reporting and defaults. */
@@ -44,8 +42,6 @@ export interface BeancountPluginSettings {
     // Structured Layout Settings
     /** Name of the folder for structured layout (e.g., "Finances"). */
     structuredFolderName: string;
-    /** Computed absolute path to the structured folder (set automatically). */
-    structuredFolderPath: string;
     /** How to organize transaction files. */
     fileOrganization: FileOrganization;
     // Price Fetching Settings
@@ -69,7 +65,6 @@ export interface BeancountPluginSettings {
  * Default settings for the plugin.
  */
 export const DEFAULT_SETTINGS: BeancountPluginSettings = {
-    beancountFilePath: '',
     beancountCommand: '',
     operatingCurrency: 'USD',
     maxTransactionResults: 2000,
@@ -84,7 +79,6 @@ export const DEFAULT_SETTINGS: BeancountPluginSettings = {
     maxBackupFiles: 10,
     // Structured Layout Settings
     structuredFolderName: 'Finances',
-    structuredFolderPath: '',
     fileOrganization: 'yearly',
     // Price Fetching Settings
     autoPriceFetch: false,
@@ -585,8 +579,9 @@ export class BeancountSettingTab extends PluginSettingTab {
             '📄 prices.beancount - Price directives',
             '📄 pads.beancount - Pad directives',
             '📄 balances.beancount - Balance assertions',
+            '📄 queries.beancount - Named query directives',
             '📄 notes.beancount - Note directives',
-            '📄 events.beancount - Event directives',
+            '📄 events.beancount - Event directives (+ holds financial indicator details)',
             '📁 transactions/ - Folder with transaction files organized by year or month'
         ];
 
@@ -596,8 +591,9 @@ export class BeancountSettingTab extends PluginSettingTab {
             li.textContent = file;
         });
 
-        // Show current path
-        if (this.plugin.settings.beancountFilePath) {
+        // Show current (derived) ledger path
+        const folderName = this.plugin.settings.structuredFolderName;
+        if (folderName) {
             const pathDiv = containerEl.createDiv({ cls: 'current-path-display' });
             pathDiv.setCssStyles({
                 marginTop: '15px',
@@ -611,7 +607,7 @@ export class BeancountSettingTab extends PluginSettingTab {
                 cls: 'setting-item-name'
             });
             const descEl = pathDiv.createEl('div', {
-                text: this.plugin.settings.beancountFilePath,
+                text: `${folderName}/ledger.beancount`,
                 cls: 'setting-item-description'
             });
             descEl.setCssStyles({ fontFamily: 'monospace' });
@@ -718,15 +714,8 @@ export class BeancountSettingTab extends PluginSettingTab {
             Logger.log(`Structured folder "${oldFolderName}" not found in vault. Skipping physical rename.`);
         }
 
-        // Update settings paths
-        // @ts-ignore
-        const vaultRoot = this.app.vault.adapter.getBasePath();
-        const newMainLedgerPath = path.join(vaultRoot, this.tempFolderName, 'ledger.beancount');
-
+        // Only the folder name needs updating; the ledger path is derived at runtime.
         this.plugin.settings.structuredFolderName = this.tempFolderName;
-        this.plugin.settings.structuredFolderPath = newMainLedgerPath;
-        this.plugin.settings.beancountFilePath = newMainLedgerPath;
-
         await this.plugin.saveSettings();
 
         // Refresh journal store if it exists
