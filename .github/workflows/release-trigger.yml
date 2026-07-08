@@ -15,6 +15,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.RELEASE_PAT || github.token }}
 
       - name: Check commit message
         id: check
@@ -48,6 +50,22 @@ jobs:
             exit 1
           fi
 
+      - name: Create release branch and remove docs
+        if: steps.check.outputs.is_release == 'true'
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          BRANCH_NAME="release-temp-${{ steps.check.outputs.version }}"
+          git checkout -b "$BRANCH_NAME"
+
+          if [ -d "docs" ]; then
+            git rm -rf docs
+            git commit -m "chore: remove docs folder for release"
+          fi
+
+          git push origin "$BRANCH_NAME"
+
       - name: Create PR
         if: steps.check.outputs.is_release == 'true'
         env:
@@ -55,9 +73,10 @@ jobs:
           # replace github.token with a PAT (e.g. secrets.RELEASE_PAT)
           GH_TOKEN: ${{ secrets.RELEASE_PAT || github.token }}
         run: |
+          BRANCH_NAME="release-temp-${{ steps.check.outputs.version }}"
           gh pr create \
             --base master \
-            --head Dev \
+            --head "$BRANCH_NAME" \
             --title "Release ${{ steps.check.outputs.version }}" \
             --body "Automated release PR"
 
@@ -67,10 +86,11 @@ jobs:
           # IMPORTANT: Same PAT requirement here
           GH_TOKEN: ${{ secrets.RELEASE_PAT || github.token }}
         run: |
+          BRANCH_NAME="release-temp-${{ steps.check.outputs.version }}"
           PR=$(gh pr list \
-            --head Dev \
+            --head "$BRANCH_NAME" \
             --base master \
             --json number \
             --jq '.[0].number')
 
-          gh pr merge $PR --merge --delete-branch=false
+          gh pr merge $PR --merge --delete-branch
