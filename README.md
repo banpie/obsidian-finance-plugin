@@ -1,12 +1,6 @@
 # Beancount Ledger
 
-#### Caution
-- Recent release 1.4.0 has breaking changes for Beta testers (BRAT). I had to change the plugin name and id to make sure obsidian allows submission to community store. This does not work well with BRAT users. If you are using this plugin via BRAT, please reinstall it from BRAT settings. This will not affect existing beancount files.
-- The plugin is now available in community store at `https://community.obsidian.md/plugins/beancount-finance`
-
--------------------------------------------------
-
-![Plugin Logo](docs-site/static/img/Primary_horizontal_logo.png)
+![Plugin Logo](logo.png)
 
 A comprehensive Beancount integration for [Obsidian](https://obsidian.md) that transforms your vault into a powerful plain-text accounting dashboard.
 
@@ -24,11 +18,17 @@ This plugin integrates with your existing Beancount setup:
 4. **bean-price** *(optional)*: For automatic commodity price fetching (`pip install beanprice`)
 5. **WSL Support** *(optional)*: Full compatibility for Windows users running Beancount in WSL
 
-> **Note:** `bean-query` and `bean-price` are separate packages from Beancount itself and require their own `pip install` commands.
+> **Note:** `bean-query` and `bean-price` are separate packages from Beancount itself and require their own `pip install` commands. See the [Requirements Documentation](https://mkshp-dev.github.io/obsidian-finance-plugin/getting-started/requirements) for more details.
 
 ---
 
 ## 📦 Installation
+
+### Install from community store
+
+1. Open Obsidian Settings and go to **Community plugins**.
+2. Click **Browse** and search for `Beancount Ledger`.
+3. Click **Install**, then **Enable** the plugin.
 
 ### Manual Installation
 1. Download the latest release from [GitHub Releases](https://github.com/mkshp-dev/obsidian-finance-plugin/releases)

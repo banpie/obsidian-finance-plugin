@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+- **Documentation: QoL improvements** — Removed outdated caution warning, added community store installation instructions, updated logo path to repository root, and pointed to online documentation for detailed requirements.
+
 ## 2.2.6 - 2026-07-08
 
 ## 2.2.5 - 2026-07-08
