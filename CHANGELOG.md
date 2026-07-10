@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+- **Documentation: QoL improvements** — Removed outdated caution warning, added community store installation instructions, updated logo path to repository root, and pointed to online documentation for detailed requirements.
+
+## 2.2.6 - 2026-07-08
+
 ## 2.2.5 - 2026-07-08
 
 - **Codebase Cleanup: Remove dead path-normalisation methods from SystemDetector** — Deleted `normalizeFilePath` and its private helper `convertWSLToWindowsPath` from `SystemDetector`. Both methods had zero external callers; WSL↔Windows path translation is already handled correctly at two dedicated call-sites: `convertWindowsPathToWsl` (in `fileEditor.ts`) is applied JIT in `queryRunner.ts` when the configured command includes `wsl`, and `convertWslPathToWindows` (also in `fileEditor.ts`) is used throughout `directives.ts` and `beancount-lint.ts` to normalise paths returned by Beancount tools before Obsidian vault writes.
