@@ -1,7 +1,9 @@
 // src/main.ts
 
-import { Plugin, Notice } from 'obsidian';
+import { Plugin, Notice, TFile } from 'obsidian';
 import { BeancountSettingTab, type BeancountPluginSettings, DEFAULT_SETTINGS } from './settings';
+import type { Completion } from '@codemirror/autocomplete';
+import { parseSnippetsFile } from './lang/beancount-snippets';
 import { BeancountView, BEANCOUNT_VIEW_TYPE } from './ui/views/sidebar/sidebar-view';
 import { BeancountFileView, BEANCOUNT_FILE_VIEW_TYPE } from './ui/views/beancount-file-view';
 import { UnifiedTransactionModal } from './ui/modals/UnifiedTransactionModal';
@@ -30,6 +32,9 @@ export default class BeancountPlugin extends Plugin {
 	private bqlProcessor: BQLCodeBlockProcessor;
 	public inlineBqlProcessor: InlineBQLProcessor;
 
+	/** Cached user-defined transaction snippets. */
+	public snippetCompletions: Completion[] = [];
+
 	/** Public API surface for inter-plugin access. */
 	public api: BeancountPluginApi;
 
@@ -48,6 +53,11 @@ export default class BeancountPlugin extends Plugin {
 		// Initialize Logger
 		Logger.setDebugMode(this.settings.debugMode);
 		Logger.log('Plugin loading...');
+
+		// Load snippets if enabled
+		if (this.settings.enableUserSnippets) {
+			await this.loadSnippets();
+		}
 
 		// Expose public API for other plugins
 		this.api = createPluginApi(this);
@@ -160,6 +170,72 @@ export default class BeancountPlugin extends Plugin {
 			this.setupAutomaticPriceFetching();
 		}
 
+
+		// Register vault listeners for real-time snippets reloading
+		this.registerEvent(
+			this.app.vault.on('modify', (file) => {
+				if (!this.settings.enableUserSnippets) return;
+				const folderName = this.settings.structuredFolderName || 'Finances';
+				if (file instanceof TFile && file.path === `${folderName}/snippets.beancount`) {
+					void this.loadSnippets();
+				}
+			})
+		);
+		this.registerEvent(
+			this.app.vault.on('create', (file) => {
+				if (!this.settings.enableUserSnippets) return;
+				const folderName = this.settings.structuredFolderName || 'Finances';
+				if (file instanceof TFile && file.path === `${folderName}/snippets.beancount`) {
+					void this.loadSnippets();
+				}
+			})
+		);
+		this.registerEvent(
+			this.app.vault.on('delete', (file) => {
+				if (!this.settings.enableUserSnippets) return;
+				const folderName = this.settings.structuredFolderName || 'Finances';
+				if (file instanceof TFile && file.path === `${folderName}/snippets.beancount`) {
+					this.snippetCompletions = [];
+				}
+			})
+		);
+		this.registerEvent(
+			this.app.vault.on('rename', (file, oldPath) => {
+				if (!this.settings.enableUserSnippets) return;
+				const folderName = this.settings.structuredFolderName || 'Finances';
+				const snippetsPath = `${folderName}/snippets.beancount`;
+				if (file instanceof TFile) {
+					if (file.path === snippetsPath) {
+						void this.loadSnippets();
+					} else if (oldPath === snippetsPath) {
+						this.snippetCompletions = [];
+					}
+				}
+			})
+		);
+
+		// Add Command to open snippets file
+		this.addCommand({
+			id: 'open-beancount-snippets',
+			name: 'Open Beancount snippets file',
+			callback: async () => {
+				const folderName = this.settings.structuredFolderName || 'Finances';
+				const snippetsFilePath = `${folderName}/snippets.beancount`;
+				const file = this.app.vault.getAbstractFileByPath(snippetsFilePath);
+				if (file && file instanceof TFile) {
+					await this.app.workspace.getLeaf(true).openFile(file);
+				} else {
+					// File does not exist yet; loadSnippets() will create it
+					await this.loadSnippets();
+					const createdFile = this.app.vault.getAbstractFileByPath(snippetsFilePath);
+					if (createdFile && createdFile instanceof TFile) {
+						await this.app.workspace.getLeaf(true).openFile(createdFile);
+					} else {
+						new Notice('Could not find or create snippets.beancount');
+					}
+				}
+			}
+		});
 
 		this.addSettingTab(new BeancountSettingTab(this.app, this));
 	}
@@ -318,5 +394,53 @@ export default class BeancountPlugin extends Plugin {
 		window.setTimeout(() => {
 			this.bqlProcessor?.refreshAllBlocks();
 		}, 50);
+	}
+
+	/**
+	 * Loads and parses user-defined snippets from snippets.beancount.
+	 * If the file doesn't exist, it creates it with basic templates.
+	 */
+	public async loadSnippets(): Promise<void> {
+		if (!this.settings.enableUserSnippets) {
+			this.snippetCompletions = [];
+			return;
+		}
+
+		try {
+			const folderName = this.settings.structuredFolderName || 'Finances';
+			const snippetsFilePath = `${folderName}/snippets.beancount`;
+			const adapter = this.app.vault.adapter;
+
+			const exists = await adapter.exists(snippetsFilePath);
+			if (!exists) {
+				const initialContent = `;; User-Defined Transaction Snippets
+;;
+;; Define transactions here with the metadata "Snippet: <name>".
+;; These will be suggested when you start typing at the beginning of a line.
+;;
+;; Example:
+2026-01-01 * "Sample Payee" "Sample Narration"
+  Snippet: "sampleSnippet"
+  Assets:Checking      -150.00 USD
+  Expenses:Rent
+`;
+				// Ensure folder exists before creating the file
+				const folderExists = await adapter.exists(folderName);
+				if (!folderExists) {
+					await this.app.vault.createFolder(folderName);
+				}
+				await this.app.vault.create(snippetsFilePath, initialContent);
+				this.snippetCompletions = [];
+				Logger.log('[Main] Created snippets.beancount with initial templates.');
+				return;
+			}
+
+			const content = await adapter.read(snippetsFilePath);
+			this.snippetCompletions = parseSnippetsFile(content);
+			Logger.log(`[Main] Loaded ${this.snippetCompletions.length} user snippet(s).`);
+		} catch (error) {
+			Logger.error('[Main] Failed to load snippets:', error);
+			this.snippetCompletions = [];
+		}
 	}
 }

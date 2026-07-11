@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+- **Editor: User-defined transaction snippets** — Added support for loading custom transaction templates from a standalone `snippets.beancount` file. Toggling the feature on-demand creates the template file with a `sampleSnippet` if missing. Supports real-time cache reloading via vault change events, folder rename safety hooks, and a command to open the snippets file.
+
 - **Documentation: QoL improvements** — Removed outdated caution warning, added community store installation instructions, updated logo path to repository root, and pointed to online documentation for detailed requirements.
 
 ## 2.2.6 - 2026-07-08
