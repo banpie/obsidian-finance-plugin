@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
-- **Editor: User-defined transaction snippets** — Added support for loading custom transaction templates from a standalone `snippets.beancount` file. Toggling the feature on-demand creates the template file with a `sampleSnippet` if missing. Supports real-time cache reloading via vault change events, folder rename safety hooks, and a command to open the snippets file.
+- **Editor & Dashboard: User-defined transaction snippets** — Added support for loading custom transaction templates from a standalone `snippets.beancount` file. Toggling the feature on-demand creates the template file with a `sampleSnippet` if missing. Supports real-time cache reloading via vault change events, folder rename safety hooks, and a command to open the snippets file. Also added a `📋 Snippet` button to transaction cards in the Journal tab to save existing transactions to the snippets file under a custom name, and a `📋 Load Snippet` button in the `Add Transaction` modal footer to search and populate the form fields.
 
 - **Documentation: QoL improvements** — Removed outdated caution warning, added community store installation instructions, updated logo path to repository root, and pointed to online documentation for detailed requirements.
 

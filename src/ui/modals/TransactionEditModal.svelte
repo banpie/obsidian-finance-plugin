@@ -21,6 +21,9 @@
 	export let operatingCurrency: string = "INR";
 	export let plugin: any = null;
 
+	import { SnippetSuggestModal } from "./SnippetSuggestModal";
+	import { Notice } from "obsidian";
+
 	const dispatch = createEventDispatcher();
 
 	// Beancount internal metadata fields that should not be shown to users
@@ -692,6 +695,262 @@
 		}
 
 		saving = false;
+	}
+
+	// Parse Beancount transaction text into fields
+	function parseBeancountTransaction(text: string) {
+		const lines = text.split(/\r?\n/);
+		let payee = '';
+		let narration = '';
+		let flag = '*';
+		const tags: string[] = [];
+		const links: string[] = [];
+		const metadata: Record<string, string> = {};
+		const postings: any[] = [];
+
+		if (lines.length === 0) return { payee, narration, flag, tags, links, metadata, postings };
+
+		// Header parse
+		const header = lines[0].trim();
+		const dateMatch = header.match(/^\d{4}-\d{2}-\d{2}\s+([*!])/);
+		if (dateMatch) {
+			flag = dateMatch[1];
+		}
+
+		// Extract tags from header
+		const tagMatches = header.matchAll(/#([A-Za-z0-9_-]+)/g);
+		for (const match of tagMatches) {
+			tags.push(match[1]);
+		}
+
+		// Extract links from header
+		const linkMatches = header.matchAll(/\^([A-Za-z0-9_-]+)/g);
+		for (const match of linkMatches) {
+			links.push(match[1]);
+		}
+
+		// Extract payee and narration quotes
+		const quotes: string[] = [];
+		let inQuote = false;
+		let currentQuote = '';
+		for (let i = 0; i < header.length; i++) {
+			const char = header[i];
+			if (char === '"' && (i === 0 || header[i - 1] !== '\\')) {
+				if (inQuote) {
+					quotes.push(currentQuote);
+					currentQuote = '';
+					inQuote = false;
+				} else {
+					inQuote = true;
+				}
+			} else if (inQuote) {
+				currentQuote += char;
+			}
+		}
+
+		if (quotes.length >= 2) {
+			payee = quotes[0];
+			narration = quotes[1];
+		} else if (quotes.length === 1) {
+			narration = quotes[0];
+		}
+
+		let hasSeenPostings = false;
+		let currentPosting: any = null;
+
+		for (let i = 1; i < lines.length; i++) {
+			const line = lines[i];
+			const trimmed = line.trim();
+			if (!trimmed || trimmed.startsWith(';')) continue;
+
+			// Check if metadata line
+			const metadataMatch = line.match(/^\s+([A-Za-z0-9_-]+):\s+(.+)/);
+			if (metadataMatch) {
+				const key = metadataMatch[1];
+				const value = metadataMatch[2].replace(/^["']|["']$/g, '');
+				if (key.toLowerCase() === 'snippet') continue;
+
+				if (!hasSeenPostings) {
+					metadata[key] = value;
+				} else if (currentPosting) {
+					if (!currentPosting.metadata) currentPosting.metadata = {};
+					currentPosting.metadata[key] = value;
+				}
+				continue;
+			}
+
+			// Clean inline comment from posting line
+			const commentIdx = trimmed.indexOf(';');
+			let mainLine = commentIdx >= 0 ? trimmed.substring(0, commentIdx).trim() : trimmed;
+			let comment = commentIdx >= 0 ? trimmed.substring(commentIdx + 1).trim() : '';
+
+			// Extract posting flag if present
+			let postingFlag: string | null = null;
+			if (mainLine.startsWith('* ') || mainLine.startsWith('! ')) {
+				postingFlag = mainLine[0];
+				mainLine = mainLine.substring(2).trim();
+			}
+
+			const accountMatch = mainLine.match(/^([A-Z0-9][A-Za-z0-9:-]+)/);
+			if (accountMatch) {
+				hasSeenPostings = true;
+				const account = accountMatch[1];
+				let rest = mainLine.substring(account.length).trim();
+
+				let amount = '';
+				let currency = '';
+				let cost: any = null;
+				let price: any = null;
+
+				if (rest) {
+					// Price (starts with @ or @@)
+					const priceIdx = rest.search(/@@?/);
+					let priceStr = '';
+					if (priceIdx >= 0) {
+						priceStr = rest.substring(priceIdx).trim();
+						rest = rest.substring(0, priceIdx).trim();
+					}
+
+					// Cost (starts with { or {{, ends with } or }})
+					const costStartIdx = rest.indexOf('{');
+					let costStr = '';
+					if (costStartIdx >= 0) {
+						const costEndIdx = rest.lastIndexOf('}');
+						if (costEndIdx > costStartIdx) {
+							costStr = rest.substring(costStartIdx, costEndIdx + 1);
+							rest = rest.substring(0, costStartIdx).trim();
+						}
+					}
+
+					// Amount Currency
+					if (rest) {
+						const parts = rest.split(/\s+/);
+						if (parts.length >= 1) amount = parts[0];
+						if (parts.length >= 2) currency = parts[1];
+					}
+
+					// Cost parse
+					if (costStr) {
+						const isTotal = costStr.startsWith('{{');
+						const costInner = costStr.replace(/^\{+/, '').replace(/\}+$/, '').trim();
+						const costParts = costInner.split(',').map(s => s.trim());
+						let costNum = '';
+						let costCurr = currency || '';
+						let costDate = '';
+						let costLabel = '';
+
+						if (costParts.length >= 1) {
+							const firstPart = costParts[0].split(/\s+/);
+							costNum = firstPart[0];
+							if (firstPart.length >= 2) costCurr = firstPart[1];
+						}
+						if (costParts.length >= 2) {
+							if (/^\d{4}-\d{2}-\d{2}/.test(costParts[1])) {
+								costDate = costParts[1];
+							} else if (costParts[1].startsWith('"')) {
+								costLabel = costParts[1].replace(/^"/, '').replace(/"$/, '');
+							}
+						}
+						if (costParts.length >= 3) {
+							if (costParts[2].startsWith('"')) {
+								costLabel = costParts[2].replace(/^"/, '').replace(/"$/, '');
+							}
+						}
+
+						cost = {
+							number: costNum,
+							currency: costCurr,
+							date: costDate,
+							label: costLabel,
+							isTotal
+						};
+					}
+
+					// Price parse
+					if (priceStr) {
+						const isTotal = priceStr.startsWith('@@');
+						const priceInner = priceStr.replace(/^@@?/, '').trim();
+						const priceParts = priceInner.split(/\s+/);
+						let priceAmt = '';
+						let priceCurr = '';
+
+						if (priceParts.length >= 1) priceAmt = priceParts[0];
+						if (priceParts.length >= 2) priceCurr = priceParts[1];
+
+						price = {
+							amount: priceAmt,
+							currency: priceCurr,
+							isTotal
+						};
+					}
+				}
+
+				currentPosting = {
+					account,
+					amount,
+					currency,
+					flag: postingFlag,
+					comment,
+					metadata: {},
+					cost: cost || {
+						number: '',
+						currency: currency || 'USD',
+						date: '',
+						label: '',
+						isTotal: false
+					},
+					price: price || {
+						amount: '',
+						currency: currency || 'USD',
+						isTotal: false
+					}
+				};
+				postings.push(currentPosting);
+			}
+		}
+
+		return { payee, narration, flag, tags, links, metadata, postings };
+	}
+
+	// Open load snippet suggest modal
+	function openLoadSnippetModal() {
+		if (!plugin) {
+			console.error("Plugin instance not found");
+			return;
+		}
+
+		const snippets = plugin.snippetCompletions || [];
+		if (snippets.length === 0) {
+			new Notice("No snippets found. Please enable snippets and define them in snippets.beancount first.");
+			return;
+		}
+
+		new SnippetSuggestModal(plugin.app, snippets, (item) => {
+			const infoStr = item.info as string;
+			const doubleNewlineIdx = infoStr.indexOf('\n\n');
+			if (doubleNewlineIdx >= 0) {
+				const templateText = infoStr.substring(doubleNewlineIdx + 2);
+				const parsed = parseBeancountTransaction(templateText);
+
+				payee = parsed.payee;
+				narration = parsed.narration;
+				flag = parsed.flag;
+				postings = parsed.postings;
+				selectedTags = parsed.tags;
+				selectedLinks = parsed.links;
+				transactionMetadata = parsed.metadata;
+				showTransactionMetadata = Object.keys(transactionMetadata).length > 0;
+
+				// Refresh Svelte reactive expandable lists
+				showCost = postings.map(p => p.cost && (p.cost.number || p.cost.date || p.cost.label));
+				showPrice = postings.map(p => p.price && p.price.amount);
+				showPostingFlag = postings.map(p => !!p.flag);
+				showPostingComment = postings.map(p => !!p.comment);
+				showPostingMetadata = postings.map(p => p.metadata && Object.keys(p.metadata).length > 0);
+
+				new Notice(`Loaded snippet: ${item.label}`);
+			}
+		}).open();
 	}
 
 	// Cancel editing
@@ -1491,6 +1750,15 @@
 					disabled={deleting}
 				>
 					{deleting ? "Deleting..." : "Delete"}
+				</button>
+			{/if}
+			{#if mode === "add" && activeTab === "transaction" && plugin?.settings?.enableUserSnippets}
+				<button
+					type="button"
+					class="btn-secondary"
+					on:click={openLoadSnippetModal}
+				>
+					📋 Load Snippet
 				</button>
 			{/if}
 		</div>

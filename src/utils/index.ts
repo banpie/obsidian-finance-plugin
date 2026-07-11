@@ -26,6 +26,7 @@ export { getTransactionEntries, getBalanceEntries, getNoteEntries } from './jour
 export {
 	generateTransactionText,
 	createTransaction,
+	createSnippet,
 	updateTransaction,
 	deleteTransaction,
 	createBalanceAssertion,
@@ -50,6 +51,8 @@ export {
 	type TransactionData,
 	type BalanceData,
 	type NoteData,
+	type CostData,
+	type PriceDataPayload,
 } from './directives';
 
 // Re-export structuredLayout helpers that some callers pull from utils/index

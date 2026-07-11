@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
-    import { debounce, getOpenAccounts, getPayees, getTags, deleteTransaction, deleteBalance, deleteNote } from '../../../utils/index';
+    import { debounce, getOpenAccounts, getPayees, getTags, deleteTransaction, deleteBalance, deleteNote, createSnippet, type TransactionData, type CostData, type PriceDataPayload } from '../../../utils/index';
     import SkeletonLoader from '../../common/SkeletonLoader.svelte';
     import ErrorBanner from '../../common/ErrorBanner.svelte';
     import EmptyState from '../../common/EmptyState.svelte';
@@ -9,6 +9,7 @@
     import NoteCard from './cards/NoteCard.svelte';
     import { UnifiedTransactionModal } from '../../modals/UnifiedTransactionModal';
     import { ConfirmModal } from '../../modals/ConfirmModal';
+    import { SnippetNameModal } from '../../modals/SnippetNameModal';
     import { Notice } from 'obsidian';
     import type { JournalEntry } from '../../../models/journal';
     import { Logger } from '../../../utils/logger';
@@ -240,6 +241,80 @@
         ).open();
     }
 
+    function handleCreateSnippet(entry: any) {
+        if (!plugin) {
+            console.error("Plugin instance not found");
+            return;
+        }
+
+        // Guess a default snippet name from payee or narration
+        let defaultName = '';
+        if (entry.payee) {
+            defaultName = entry.payee;
+            if (entry.narration) defaultName += ` - ${entry.narration}`;
+        } else {
+            defaultName = entry.narration || 'MySnippet';
+        }
+
+        // Clean name of characters that aren't nice for autocompletion matching
+        defaultName = defaultName.replace(/[^a-zA-Z0-9\s_-]/g, '').trim();
+
+        new SnippetNameModal(
+            plugin.app,
+            defaultName,
+            async (snippetName) => {
+                try {
+                    // Map JournalTransaction to TransactionData
+                    const transactionData: TransactionData = {
+                        date: entry.date,
+                        flag: entry.flag || '*',
+                        payee: entry.payee || undefined,
+                        narration: entry.narration,
+                        tags: entry.tags || [],
+                        links: entry.links || [],
+                        metadata: entry.metadata as Record<string, string> || {},
+                        postings: (entry.postings || []).map((p: any) => {
+                            const cost: CostData | undefined = p.cost ? {
+                                number: p.cost.number || undefined,
+                                currency: p.cost.currency || undefined,
+                                date: p.cost.date || undefined,
+                                label: p.cost.label || undefined,
+                                isTotal: p.cost.isTotal
+                            } : undefined;
+
+                            const price: PriceDataPayload | undefined = p.price ? {
+                                amount: p.price.amount,
+                                currency: p.price.currency,
+                                isTotal: p.price.isTotal
+                            } : undefined;
+
+                            return {
+                                account: p.account,
+                                amount: p.amount || undefined,
+                                currency: p.currency || undefined,
+                                flag: p.flag || undefined,
+                                comment: p.comment || undefined,
+                                metadata: p.metadata || {},
+                                cost,
+                                price
+                            };
+                        })
+                    };
+
+                    const result = await createSnippet(plugin, snippetName, transactionData);
+                    if (result.success) {
+                        new Notice(`Snippet "${snippetName}" created successfully!`);
+                    } else {
+                        new Notice(`Failed to create snippet: ${result.error || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    console.error('Error creating snippet:', error);
+                    new Notice(`Failed to create snippet. Check console for details.`);
+                }
+            }
+        ).open();
+    }
+
     onMount(() => {
         Logger.log('JournalTab mounted');
         // Sync local state with store filters
@@ -433,8 +508,10 @@
                 {#if entry.type === 'transaction'}
                     <TransactionCard
                         {entry}
+                        enableUserSnippets={plugin?.settings?.enableUserSnippets}
                         on:edit={() => handleEdit(entry)}
                         on:delete={() => handleDelete(entry)}
+                        on:create-snippet={(e) => handleCreateSnippet(e.detail)}
                     />
                 {:else if entry.type === 'balance'}
                     <BalanceCard
