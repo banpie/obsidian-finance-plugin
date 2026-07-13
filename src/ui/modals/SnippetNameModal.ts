@@ -14,12 +14,12 @@ export class SnippetNameModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
 
-        contentEl.createEl('h2', { text: 'Save as Transaction Snippet' });
+        contentEl.createEl('h2', { text: 'Save as transaction snippet' });
         contentEl.createEl('p', { text: 'Enter a name for this transaction snippet. This name will be suggested when autocompleting.' });
 
-        let textComponent: TextComponent;
+        let textComponent: TextComponent | null = null;
         new Setting(contentEl)
-            .setName('Snippet Name')
+            .setName('Snippet name')
             .addText(text => {
                 textComponent = text;
                 text.setValue(this.snippetName)
@@ -35,7 +35,7 @@ export class SnippetNameModal extends Modal {
                     this.close();
                 }))
             .addButton(btn => btn
-                .setButtonText('Save Snippet')
+                .setButtonText('Save snippet')
                 .setCta()
                 .onClick(() => {
                     const trimmed = this.snippetName.trim();
@@ -48,8 +48,8 @@ export class SnippetNameModal extends Modal {
                 }));
 
         // Focus the text input and select the default text for easy editing
-        setTimeout(() => {
-            if (textComponent && textComponent.inputEl) {
+        window.setTimeout(() => {
+            if (textComponent !== null && textComponent.inputEl) {
                 textComponent.inputEl.focus();
                 textComponent.inputEl.select();
             }

@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Journal Tab: Icon-only actions & button reordering** — Switched action buttons for transactions, notes, and balances to compact icon-only layouts to save horizontal space. Reordered transaction actions to **Edit (✏️) → Save as snippet (📋) → Delete (❌)** and note/balance actions to **Edit (✏️) → Delete (❌)**. Added clear tooltips to all icon buttons.
 
+- **ESLint & Code Quality: Resolve all static analysis errors** — Resolved all ESLint errors by adjusting the configuration to ignore the standalone `docs/` directory instead of the obsolete `docs-site/` pathway, applying sentence-casing to UI labels, using window-scoped timer prefixes for popout window compatibility, and typing variables cleanly to prevent unsafe promise checks.
+
 - **Documentation: QoL improvements** — Removed outdated caution warning, added community store installation instructions, updated logo path to repository root, and pointed to online documentation for detailed requirements.
 
 ## 2.2.6 - 2026-07-08
