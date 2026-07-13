@@ -1322,7 +1322,7 @@
 													posting.cost.isTotal
 												}
 											/>
-											Total Cost {{}}
+											Total Cost {'{{}}'}
 										</label>
 									</div>
 								</div>
@@ -1534,7 +1534,7 @@
 					/>
 				</div>
 
-				<div class="form-group full-width">
+				<div class="form-group">
 					<label for="balance-account">Account *</label>
 					<input
 						type="text"
@@ -1587,7 +1587,7 @@
 					/>
 				</div>
 
-				<div class="form-group full-width">
+				<div class="form-group">
 					<label for="note-account">Account *</label>
 					<input
 						type="text"
@@ -1626,7 +1626,7 @@
 					/>
 				</div>
 
-				<div class="form-group full-width">
+				<div class="form-group">
 					<label for="query-name">Query name *</label>
 					<input
 						type="text"
@@ -2317,12 +2317,14 @@
 	}
 
 	.header-flag select {
-		padding: 0.5rem;
+		padding: 0.3rem 0.5rem;
 		border: 1px solid var(--background-modifier-border);
 		border-radius: 4px;
 		background: var(--background-primary);
 		color: var(--text-normal);
-		font-size: 0.9rem;
+		font-size: 0.875rem;
+		height: 2rem;
+		line-height: 1.2;
 	}
 
 	.header-metadata-btn {
