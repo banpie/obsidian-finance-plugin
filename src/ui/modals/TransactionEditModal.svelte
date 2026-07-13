@@ -1153,7 +1153,7 @@
 									on:click={() =>
 										removeTransactionMetadata(key)}
 								>
-									🗑️
+									&times;
 								</button>
 							</div>
 						{/each}
@@ -1261,7 +1261,7 @@
 										on:click={() => removePosting(index)}
 										title="Remove posting"
 									>
-										🗑️
+										&times;
 									</button>
 								{/if}
 							</div>
@@ -1440,7 +1440,7 @@
 														key,
 													)}
 											>
-												🗑️
+												&times;
 											</button>
 										</div>
 									{/each}
@@ -2061,9 +2061,9 @@
 	}
 
 	.remove-posting {
-		background: var(--background-modifier-error);
+		background: var(--background-modifier-form-field);
 		color: var(--text-error);
-		border: none;
+		border: 1px solid var(--background-modifier-border);
 		border-radius: 4px;
 		width: 2rem;
 		height: 2rem;
@@ -2072,11 +2072,13 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		transition: all 0.2s;
 	}
 
 	.remove-posting:hover:not(:disabled) {
-		background: var(--text-error);
-		color: var(--text-on-accent);
+		background: var(--background-modifier-error);
+		border-color: var(--text-error);
+		color: var(--text-error);
 	}
 
 	.remove-posting:disabled {
@@ -2395,19 +2397,7 @@
 		color: var(--text-on-accent);
 	}
 
-	.remove-posting {
-		background: var(--background-modifier-error);
-		border: 1px solid var(--text-error);
-		border-radius: 4px;
-		padding: 0.5rem;
-		cursor: pointer;
-		font-size: 0.9rem;
-		transition: all 0.2s;
-	}
-
-	.remove-posting:hover {
-		opacity: 0.8;
-	}
+	/* Consolidated with definition above */
 
 	/* Posting Advanced Sections */
 	.posting-advanced {
@@ -2470,12 +2460,20 @@
 	}
 
 	.remove-metadata {
-		background: var(--background-modifier-error);
-		border: 1px solid var(--text-error);
+		background: var(--background-modifier-form-field);
+		color: var(--text-error);
+		border: 1px solid var(--background-modifier-border);
 		border-radius: 4px;
 		padding: 0.5rem;
 		cursor: pointer;
 		font-size: 0.9rem;
+		transition: all 0.2s;
+	}
+
+	.remove-metadata:hover {
+		background: var(--background-modifier-error);
+		border-color: var(--text-error);
+		color: var(--text-error);
 	}
 
 	.add-metadata-btn {

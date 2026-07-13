@@ -30,19 +30,19 @@
             {/each}
         </div>
         <div class="header-right">
-             <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title="Delete">
-                ❌
+            <button class="btn-icon" on:click={() => dispatch('edit', entry)} title="Edit">
+                ✏️
             </button>
             <button 
-                class="btn-snippet" 
+                class="btn-icon" 
                 disabled={!enableUserSnippets} 
                 on:click={() => dispatch('create-snippet', entry)} 
-                title={enableUserSnippets ? "Save as Snippet" : "User-defined snippets disabled in settings"}
+                title={enableUserSnippets ? "Save as snippet" : "User-defined snippets disabled in settings"}
             >
-                📋 Snippet
+                📋
             </button>
-            <button class="btn-edit" on:click={() => dispatch('edit', entry)}>
-                ✏️ Edit
+            <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title="Delete">
+                ❌
             </button>
         </div>
     </div>

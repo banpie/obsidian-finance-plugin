@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Editor & Dashboard: User-defined transaction snippets** — Added support for loading custom transaction templates from a standalone `snippets.beancount` file. Toggling the feature on-demand creates the template file with a `sampleSnippet` if missing. Supports real-time cache reloading via vault change events, folder rename safety hooks, and a command to open the snippets file. Also added a `📋 Snippet` button to transaction cards in the Journal tab to save existing transactions to the snippets file under a custom name, and a `📋 Load Snippet` button in the `Add Transaction` modal footer to search and populate the form fields.
 
+- **Transaction Modal: Polish delete button UI** — Replaced the trash can/bucket emoji (`🗑️`) with a standard `✕` (`&times;`) sign across the posting and metadata deletion buttons. Redesigned the button from a solid red block to a clean white/grey layout with a red cross that transitions to a soft red background on hover. Cleaned up redundant CSS rules to unify the button styling.
+
+- **Journal Tab: Icon-only actions & button reordering** — Switched action buttons for transactions, notes, and balances to compact icon-only layouts to save horizontal space. Reordered transaction actions to **Edit (✏️) → Save as snippet (📋) → Delete (❌)** and note/balance actions to **Edit (✏️) → Delete (❌)**. Added clear tooltips to all icon buttons.
+
 - **Documentation: QoL improvements** — Removed outdated caution warning, added community store installation instructions, updated logo path to repository root, and pointed to online documentation for detailed requirements.
 
 ## 2.2.6 - 2026-07-08
