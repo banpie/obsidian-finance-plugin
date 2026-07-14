@@ -127,8 +127,10 @@ Customize how Beancount Query Language results are displayed in your notes.
 ### Editor Settings
 *   **Account Name Autocomplete**: Toggle account name popup while typing.
 *   **Editor Autocomplete**: Toggle payee, narration, currency, tag, and link autocomplete.
+*   **User-defined snippets**: Enable loading custom transaction templates from a standalone `snippets.beancount` file inside your structured layout folder.
 *   **Editor Diagnostics (Linting)**: Select between *Off*, *On save*, or *On change* validation.
 *   **Format on Save**: Format `.beancount` files automatically on save.
+
 
 ---
 

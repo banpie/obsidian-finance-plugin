@@ -47,6 +47,7 @@ Used to record double-entry financial transactions (e.g. expenses, income, trans
     *   **Tags**: Type tag words (without `#`) to categorize the transaction.
     *   **Links**: Type link identifiers (without `^`) to group related transactions.
 *   **Transaction Metadata**: Click the **📋** icon in the header row to attach metadata keys (must be lowercase) and values to the overall transaction.
+*   **Load Snippet**: (Optional) Click the **📋 Load Snippet** button in the modal footer (visible when user-defined snippets are enabled) to fuzzy-search your custom snippets and instantly pre-fill all transaction form fields.
 
 ---
 
@@ -55,8 +56,9 @@ Used to record double-entry financial transactions (e.g. expenses, income, trans
 ![Add Balance](/img/Add-Balance.png)
 
 Used to assert the balance of a specific account at a point in time (crucial for reconciling bank accounts).
-*   **Date**: Date of the assertion.
-*   **Account**: The account being verified (e.g. `Assets:Checking`).
+*   **Date & Account**: Positioned adjacent to each other for a compact layout.
+    *   **Date**: Date of the assertion.
+    *   **Account**: The account being verified (e.g. `Assets:Checking`).
 *   **Amount**: The expected balance (e.g. `1250.00 USD`).
 
 This writes a `balance` directive. If the actual calculated ledger balance does not match this amount, Beancount will raise a discrepancy error.
@@ -68,8 +70,9 @@ This writes a `balance` directive. If the actual calculated ledger balance does 
 ![Add Note](/img/Add-Note.png)
 
 Used to attach an informational text comment to an account on a specific date.
-*   **Date**: The date of the note.
-*   **Account**: The target account (e.g. `Assets:Investments`).
+*   **Date & Account**: Positioned adjacent to each other for a compact layout.
+    *   **Date**: The date of the note.
+    *   **Account**: The target account (e.g. `Assets:Investments`).
 *   **Comment**: The text description.
 
 This writes a `note` directive to your ledger, which is shown on the Journal tab and associated note histories.
@@ -81,8 +84,9 @@ This writes a `note` directive to your ledger, which is shown on the Journal tab
 ![Add Query](/img/Add-Query.png)
 
 Used to define a named Beancount Query Language (BQL) query and save it inside your ledger files.
-*   **Date**: Date of the query directive (does not affect query execution).
-*   **Query Name**: A unique identifier. Must start with a letter; only letters, numbers, `-`, and `_` are allowed.
+*   **Date & Query Name**: Positioned adjacent to each other for a compact layout.
+    *   **Date**: Date of the query directive (does not affect query execution).
+    *   **Query Name**: A unique identifier. Must start with a letter; only letters, numbers, `-`, and `_` are allowed.
 *   **SQL (BQL Statement)**: The SQL-like query you want to save.
 
 #### How It Works:

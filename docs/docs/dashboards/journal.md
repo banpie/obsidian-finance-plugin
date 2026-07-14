@@ -20,9 +20,11 @@ Unlike the Transactions tab which focuses solely on postings, the Journal view d
 *   **Other Directives**: Events, commodity declarations, document linkages, etc.
 
 ### Full Management Capabilities
+Action buttons are compact, icon-only layouts tailored to each directive type:
 *   **View Details**: Click any card/entry to expand it and see full metadata, tags, and file locations.
-*   **Edit**: Click the edit button (or right-click) to open the directive in the transaction modal or editor.
-*   **Delete**: Safely delete directives directly from the stream (requires confirmation).
+*   **Edit (✏️)**: Open the directive in the transaction modal or editor. You can also right-click to open the file editor directly.
+*   **Save as Snippet (📋)**: *(Transactions only)* Save the selected transaction as a template to `snippets.beancount` under a custom name for easy replication later.
+*   **Delete (❌)**: Safely delete directives directly from the stream (requires confirmation).
 *   **Live Search**: Instantly filters entries as you type in the search bar.
 
 ### Advanced Filtering
