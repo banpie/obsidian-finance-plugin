@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+- **Journal Tab: Fix search functionality for Balances and Notes** — Fixed a bug where the search field text filter did not affect `Balance` and `Note` directives, causing them to stay visible even when they did not match the search term. Added robust in-memory filtering for search terms (on account, amount, currency, and comment fields), payees, and tags for both directives.
+
 ## 2.3.0 - 2026-07-15
 
 - **Transaction Modal: Layout improvements and UI fixes** — Moved Account fields in Balance/Note tabs and the Query name field in the Query tab adjacent to the Date field for a more compact form layout. Adjusted flag select box height and padding to prevent vertical text clipping, and properly escaped Svelte double curly braces in the cost section to prevent rendering of '[object Object]'.
@@ -14,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Editor & Dashboard: User-defined transaction snippets** — Added support for loading custom transaction templates from a standalone `snippets.beancount` file. Toggling the feature on-demand creates the template file with a `sampleSnippet` if missing. Supports real-time cache reloading via vault change events, folder rename safety hooks, and a command to open the snippets file. Also added a `📋 Snippet` button to transaction cards in the Journal tab to save existing transactions to the snippets file under a custom name, and a `📋 Load Snippet` button in the `Add Transaction` modal footer to search and populate the form fields.
 
 - **Transaction Modal: Polish delete button UI** — Replaced the trash can/bucket emoji (`🗑️`) with a standard `✕` (`&times;`) sign across the posting and metadata deletion buttons. Redesigned the button from a solid red block to a clean white/grey layout with a red cross that transitions to a soft red background on hover. Cleaned up redundant CSS rules to unify the button styling.
+
 
 - **Journal Tab: Icon-only actions & button reordering** — Switched action buttons for transactions, notes, and balances to compact icon-only layouts to save horizontal space. Reordered transaction actions to **Edit (✏️) → Save as snippet (📋) → Delete (❌)** and note/balance actions to **Edit (✏️) → Delete (❌)**. Added clear tooltips to all icon buttons.
 
