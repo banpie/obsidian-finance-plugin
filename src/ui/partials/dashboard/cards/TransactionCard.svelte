@@ -3,6 +3,7 @@
     import type { JournalTransaction } from '../../../../models/journal';
 
     export let entry: JournalTransaction;
+    export let enableUserSnippets = false;
 
     const dispatch = createEventDispatcher();
 
@@ -29,11 +30,19 @@
             {/each}
         </div>
         <div class="header-right">
-             <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title="Delete">
-                ❌
+            <button class="btn-icon" on:click={() => dispatch('edit', entry)} title="Edit">
+                ✏️
             </button>
-            <button class="btn-edit" on:click={() => dispatch('edit', entry)}>
-                ✏️ Edit
+            <button 
+                class="btn-icon" 
+                disabled={!enableUserSnippets} 
+                on:click={() => dispatch('create-snippet', entry)} 
+                title={enableUserSnippets ? "Save as snippet" : "User-defined snippets disabled in settings"}
+            >
+                📋
+            </button>
+            <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title="Delete">
+                ❌
             </button>
         </div>
     </div>
@@ -138,6 +147,33 @@
     .btn-edit:hover {
         background: var(--background-modifier-hover);
         color: var(--text-accent);
+    }
+
+    .btn-snippet {
+        padding: 3px 10px;
+        border: 1px solid var(--background-modifier-border);
+        background: var(--background-primary);
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        transition: all 0.2s;
+        color: var(--text-normal);
+    }
+
+    .btn-snippet:hover:not(:disabled) {
+        background: var(--background-modifier-hover);
+        color: var(--text-accent);
+    }
+
+    .btn-snippet:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        background: var(--background-secondary-alt);
+        color: var(--text-muted);
+        border-color: var(--background-modifier-border);
     }
 
     .btn-icon {

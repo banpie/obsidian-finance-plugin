@@ -55,6 +55,8 @@ export interface BeancountPluginSettings {
     beanPriceCommand: string;
     /** Whether to enable account-name autocomplete in the Beancount editor. */
     accountAutocomplete: boolean;
+    /** Whether to enable user-defined transaction snippets. */
+    enableUserSnippets: boolean;
     /** Whether to format the Beancount file on every save (Format on save). */
     formatOnSave: boolean;
     /** Lint mode for inline bean-check diagnostics: 'off' | 'on-save' | 'on-change'. */
@@ -87,6 +89,7 @@ export const DEFAULT_SETTINGS: BeancountPluginSettings = {
     beanPriceCommand: '',
     // Editor Settings
     accountAutocomplete: true,
+    enableUserSnippets: false,
     formatOnSave: false,
     lintMode: 'on-save',
 }
@@ -358,6 +361,21 @@ export class BeancountSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.accountAutocomplete = value;
                     await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('User-defined snippets')
+            .setDesc('Enable user-defined transaction snippets loaded from snippets.beancount. Start typing at the start of a line to autocomplete.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableUserSnippets)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableUserSnippets = value;
+                    await this.plugin.saveSettings();
+                    if (value) {
+                        await this.plugin.loadSnippets();
+                    } else {
+                        this.plugin.snippetCompletions = [];
+                    }
                 }));
 
         new Setting(containerEl)
@@ -717,6 +735,11 @@ export class BeancountSettingTab extends PluginSettingTab {
         // Only the folder name needs updating; the ledger path is derived at runtime.
         this.plugin.settings.structuredFolderName = this.tempFolderName;
         await this.plugin.saveSettings();
+
+        // Reload snippets with the new folder path
+        if (this.plugin.settings.enableUserSnippets) {
+            await this.plugin.loadSnippets();
+        }
 
         // Refresh journal store if it exists
         if (this.plugin.journalStore && typeof this.plugin.journalStore.refresh === 'function') {

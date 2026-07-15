@@ -6,7 +6,7 @@ import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirro
 import { searchKeymap } from '@codemirror/search';
 import { beancount } from '../../lang/beancount-language';
 import { beancountCompletionSource, invalidateAccountCache } from '../../lang/beancount-autocomplete';
-import { beancountSnippetSource } from '../../lang/beancount-snippets';
+import { beancountSnippetSource, beancountUserSnippetSource } from '../../lang/beancount-snippets';
 import { autocompletion } from '@codemirror/autocomplete';
 import { beancountIndent } from '../../lang/beancount-indent';
 import { formatBeancountCommand } from '../../lang/beancount-format';
@@ -81,6 +81,9 @@ export class BeancountFileView extends TextFileView {
 				autocompletion({
 					override: [
 						beancountSnippetSource,
+						...(this.plugin && this.plugin.settings.enableUserSnippets
+							? [beancountUserSnippetSource(this.plugin)]
+							: []),
 						...(autocompleteEnabled && this.plugin
 							? [beancountCompletionSource(this.plugin)]
 							: []),

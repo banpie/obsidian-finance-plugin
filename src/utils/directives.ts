@@ -1132,3 +1132,51 @@ export async function getQueryDirectives(
         return {};
     }
 }
+
+/**
+ * Creates/appends a transaction snippet template to the snippets.beancount file
+ * and reloads the cache.
+ */
+export async function createSnippet(
+    plugin: BeancountPlugin,
+    snippetName: string,
+    transactionData: TransactionData
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const folderName = plugin.settings.structuredFolderName || 'Finances';
+        const snippetsFilePath = `${folderName}/snippets.beancount`;
+        const adapter = plugin.app.vault.adapter;
+
+        // Ensure snippet folder and snippets.beancount exist (loadSnippets does this)
+        const exists = await adapter.exists(snippetsFilePath);
+        if (!exists) {
+            await plugin.loadSnippets();
+        }
+
+        // Add the Snippet: "snippetName" metadata to the transactionData.
+        // Deep copy the metadata to avoid modifying original reference.
+        const metadata = { ...(transactionData.metadata || {}), Snippet: snippetName };
+        const dataForSnippet = { ...transactionData, metadata };
+
+        // Read current content of snippets.beancount
+        const currentContent = await adapter.read(snippetsFilePath);
+        const newline = getNewlineCharacter(currentContent);
+        
+        // Append the transaction
+        const snippetText = generateTransactionText(dataForSnippet, newline);
+        const newContent = currentContent.endsWith(newline)
+            ? `${currentContent}${snippetText}${newline}`
+            : `${currentContent}${newline}${snippetText}${newline}`;
+
+        await adapter.write(snippetsFilePath, newContent);
+        
+        // Reload snippets in memory so they are immediately available
+        await plugin.loadSnippets();
+
+        Logger.log(`[createSnippet] Created snippet "${snippetName}" in snippets.beancount`);
+        return { success: true };
+    } catch (error) {
+        Logger.error('[createSnippet] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+}

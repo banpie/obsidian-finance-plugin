@@ -16,11 +16,11 @@
             <span class="date">{entry.date}</span>
         </div>
         <div class="header-right">
-             <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title="Delete">
-                ❌
+            <button class="btn-icon" on:click={() => dispatch('edit', entry)} title="Edit">
+                ✏️
             </button>
-            <button class="btn-edit" on:click={() => dispatch('edit', entry)}>
-                ✏️ Edit
+            <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title="Delete">
+                ❌
             </button>
         </div>
     </div>
