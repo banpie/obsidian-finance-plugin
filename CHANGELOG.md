@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+## 2.3.0 - 2026-07-15
+
 - **Transaction Modal: Layout improvements and UI fixes** — Moved Account fields in Balance/Note tabs and the Query name field in the Query tab adjacent to the Date field for a more compact form layout. Adjusted flag select box height and padding to prevent vertical text clipping, and properly escaped Svelte double curly braces in the cost section to prevent rendering of '[object Object]'.
 
 - **Editor & Dashboard: User-defined transaction snippets** — Added support for loading custom transaction templates from a standalone `snippets.beancount` file. Toggling the feature on-demand creates the template file with a `sampleSnippet` if missing. Supports real-time cache reloading via vault change events, folder rename safety hooks, and a command to open the snippets file. Also added a `📋 Snippet` button to transaction cards in the Journal tab to save existing transactions to the snippets file under a custom name, and a `📋 Load Snippet` button in the `Add Transaction` modal footer to search and populate the form fields.
