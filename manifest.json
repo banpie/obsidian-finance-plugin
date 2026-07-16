@@ -6,6 +6,9 @@
 	"description": "Manage your Beancount ledger from your vault. Supports live BQL queries, transaction management, net worth tracking, balance sheets, income statements, and automated price fetching.",
 	"author": "mkshp",
 	"authorUrl": "https://github.com/mkshp-dev",
-	"fundingUrl": "https://buymeacoffee.com/mkshp",
+	"fundingUrl": {
+		"GitHub Sponsors": "https://github.com/sponsors/mkshp-dev",
+		"Buy Me a Coffee": "https://buymeacoffee.com/mkshp"
+	},
 	"isDesktopOnly": true
 }

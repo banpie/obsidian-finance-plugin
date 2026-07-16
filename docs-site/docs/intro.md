@@ -5,7 +5,7 @@ slug: /
 
 # Introduction
 
-Welcome to the documentation for **Beancount Ledger**, a comprehensive personal finance plugin that brings the power of Plain Text Accounting directly into your Obsidian vault.
+Welcome to the documentation for **Beancount Ledger**, a comprehensive personal finance plugin that brings the power of Plain Text Accounting (PTA) directly into your Obsidian vault.
 
 ---
 

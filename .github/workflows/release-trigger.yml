@@ -60,9 +60,9 @@ jobs:
           BRANCH_NAME="release-temp-${{ steps.check.outputs.version }}"
           git checkout -b "$BRANCH_NAME"
 
-          if [ -d "docs" ]; then
-            git rm -rf docs
-            git commit -m "chore: remove docs folder for release"
+          if [ -d "docs-site" ]; then
+            git rm -rf docs-site
+            git commit -m "chore: remove docs-site folder for release"
           fi
 
           git push origin "$BRANCH_NAME"
