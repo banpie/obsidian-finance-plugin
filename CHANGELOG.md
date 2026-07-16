@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Journal Tab: Fix search functionality for Balances and Notes** — Fixed a bug where the search field text filter did not affect `Balance` and `Note` directives, causing them to stay visible even when they did not match the search term. Added robust in-memory filtering for search terms (on account, amount, currency, and comment fields), payees, and tags for both directives.
 
+- **UI minor improvements** — Changed "Open Account" modal date field to native date picker, aligned Journal tab filter delay (300ms) with Transactions tab, and fixed double currency rendering on Balance cards.
+
 ## 2.3.0 - 2026-07-15
 
 - **Transaction Modal: Layout improvements and UI fixes** — Moved Account fields in Balance/Note tabs and the Query name field in the Query tab adjacent to the Date field for a more compact form layout. Adjusted flag select box height and padding to prevent vertical text clipping, and properly escaped Svelte double curly braces in the cost section to prevent rendering of '[object Object]'.
