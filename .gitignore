@@ -39,9 +39,9 @@ docs-site/static/img/Showcase.mp4
 lint_any.json
 
 # Docs site dependencies and build outputs
-docs/node_modules/
-docs/build/
-docs/.docusaurus/
-docs/.cache-loader/
-docs/npm-debug.log*
-docs/.env*.local
+docs-site/node_modules/
+docs-site/build/
+docs-site/.docusaurus/
+docs-site/.cache-loader/
+docs-site/npm-debug.log*
+docs-site/.env*.local

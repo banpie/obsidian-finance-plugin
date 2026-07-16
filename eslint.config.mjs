@@ -6,7 +6,7 @@ export default defineConfig([
   {
     ignores: [
       "**/node_modules/",
-      "**/docs/",
+      "**/docs-site/",
       "**/scripts/",
       "main.js",
       "esbuild.config.mjs",
