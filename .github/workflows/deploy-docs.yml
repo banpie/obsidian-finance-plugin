@@ -4,7 +4,7 @@ on:
     branches:
       - Dev
     paths:
-      - 'docs/**'
+      - 'docs-site/**'
       - '.github/workflows/deploy-docs.yml'
 
 permissions:
@@ -15,14 +15,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Copy CHANGELOG to docs
+        run: |
+          cat << 'EOF' > docs-site/docs/changelog.md
+          ---
+          title: Changelog
+          ---
+
+          EOF
+          cat CHANGELOG.md >> docs-site/docs/changelog.md
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
       - run: npm install
-        working-directory: docs
+        working-directory: docs-site
       - run: npm run build
-        working-directory: docs
+        working-directory: docs-site
       - uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
-          folder: docs/build
+          folder: docs-site/build
