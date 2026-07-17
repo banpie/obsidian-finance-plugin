@@ -19,6 +19,7 @@ import { PriceService } from './services/price.service';
 import { createJournalStore } from './stores/journal.store';
 import { Logger } from './utils/logger';
 import { SystemDetector } from './utils/SystemDetector';
+import { resolveBeanQueryCommand } from './utils/beanQueryCommandRecovery';
 
 // --------------------------------------------------
 
@@ -308,28 +309,34 @@ export default class BeancountPlugin extends Plugin {
 	}
 
 	private async ensureBeancountCommand(): Promise<void> {
-		if (!this.settings.beancountCommand) {
-			return;
-		}
-
 		const detector = SystemDetector.getInstance();
 		const savedCommand = this.settings.beancountCommand;
-		const versionResult = await detector.testCommand(savedCommand, ['--version'], 5000);
-		if (versionResult.success) {
+		const resolution = await resolveBeanQueryCommand(
+			detector,
+			savedCommand,
+			this.settings.beancountFilePath || undefined,
+		);
+
+		if (resolution.status === 'ready') {
 			return;
 		}
 
-		Logger.warn(`Configured bean-query command is not usable: ${savedCommand}`);
-		const detected = await detector.detectBeanQueryCommand(false, this.settings.beancountFilePath || undefined);
-		if (detected.isValid && detected.command) {
-			this.settings.beancountCommand = detected.command;
-			await this.saveSettings();
-			new Notice(`Updated Beancount command to ${detected.command}`);
+		if (resolution.status === 'recovered' && resolution.command) {
+			if (resolution.shouldPersist) {
+				this.settings.beancountCommand = resolution.command;
+				await this.saveSettings();
+			}
+			const action = savedCommand ? 'Updated' : 'Configured';
+			new Notice(`${action} Beancount command to ${resolution.command}`);
 			return;
 		}
 
-		this.settings.beancountCommand = '';
-		await this.saveSettings();
+		if (resolution.status === 'unavailable') {
+			Logger.warn(`Configured bean-query command is not usable on this device: ${savedCommand}`);
+			new Notice('Beancount command is unavailable on this device. The shared setting was preserved.');
+			return;
+		}
+
 		new Notice('Beancount command is not configured. Install beanquery and set bean-query in plugin settings.');
 	}
 
