@@ -23,7 +23,11 @@ The plugin requires the following command-line tools to be available:
 
 Select the instructions corresponding to your operating system below:
 
-### Windows
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs>
+  <TabItem value="windows" label="Windows" default>
 
 1.  **Install Python**: Download and run the installer from the [official Python downloads page](https://www.python.org/downloads/windows/). 
     > [!IMPORTANT]
@@ -41,9 +45,8 @@ Select the instructions corresponding to your operating system below:
     ```
     If any commands are not found, ensure that Python's script directory (usually `C:\Users\<YourUsername>\AppData\Local\Programs\Python\Python3X\Scripts\`) is in your system's PATH environment variable, then restart Obsidian.
 
----
-
-### macOS
+  </TabItem>
+  <TabItem value="macos" label="macOS">
 
 1.  **Install Homebrew**: If you don't have Homebrew, install it from [brew.sh](https://brew.sh).
 2.  **Install Python**: Open Terminal and run:
@@ -62,9 +65,8 @@ Select the instructions corresponding to your operating system below:
     bean-price --version
     ```
 
----
-
-### Linux (Debian / Ubuntu / Fedora / Arch)
+  </TabItem>
+  <TabItem value="linux" label="Linux">
 
 1.  **Install Python and Pip**:
     *   **Debian/Ubuntu**:
@@ -92,9 +94,8 @@ Select the instructions corresponding to your operating system below:
     bean-price --version
     ```
 
----
-
-### WSL (Windows Subsystem for Linux)
+  </TabItem>
+  <TabItem value="wsl" label="WSL">
 
 If you prefer to run Beancount inside WSL:
 1.  Open your WSL terminal (e.g. Ubuntu).
@@ -108,3 +109,6 @@ If you prefer to run Beancount inside WSL:
     pip3 install beancount beanquery beanprice
     ```
 4.  The plugin will automatically detect WSL on startup and run commands through `wsl <command>`. Ensure that your vault and files are accessible within WSL (e.g., located under `/mnt/c/Users/...`).
+
+  </TabItem>
+</Tabs>
