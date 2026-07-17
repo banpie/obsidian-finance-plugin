@@ -13,6 +13,25 @@
 		return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 	}
 
+	function formatQuantity(n: number | null | undefined): string {
+		if (!n) return '0';
+		return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+	}
+
+	const fiatCurrencySymbols = new Set([
+		'AUD',
+		'CAD',
+		'CHF',
+		'CNY',
+		'EUR',
+		'GBP',
+		'HKD',
+		'JPY',
+		'NZD',
+		'SGD',
+		'USD',
+	]);
+
 	const dispatch = createEventDispatcher();
 
 	function handleClick() {
@@ -86,6 +105,9 @@
 	}
 
 	$: displayName = commodity?.displayName || commodity?.metadata?.name || "";
+	$: isFiatCurrency = fiatCurrencySymbols.has(commodity?.symbol || '');
+	$: priceLabel = isFiatCurrency ? 'FX Rate' : 'Unit Price';
+	$: holdingsLabel = isFiatCurrency ? 'Balance' : 'Units';
 	$: ariaLabel = displayName
 		? `View details for ${commodity?.symbol || `UNKNOWN_${index}`} (${displayName})`
 		: `View details for ${commodity?.symbol || `UNKNOWN_${index}`}`;
@@ -145,10 +167,9 @@
 					<span class="value-currency">{operatingCurrency}</span>
 				</div>
 			{:else if commodity?.holdingsRaw && !commodity?.isOperatingCurrency}
-				<!-- Has holdings but no price to convert — show raw units -->
+				<!-- Has holdings but no price to convert, so no market value is available. -->
 				<div class="value-container" title={commodity.holdingsRaw}>
-					<span class="value-main no-price">{commodity.holdingsRaw.split(' ')[0]}</span>
-					<span class="value-currency">{commodity.symbol}</span>
+					<span class="value-main no-price">No value</span>
 				</div>
 			{:else}
 				<div class="value-container">
@@ -170,7 +191,7 @@
 			{:else}
 				<!-- Price row -->
 				<div class="data-row">
-					<span class="data-label">Price</span>
+					<span class="data-label">{priceLabel}</span>
 					{#if commodity?.currentPrice}
 						<span class="data-value" title={commodity.currentPrice}>{commodity.currentPrice}</span>
 					{:else}
@@ -180,11 +201,11 @@
 
 				<!-- Holdings row -->
 				<div class="data-row">
-					<span class="data-label">Holdings</span>
+					<span class="data-label">{holdingsLabel}</span>
 					{#if commodity?.holdingsRaw}
-						<span class="data-value" title={commodity.holdingsRaw}>{commodity.holdingsRaw}</span>
+						<span class="data-value" title={commodity.holdingsRaw}>{formatQuantity(commodity.holdings)}</span>
 					{:else}
-						<span class="data-value unavailable">0 {commodity?.symbol}</span>
+						<span class="data-value unavailable">0</span>
 					{/if}
 				</div>
 			{/if}
@@ -475,7 +496,7 @@
 	/* Price + Holdings rows */
 	.data-row {
 		display: grid;
-		grid-template-columns: 78px minmax(0, 1fr);
+		grid-template-columns: 92px minmax(0, 1fr);
 		align-items: baseline;
 		gap: 10px;
 		padding: 6px 0;

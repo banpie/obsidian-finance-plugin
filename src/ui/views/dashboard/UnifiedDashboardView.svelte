@@ -8,6 +8,7 @@
     import CommoditiesTab from '../../partials/dashboard/CommoditiesTab.svelte';
     import JournalTab from '../../partials/dashboard/JournalTab.svelte';
     import IncomeStatementTab from '../../partials/dashboard/IncomeStatementTab.svelte';
+    import ReportsTab from '../../partials/dashboard/ReportsTab.svelte';
 
     // Types
     import type { OverviewController } from '../../../controllers/OverviewController';
@@ -15,6 +16,7 @@
     import type { BalanceSheetController } from '../../../controllers/BalanceSheetController';
     import type { CommoditiesController } from '../../../controllers/CommoditiesController';
     import type { IncomeStatementController } from '../../../controllers/IncomeStatementController';
+    import type { ReportsController } from '../../../controllers/ReportsController';
 
     // Props
     export let overviewController: OverviewController;
@@ -22,6 +24,7 @@
     export let balanceSheetController: BalanceSheetController;
     export let commoditiesController: CommoditiesController;
     export let incomeStatementController: IncomeStatementController;
+    export let reportsController: ReportsController;
     export let journalStore: any;
     export let plugin: any = null; // Add plugin prop
 
@@ -29,6 +32,7 @@
 
     const tabs = [
         { id: 'overview', label: 'Overview' },
+        { id: 'reports', label: 'Reports' },
         { id: 'transactions', label: 'Transactions' },
         { id: 'journal', label: 'Journal' },
         { id: 'balancesheet', label: 'Accounts & Balances' },
@@ -52,6 +56,8 @@
     <div class="tab-content">
         {#if activeTab === 'overview'}
             <OverviewTab controller={overviewController} {plugin} />
+        {:else if activeTab === 'reports'}
+            <ReportsTab controller={reportsController} />
         {:else if activeTab === 'transactions'}
             <TransactionsTab 
                 controller={transactionController}
@@ -94,6 +100,7 @@
         border-bottom: 2px solid transparent;
         white-space: nowrap;
         border-radius: 0;
+        user-select: none;
     }
 
     .tab-button:hover {
@@ -113,5 +120,6 @@
         overflow-y: auto;
         padding: var(--size-4-4);
         background: var(--background-primary);
+        user-select: text;
     }
 </style>

@@ -3,9 +3,10 @@
 	import IndicatorsSection from './IndicatorsSection.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
+	import PeriodNavigator from './PeriodNavigator.svelte';
 	import type { OverviewController } from '../../../controllers/OverviewController';
 	import { writable, type Writable } from 'svelte/store'; // Import writable
-	import type { OverviewPeriodPreset, OverviewState } from '../../../controllers/OverviewController'; // Import the State type
+	import type { OverviewState } from '../../../controllers/OverviewController'; // Import the State type
 	import { AddBudgetModal } from '../../modals/AddBudgetModal';
 	import { AddTargetModal } from '../../modals/AddTargetModal';
 
@@ -57,44 +58,6 @@
 		new AddTargetModal(plugin.app, plugin).open();
 	}
 
-	function handlePeriodPresetChange(event: Event) {
-		const preset = (event.currentTarget as HTMLSelectElement).value as OverviewPeriodPreset;
-		controller?.setPeriodPreset(preset);
-	}
-
-	function handleYearChange(event: Event) {
-		const year = Number((event.currentTarget as HTMLInputElement).value);
-		controller?.setPeriodYear(year);
-	}
-
-	function handleMonthChange(event: Event) {
-		const month = Number((event.currentTarget as HTMLSelectElement).value);
-		controller?.setPeriodMonth(month);
-	}
-
-	const months = [
-		{ value: 1, label: 'January' },
-		{ value: 2, label: 'February' },
-		{ value: 3, label: 'March' },
-		{ value: 4, label: 'April' },
-		{ value: 5, label: 'May' },
-		{ value: 6, label: 'June' },
-		{ value: 7, label: 'July' },
-		{ value: 8, label: 'August' },
-		{ value: 9, label: 'September' },
-		{ value: 10, label: 'October' },
-		{ value: 11, label: 'November' },
-		{ value: 12, label: 'December' },
-	];
-
-	const periodPresets = [
-		{ value: 'this-month', label: 'This Month' },
-		{ value: 'last-month', label: 'Last Month' },
-		{ value: 'this-year', label: 'This Year' },
-		{ value: 'last-year', label: 'Last Year' },
-		{ value: 'custom-month', label: 'Custom Month' },
-		{ value: 'custom-year', label: 'Custom Year' },
-	];
 	// -----------------------
 </script>
 <div class="beancount-overview">
@@ -104,40 +67,19 @@
 			<p>{state.periodLabel}</p>
 		</div>
 		<div class="overview-actions">
-			<div class="period-controls">
-				<label>
-					<span>Period</span>
-					<select value={state.periodPreset} on:change={handlePeriodPresetChange} disabled={state.isLoading}>
-						{#each periodPresets as preset}
-							<option value={preset.value}>{preset.label}</option>
-						{/each}
-					</select>
-				</label>
-				{#if state.periodPreset === 'custom-month' || state.periodPreset === 'custom-year'}
-					<label>
-						<span>Year</span>
-						<input
-							type="number"
-							min="1"
-							step="1"
-							value={state.periodYear}
-							on:change={handleYearChange}
-							disabled={state.isLoading}
-						/>
-					</label>
-				{/if}
-				{#if state.periodPreset === 'custom-month'}
-					<label>
-						<span>Month</span>
-						<select value={state.periodMonth} on:change={handleMonthChange} disabled={state.isLoading}>
-							{#each months as month}
-								<option value={month.value}>{month.label}</option>
-							{/each}
-						</select>
-					</label>
-				{/if}
-			</div>
-			<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading}>Refresh</button>
+			<PeriodNavigator
+				periodPreset={state.periodPreset}
+				periodMode={state.periodMode}
+				year={state.periodYear}
+				month={state.periodMonth}
+				disabled={state.isLoading}
+				onPresetChange={(preset) => controller?.setPeriodPreset(preset)}
+				onModeChange={(mode) => controller?.setPeriodMode(mode)}
+				onMonthChange={(month) => controller?.setPeriodMonth(month)}
+				onYearChange={(year) => controller?.setPeriodYear(year)}
+				onMovePeriod={(delta) => controller?.movePeriod(delta)}
+				onRefresh={handleRefresh}
+			/>
 		</div>
 	</div>
 
@@ -234,37 +176,6 @@
 		gap: var(--size-4-4);
 	}
 
-	.period-controls {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: flex-end;
-		gap: var(--size-4-2);
-	}
-
-	.period-controls label {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-		color: var(--text-muted);
-		font-size: var(--font-ui-smaller);
-	}
-
-	.period-controls select,
-	.period-controls input {
-		min-width: 110px;
-		height: 32px;
-		padding: 0 8px;
-		border: 1px solid var(--background-modifier-border);
-		border-radius: 4px;
-		background: var(--background-primary);
-		color: var(--text-normal);
-		font-size: var(--font-ui-small);
-	}
-
-	.period-controls input {
-		width: 110px;
-	}
-	
 	.conversion-warning {
 		display: flex;
 		align-items: center;
@@ -295,8 +206,5 @@
 			justify-content: flex-start;
 		}
 
-		.period-controls {
-			justify-content: flex-start;
-		}
 	}
 </style>
