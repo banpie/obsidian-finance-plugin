@@ -1,7 +1,7 @@
 <!-- src/ui/modals/OnboardingModal.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { App, Notice, TFile } from 'obsidian';
+	import { App, Notice, TFile, Platform } from 'obsidian';
 	import type BeancountPlugin from '../../main';
 	import { DEMO_LEDGER_CONTENT } from '../../services/demo-ledger';
 	import { Logger } from '../../utils/logger';
@@ -35,7 +35,7 @@
 
 	// Platform
 	let platformDisplay = 'Unknown';
-	let activeInstallTab: 'windows' | 'macos' | 'linux' = 'windows';
+	let activeInstallTab: 'windows' | 'macos' | 'linux-native' | 'linux-sandbox' = 'windows';
 
 	// ── Step 2: Organize state ──
 	let dataChoice: 'demo' | 'existing' | null = null;
@@ -55,7 +55,7 @@
 			platformDisplay = systemInfo.platformDisplay || 'Unknown';
 			if (systemInfo.platform === 'win32') activeInstallTab = 'windows';
 			else if (systemInfo.platform === 'darwin') activeInstallTab = 'macos';
-			else activeInstallTab = 'linux';
+			else activeInstallTab = 'linux-native';
 		} catch {
 			platformDisplay = process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'macOS' : 'Linux';
 		}
@@ -75,6 +75,11 @@
 
 	// ── Detection ──
 	async function detectBeanQuery() {
+		if (!Platform.isDesktop) {
+			Logger.warn('[Onboarding] CLI detection skipped: Not running on desktop platform.');
+			isDetecting = false;
+			return;
+		}
 		isDetecting = true;
 		try {
 			const detector = SystemDetector.getInstance();
@@ -219,7 +224,8 @@
 				await handleExistingStructured();
 			}
 
-			// Mark onboarding as completed
+			// Atomically commit settings only after filesystem migration succeeds
+			plugin.settings.fileOrganization = fileOrganization;
 			plugin.settings.onboardingCompleted = true;
 			await plugin.saveSettings();
 
@@ -262,9 +268,6 @@
 		// @ts-ignore
 		const tempAbsolutePath = adapter.getFullPath(tempFile.path);
 
-		plugin.settings.fileOrganization = fileOrganization;
-		await plugin.saveSettings();
-
 		const result = await migrateToStructuredLayout(plugin, structuredFolderName, tempAbsolutePath);
 		if (!result.success) {
 			throw new Error(`Migration failed: ${result.error}`);
@@ -292,9 +295,6 @@
 				throw new Error(`Could not find file in vault: ${sourcePath}`);
 			}
 		}
-
-		plugin.settings.fileOrganization = fileOrganization;
-		await plugin.saveSettings();
 
 		const result = await migrateToStructuredLayout(plugin, structuredFolderName, sourcePath);
 		if (!result.success) {
@@ -328,8 +328,9 @@
 		`  commodities.beancount`,
 		`  prices.beancount`,
 		`  transactions/`,
-		`    ${fileOrganization === 'monthly' ? '2026/' : ''}`,
-		`    ${fileOrganization === 'monthly' ? '  2026-01.beancount' : '2026.beancount'}`,
+		...(fileOrganization === 'monthly'
+			? [`    2026/`, `      2026-01.beancount`]
+			: [`    2026.beancount`])
 	];
 </script>
 
@@ -345,7 +346,7 @@
 				class:is-done={currentStep === 'organize' || currentStep === 'ready'}
 				on:click={() => { if (currentStep !== 'connect') currentStep = 'connect'; }}
 			>
-				<span class="step-num">1</span>
+				<span class="step-circle">1</span>
 				<span class="step-label">Connect</span>
 			</button>
 			<div class="step-line" class:is-done={currentStep === 'organize' || currentStep === 'ready'}></div>
@@ -356,7 +357,7 @@
 				disabled={!beanQueryValid && currentStep === 'connect'}
 				on:click={() => { if (beanQueryValid && currentStep !== 'organize') currentStep = 'organize'; }}
 			>
-				<span class="step-num">2</span>
+				<span class="step-circle">2</span>
 				<span class="step-label">Organize</span>
 			</button>
 			<div class="step-line" class:is-done={currentStep === 'ready'}></div>
@@ -365,7 +366,7 @@
 				class:is-active={currentStep === 'ready'}
 				disabled
 			>
-				<span class="step-num">3</span>
+				<span class="step-circle">3</span>
 				<span class="step-label">Ready</span>
 			</button>
 		</div>
@@ -391,10 +392,10 @@
 				</div>
 			{:else}
 				<!-- ── bean-query status ── -->
-				<div class="command-status-card" class:is-valid={beanQueryValid} class:is-invalid={!beanQueryValid}>
+				<div class="command-status-card" class:is-valid={beanQueryValid} class:is-invalid={!beanQueryValid} class:is-error={verifyResult === 'error'}>
 					<div class="command-status-header">
 						<div class="command-status-left">
-							<span class="command-status-icon">{beanQueryValid ? '✅' : '❌'}</span>
+							<span class="status-dot" class:is-active={beanQueryValid}></span>
 							<strong>bean-query</strong>
 							<span class="required-badge">required</span>
 						</div>
@@ -430,7 +431,7 @@
 										on:keydown={(e) => { if (e.key === 'Enter') verifyManualCommand(); }}
 									/>
 									<button class="mod-cta verify-btn" on:click={verifyManualCommand} disabled={isVerifying || !manualCommand.trim()}>
-										{isVerifying ? '⏳' : '🔍'} Verify
+										{isVerifying ? '⏳ Verifying…' : 'Verify'}
 									</button>
 									{#if isEditing}
 										<button class="cancel-edit-btn" on:click={cancelEditing}>Cancel</button>
@@ -451,6 +452,24 @@
 					{/if}
 				</div>
 
+				<!-- ── bean-price (optional info) moved directly below bean-query ── -->
+				<div class="optional-dep">
+					<div class="optional-dep-header">
+						<span class="status-dot" class:is-active={beanPriceValid}></span>
+						<strong>bean-price</strong>
+						<span class="optional-badge">optional</span>
+					</div>
+					<div class="optional-dep-body">
+						{#if beanPriceValid}
+							<code>{beanPriceCommand}</code>
+							{#if beanPriceVersion}<span class="version-text">v{beanPriceVersion}</span>{/if}
+							— automatic commodity price fetching available.
+						{:else}
+							Not detected. Install with <code>pip install beanprice</code> to enable automatic price fetching. You can set this up later in Settings.
+						{/if}
+					</div>
+				</div>
+
 				<!-- ── Installation help (only when NOT found) ── -->
 				{#if !beanQueryValid}
 					<div class="install-help">
@@ -466,7 +485,10 @@
 							<span class="install-tab" class:is-active={activeInstallTab === 'macos'} on:click={() => activeInstallTab = 'macos'}>macOS</span>
 							<!-- svelte-ignore a11y-click-events-have-key-events -->
 							<!-- svelte-ignore a11y-no-static-element-interactions -->
-							<span class="install-tab" class:is-active={activeInstallTab === 'linux'} on:click={() => activeInstallTab = 'linux'}>Linux</span>
+							<span class="install-tab" class:is-active={activeInstallTab === 'linux-native'} on:click={() => activeInstallTab = 'linux-native'}>Linux (AppImage / Deb)</span>
+							<!-- svelte-ignore a11y-click-events-have-key-events -->
+							<!-- svelte-ignore a11y-no-static-element-interactions -->
+							<span class="install-tab" class:is-active={activeInstallTab === 'linux-sandbox'} on:click={() => activeInstallTab = 'linux-sandbox'}>Linux (Flatpak / Snap)</span>
 						</div>
 
 						<div class="install-content">
@@ -474,7 +496,7 @@
 								<ol>
 									<li>Install <a href="https://www.python.org/downloads/" target="_blank">Python 3.8+</a> (check "Add to PATH" during install)</li>
 									<li>Open PowerShell and run:
-										<pre><code>pip install beancount beanquery</code></pre>
+										<pre><code>pip install beancount beanquery beanprice</code></pre>
 									</li>
 									<li>Verify: <code>bean-query --version</code></li>
 								</ol>
@@ -486,7 +508,7 @@
 							{:else if activeInstallTab === 'macos'}
 								<ol>
 									<li>Open Terminal and run:
-										<pre><code>pip3 install beancount beanquery</code></pre>
+										<pre><code>pip3 install beancount beanquery beanprice</code></pre>
 									</li>
 									<li>Verify: <code>bean-query --version</code></li>
 								</ol>
@@ -497,55 +519,66 @@
 									(find it with <code>which bean-query</code> in Terminal).
 								</div>
 
-							{:else if activeInstallTab === 'linux'}
+							{:else if activeInstallTab === 'linux-native'}
 								<ol>
-									<li>Open your terminal and run:
-										<pre><code>pip3 install beancount beanquery</code></pre>
+									<li>Open your terminal and install via pip (recommended):
+										<pre><code>pip install --user beancount beanquery beanprice</code></pre>
 									</li>
-									<li>Verify: <code>bean-query --version</code></li>
+									<li>Verify in terminal: <code>bean-query --version</code></li>
 								</ol>
+								<div class="install-note">
+									<strong>Note on System Packages:</strong> Using <code>apt</code>, <code>dnf</code>, or <code>pacman</code> directly often installs Beancount v2. You must install <code>beanquery</code> via pip separately.
+								</div>
 
-								<details class="sandbox-details">
-									<summary>⚠ Using Obsidian via Flatpak, Snap, or AppImage?</summary>
-									<div class="sandbox-content">
-										<p><strong>Flatpak</strong> — Obsidian runs sandboxed and cannot see your user PATH.
-										Use the full path to bean-query:</p>
-										<pre><code>flatpak-spawn --host bean-query</code></pre>
-										<p>Or enter the absolute path: <code>/home/you/.local/bin/bean-query</code></p>
+							{:else if activeInstallTab === 'linux-sandbox'}
+								<p class="sandbox-intro">Sandboxed packages cannot see your host Python environment by default. Follow this step-by-step guide to grant access:</p>
+								
+								<div class="sandbox-section">
+									<strong>Flatpak — Recommended Setup</strong>
+									<ol class="sandbox-steps expanded-steps">
+										<li>
+											<strong>Install the packages</strong> via pip on your host machine:
+											<pre><code>pip install --user beancount beanquery beanprice</code></pre>
+										</li>
+										<li>
+											<strong>Find your binary path</strong> by running this in your terminal:
+											<pre><code>which bean-query</code></pre>
+											<div class="step-hint">Note the folder directory (e.g., if the output is <code>~/.local/bin/bean-query</code>, your folder is <code>~/.local/bin</code>).</div>
+										</li>
+										<li>
+											<strong>Grant Obsidian filesystem access</strong> to that folder using <code>flatpak override</code>:
+											<pre><code>sudo flatpak override --filesystem=~/.local/bin md.obsidian.Obsidian</code></pre>
+											<div class="sandbox-footnote">
+												💡 <em>Replace <code>~/.local/bin</code> with your actual folder from Step 2 if different (e.g., <code>/usr/bin</code> for system packages or <code>~/miniconda3/bin</code> for conda).</em>
+											</div>
+										</li>
+										<li>
+											<strong>Restart Obsidian completely</strong> so the sandbox recognizes the new filesystem permissions.
+										</li>
+										<li>
+											<strong>Configure & Verify:</strong> Enter the full absolute path from Step 2 (e.g., <code>/home/you/.local/bin/bean-query</code> or <code>~/.local/bin/bean-query</code>) into the command box above and click Verify.
+										</li>
+									</ol>
+								</div>
 
-										<p><strong>Snap</strong> — Similar sandbox restrictions. Find the full path with
-										<code>which bean-query</code> in your terminal and enter it here.</p>
-
-										<p><strong>AppImage</strong> — Usually inherits your user PATH. If detection fails,
-										enter the full path from <code>which bean-query</code>.</p>
+								<div class="sandbox-section">
+									<strong>Snap</strong>
+									<ol class="sandbox-steps">
+										<li>Find the absolute path on your host by running <code>which bean-query</code> in your terminal.</li>
+										<li>Enter the full path into the command box above (e.g., <code>/home/you/.local/bin/bean-query</code>) and click Verify.</li>
+									</ol>
+									<div class="install-note">
+										ℹ️ <strong>Note on Confinement:</strong> If your Snap installation is strictly confined and blocks host CLI execution, we recommend switching to the official AppImage or Flatpak release.
 									</div>
-								</details>
+								</div>
 							{/if}
 						</div>
 
 						<div class="install-docs-link">
-							📖 <a href="https://beancount.github.io/docs/installing_beancount.html" target="_blank">Official Beancount installation guide</a>
+							📖 <a href="https://beancount.github.io/docs/installing_beancount/" target="_blank">Official Beancount installation guide</a>
 						</div>
 					</div>
 				{/if}
-
-				<!-- ── bean-price (optional info) ── -->
-				<div class="optional-dep">
-					<div class="optional-dep-header">
-						<span>{beanPriceValid ? '✅' : '➖'}</span>
-						<strong>bean-price</strong>
-						<span class="optional-badge">optional</span>
-					</div>
-					<div class="optional-dep-body">
-						{#if beanPriceValid}
-							<code>{beanPriceCommand}</code>
-							{#if beanPriceVersion}<span class="version-text">v{beanPriceVersion}</span>{/if}
-							— automatic commodity price fetching available.
-						{:else}
-							Not detected. Install with <code>pip install beanprice</code> to enable automatic price fetching. You can set this up later in Settings.
-						{/if}
-					</div>
-				</div>
 			{/if}
 
 			<!-- Action buttons -->
@@ -554,12 +587,14 @@
 				<!-- svelte-ignore a11y-no-static-element-interactions -->
 				<span class="skip-link" on:click={skipOnboarding}>Skip for now</span>
 				<div class="action-buttons">
+					<!-- Dynamically apply mod-cta when detection fails; revert to secondary when valid -->
 					<button
-						class="mod-cta"
+						class="re-detect-btn"
+						class:mod-cta={!beanQueryValid}
 						on:click={detectBeanQuery}
 						disabled={isDetecting}
 					>
-						{isDetecting ? '⏳ Detecting…' : '🔍 Re-detect'}
+						{isDetecting ? '⏳ Detecting…' : 'Re-detect'}
 					</button>
 					<button
 						class="mod-cta next-btn"
@@ -794,7 +829,7 @@
 	/* ═══ Step progress bar ═══ */
 	.step-bar {
 		display: flex;
-		align-items: center;
+		align-items: flex-start; /* Align top edges so we can position the line relative to the circle centers */
 		justify-content: center;
 		gap: 0;
 		margin-bottom: var(--size-4-4);
@@ -804,16 +839,15 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 4px;
-		padding: 8px 16px;
-		border-radius: var(--radius-m);
-		border: 1px solid var(--background-modifier-border);
-		background: var(--background-secondary-alt);
+		gap: 6px;
+		background: transparent !important;
+		border: none !important;
+		box-shadow: none !important;
+		padding: 0 !important;
 		color: var(--text-muted);
 		cursor: pointer;
 		transition: all 0.2s;
-		font-size: var(--font-ui-smaller);
-		min-width: 80px;
+		min-width: 70px;
 	}
 
 	.step-node:disabled {
@@ -821,33 +855,48 @@
 		opacity: 0.5;
 	}
 
-	.step-node.is-active {
-		background: var(--interactive-accent);
-		color: var(--text-on-accent);
-		border-color: var(--interactive-accent-hover);
+	.step-circle {
+		width: 28px;
+		height: 28px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 50%;
+		border: 1px solid var(--background-modifier-border);
+		background: var(--background-secondary-alt);
 		font-weight: 600;
-		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+		font-size: 13px;
+		transition: all 0.2s;
 	}
 
-	.step-node.is-done {
+	.step-node.is-active .step-circle {
+		background: var(--interactive-accent);
+		color: var(--text-on-accent);
+		border-color: var(--interactive-accent);
+		box-shadow: 0 0 0 3px rgba(var(--color-accent-rgb, 0, 122, 255), 0.2);
+	}
+
+	.step-node.is-active .step-label {
+		color: var(--text-normal);
+		font-weight: 600;
+	}
+
+	.step-node.is-done .step-circle {
 		background: var(--background-modifier-success);
 		color: var(--text-on-accent);
 		border-color: var(--text-success);
 	}
 
-	.step-num {
-		font-weight: 700;
-		font-size: 14px;
-	}
-
 	.step-label {
 		font-size: 11px;
+		color: inherit;
 	}
 
 	.step-line {
-		width: 40px;
+		width: 50px;
 		height: 2px;
 		background: var(--background-modifier-border);
+		margin-top: 13px; /* Positions the 2px line exactly at the 14px vertical center of the 28px circle */
 		transition: background 0.3s;
 	}
 
@@ -905,7 +954,13 @@
 		border-left: 4px solid var(--text-success);
 	}
 
+	/* Default unconfigured state: neutral border instead of red */
 	.command-status-card.is-invalid {
+		border-left: 4px solid var(--background-modifier-border-hover);
+	}
+
+	/* Only flash red if manual verification explicitly fails */
+	.command-status-card.is-error {
 		border-left: 4px solid var(--text-error);
 	}
 
@@ -922,8 +977,16 @@
 		gap: var(--size-4-2);
 	}
 
-	.command-status-icon {
-		font-size: 16px;
+	.status-dot {
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background: var(--text-muted);
+		display: inline-block;
+	}
+
+	.status-dot.is-active {
+		background: var(--text-success);
 	}
 
 	.required-badge {
@@ -931,10 +994,10 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.5px;
-		padding: 1px 6px;
-		border-radius: 8px;
-		background: var(--text-error);
-		color: var(--text-on-accent);
+		padding: 2px 6px;
+		border-radius: 4px;
+		background: var(--background-modifier-border);
+		color: var(--text-muted);
 	}
 
 	.version-badge {
@@ -994,12 +1057,13 @@
 
 	.manual-input-row input {
 		flex: 1;
+		height: 32px;
 		background: var(--background-primary);
 		border: 1px solid var(--background-modifier-border);
 		border-radius: var(--radius-s);
-		padding: 6px 10px;
+		padding: 0 12px;
 		color: var(--text-normal);
-		font-size: 12px;
+		font-size: 13px;
 	}
 
 	.manual-input-row input:focus {
@@ -1008,14 +1072,21 @@
 	}
 
 	.verify-btn {
+		height: 32px;
 		white-space: nowrap;
-		font-size: 12px;
-		padding: 6px 12px;
+		font-size: 13px;
+		padding: 0 16px;
+		border-radius: var(--radius-s);
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	.cancel-edit-btn {
-		font-size: 12px;
-		padding: 6px 10px;
+		height: 32px;
+		font-size: 13px;
+		padding: 0 12px;
+		border-radius: var(--radius-s);
 		white-space: nowrap;
 	}
 
@@ -1095,6 +1166,19 @@
 	.install-content {
 		font-size: var(--font-ui-small);
 		line-height: var(--line-height-normal);
+		max-height: 340px;
+		overflow-y: auto;
+		padding-right: var(--size-4-2);
+	}
+
+	/* Ensure smooth scrollbar styling across platforms */
+	.install-content::-webkit-scrollbar {
+		width: 6px;
+	}
+
+	.install-content::-webkit-scrollbar-thumb {
+		background-color: var(--background-modifier-border);
+		border-radius: var(--radius-s);
 	}
 
 	.install-content ol {
@@ -1126,39 +1210,86 @@
 		line-height: 1.5;
 	}
 
-	.sandbox-details {
-		margin-top: var(--size-4-3);
-		border: 1px solid var(--background-modifier-border);
-		border-radius: var(--radius-s);
+	.sandbox-intro {
+		margin: 0 0 var(--size-4-3) 0;
+		color: var(--text-muted);
+		line-height: 1.5;
 	}
 
-	.sandbox-details summary {
-		padding: var(--size-4-2) var(--size-4-3);
-		cursor: pointer;
-		font-size: var(--font-ui-small);
-		font-weight: 500;
-		color: var(--text-warning);
-		user-select: none;
-	}
-
-	.sandbox-content {
-		padding: 0 var(--size-4-3) var(--size-4-3);
+	/* Clean typography sub-sections instead of nested boxes */
+	.sandbox-section {
+		margin-top: var(--size-4-4);
 		font-size: var(--font-ui-smaller);
-		line-height: 1.6;
+		line-height: 1.5;
+	}
+
+	.sandbox-section:first-of-type {
+		margin-top: var(--size-4-2);
+	}
+
+	.sandbox-section > strong {
+		color: var(--text-normal);
+		display: block;
+		margin-bottom: var(--size-4-2);
+		font-size: var(--font-ui-small);
+	}
+
+	.sandbox-section p {
+		margin: 0 0 var(--size-4-2) 0;
 		color: var(--text-muted);
 	}
 
-	.sandbox-content p {
-		margin: var(--size-4-2) 0;
-	}
-
-	.sandbox-content pre {
-		background: var(--background-primary);
+	.sandbox-section pre {
+		background: var(--background-secondary);
 		padding: var(--size-4-2);
 		border-radius: var(--radius-s);
+		border: 1px solid var(--background-modifier-border);
 		font-size: 11px;
-		margin: var(--size-4-1) 0;
+		margin: 0;
 	}
+
+	.sandbox-steps {
+		margin: var(--size-4-2) 0 0 0;
+		padding-left: var(--size-4-4);
+	}
+
+	.sandbox-steps li {
+		margin-bottom: var(--size-4-2);
+		color: var(--text-muted);
+	}
+
+	.sandbox-steps li:last-child {
+		margin-bottom: 0;
+	}
+
+	.sandbox-footnote {
+		margin-top: 6px;
+		padding: 6px 8px;
+		background: var(--background-primary);
+		border-left: 2px solid var(--interactive-accent);
+		border-radius: 0 var(--radius-s) var(--radius-s) 0;
+		font-size: 11px;
+		color: var(--text-faint);
+		line-height: 1.4;
+	}
+
+	.expanded-steps li {
+		margin-bottom: var(--size-4-3);
+	}
+
+	.expanded-steps strong {
+		color: var(--text-normal);
+		font-weight: 600;
+	}
+
+	.step-hint {
+		font-size: 11px;
+		color: var(--text-faint);
+		margin-top: 4px;
+		font-style: italic;
+	}
+
+
 
 	.install-docs-link {
 		margin-top: var(--size-4-3);
@@ -1169,11 +1300,15 @@
 	.optional-dep {
 		background: var(--background-secondary);
 		border: 1px solid var(--background-modifier-border);
-		border-left: 3px solid var(--text-muted);
+		border-left: 4px solid var(--background-modifier-border-hover);
 		border-radius: var(--radius-m);
 		padding: var(--size-4-2) var(--size-4-3);
 		margin-bottom: var(--size-4-4);
 		font-size: var(--font-ui-small);
+	}
+
+	.optional-dep:has(.status-dot.is-active) {
+		border-left-color: var(--text-success);
 	}
 
 	.optional-dep-header {
@@ -1188,8 +1323,8 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.5px;
-		padding: 1px 5px;
-		border-radius: 8px;
+		padding: 2px 6px;
+		border-radius: 4px;
 		background: var(--background-modifier-border);
 		color: var(--text-muted);
 	}
@@ -1197,7 +1332,7 @@
 	.optional-dep-body {
 		font-size: var(--font-ui-smaller);
 		color: var(--text-muted);
-		padding-left: 28px;
+		padding-left: 18px;
 	}
 
 	.optional-dep-body code {
@@ -1213,7 +1348,7 @@
 		font-size: var(--font-ui-smaller);
 	}
 
-	/* ═══ Action row ═══ */
+	/* ═══ Action row & Buttons ═══ */
 	.action-row {
 		display: flex;
 		justify-content: space-between;
@@ -1231,6 +1366,27 @@
 	.action-buttons {
 		display: flex;
 		gap: var(--size-4-2);
+	}
+
+	.re-detect-btn, .next-btn {
+		height: 32px;
+		font-size: 13px;
+		padding: 0 16px;
+		border-radius: var(--radius-s);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	/* Default secondary styling for Re-detect when beanQueryValid is true */
+	.re-detect-btn:not(.mod-cta) {
+		background: var(--interactive-normal);
+		border: 1px solid var(--background-modifier-border);
+		color: var(--text-normal);
+	}
+
+	.re-detect-btn:not(.mod-cta):hover:not(:disabled) {
+		background: var(--interactive-hover);
 	}
 
 	.skip-link {
