@@ -61,6 +61,8 @@ export interface BeancountPluginSettings {
     formatOnSave: boolean;
     /** Lint mode for inline bean-check diagnostics: 'off' | 'on-save' | 'on-change'. */
     lintMode: LintMode;
+    /** Whether the user has completed the onboarding wizard. */
+    onboardingCompleted: boolean;
 }
 
 /**
@@ -92,6 +94,7 @@ export const DEFAULT_SETTINGS: BeancountPluginSettings = {
     enableUserSnippets: false,
     formatOnSave: false,
     lintMode: 'on-save',
+    onboardingCompleted: false,
 }
 
 /**

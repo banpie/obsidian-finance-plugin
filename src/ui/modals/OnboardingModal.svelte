@@ -14,85 +14,83 @@
 	export let plugin: BeancountPlugin;
 	export let modal: any;
 
-	// State
-	let currentStep: 'prerequisites' | 'file-setup' | 'verification' = 'prerequisites';
+	// ── Step state ──
+	let currentStep: 'connect' | 'organize' | 'ready' = 'connect';
 
-	// Prerequisites state
-	let prerequisitesChecked = false;
-	let pythonValid = false;
+	// ── Step 1: Connect state ──
+	let isDetecting = true;
 	let beanQueryValid = false;
-	let beanPriceValid = false;
-	let pythonCommand: string | null = null;
 	let beanQueryCommand: string | null = null;
-	let beanPriceCommand: string | null = null;
-	let pythonVersion: string | null = null;
 	let beanQueryVersion: string | null = null;
+	let beanPriceValid = false;
+	let beanPriceCommand: string | null = null;
 	let beanPriceVersion: string | null = null;
-	let prerequisiteErrors: string[] = [];
-	let isCheckingPrereqs = false;
 
-	// Platform details for instructions
-	let platform = "Unknown";
-	let platformDisplay = "Unknown";
+	// Manual command entry
+	let manualCommand = '';
+	let isVerifying = false;
+	let verifyResult: 'idle' | 'success' | 'error' = 'idle';
+	let verifyMessage = '';
+	let isEditing = false;
 
-	// Choices & fields
+	// Platform
+	let platformDisplay = 'Unknown';
+	let activeInstallTab: 'windows' | 'macos' | 'linux' = 'windows';
+
+	// ── Step 2: Organize state ──
 	let dataChoice: 'demo' | 'existing' | null = null;
 	let existingFilePath = '';
 	let structuredFolderName = 'Finances';
 	let fileOrganization: 'yearly' | 'monthly' = 'yearly';
 	let operatingCurrency = plugin.settings.operatingCurrency || 'USD';
-
-	// Scan results
 	let beancountFiles: string[] = [];
 	let isSubmitting = false;
 	let showManualPathInput = false;
 
 	onMount(async () => {
-		// Detect platform
+		// Detect platform for install tab defaults
 		const detector = SystemDetector.getInstance();
 		try {
 			const systemInfo = await detector.getSystemInfo();
-			platform = systemInfo.platform || process.platform;
-			platformDisplay = systemInfo.platformDisplay || "Unknown";
-		} catch (e) {
-			platform = process.platform;
+			platformDisplay = systemInfo.platformDisplay || 'Unknown';
+			if (systemInfo.platform === 'win32') activeInstallTab = 'windows';
+			else if (systemInfo.platform === 'darwin') activeInstallTab = 'macos';
+			else activeInstallTab = 'linux';
+		} catch {
+			platformDisplay = process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'macOS' : 'Linux';
 		}
 
-		// List files for existing file dropdown
+		// List .beancount files for Step 2
 		const allFiles = app.vault.getFiles();
 		beancountFiles = allFiles
 			.filter(file => file.extension === 'beancount')
 			.map(file => file.path);
-		
 		if (beancountFiles.length > 0) {
 			existingFilePath = beancountFiles[0];
 		}
+
+		// Auto-detect bean-query
+		await detectBeanQuery();
 	});
 
-	async function checkPrerequisites() {
-		if (isCheckingPrereqs) return;
-		isCheckingPrereqs = true;
-
+	// ── Detection ──
+	async function detectBeanQuery() {
+		isDetecting = true;
 		try {
 			const detector = SystemDetector.getInstance();
 
-			// Detect Python
-			Logger.log('[Onboarding] Detecting Python environment...');
-			const pythonResult = await detector.detectPythonEnvironment(false);
-
 			// Detect bean-query
-			Logger.log('[Onboarding] Detecting bean-query command...');
-			let beanQueryResult = await detector.detectBeanQueryCommand(false, undefined);
+			Logger.log('[Onboarding] Detecting bean-query...');
+			let bqResult = await detector.detectBeanQueryCommand(false);
 
-			// If auto-detection failed but we have a saved setting, verify it
-			if (!beanQueryResult.isValid && plugin.settings.beancountCommand) {
-				Logger.log('[Onboarding] Auto-detection failed; trying saved beancountCommand...');
-				const savedCmd = plugin.settings.beancountCommand;
-				const savedResult = await detector.testCommand(savedCmd, ['--version']);
-				if (savedResult.success) {
-					const versionMatch = (savedResult.output || '').match(/(\d+\.\d+\.\d+)/);
-					beanQueryResult = {
-						command: savedCmd,
+			// If auto-detection failed, try saved setting
+			if (!bqResult.isValid && plugin.settings.beancountCommand) {
+				Logger.log(`[Onboarding] Trying saved command: ${plugin.settings.beancountCommand}`);
+				const testResult = await detector.testCommand(plugin.settings.beancountCommand, ['--version']);
+				if (testResult.success) {
+					const versionMatch = (testResult.output || '').match(/(\d+\.\d+\.\d+)/);
+					bqResult = {
+						command: plugin.settings.beancountCommand,
 						version: versionMatch ? versionMatch[1] : 'unknown',
 						isValid: true,
 						errors: []
@@ -100,55 +98,105 @@
 				}
 			}
 
-			// Detect bean-price (optional)
-			Logger.log('[Onboarding] Detecting bean-price command...');
-			const beanPriceResult = await detector.detectBeanPriceCommand(false);
+			beanQueryValid = bqResult.isValid;
+			beanQueryCommand = bqResult.command;
+			beanQueryVersion = bqResult.version;
 
-			// Update Svelte State
-			pythonValid = pythonResult.isValid;
-			pythonCommand = pythonResult.command;
-			pythonVersion = pythonResult.version;
-
-			beanQueryValid = beanQueryResult.isValid;
-			beanQueryCommand = beanQueryResult.command;
-			beanQueryVersion = beanQueryResult.version;
-
-			beanPriceValid = beanPriceResult.isValid;
-			beanPriceCommand = beanPriceResult.command;
-			beanPriceVersion = beanPriceResult.version;
-
-			prerequisiteErrors = [...pythonResult.errors, ...beanQueryResult.errors];
-			prerequisitesChecked = true;
-
-			// Save to settings immediately if valid
+			// Save if valid
 			if (beanQueryValid && beanQueryCommand) {
 				plugin.settings.beancountCommand = beanQueryCommand;
+				manualCommand = beanQueryCommand;
 			}
+
+			// Detect bean-price (optional, non-blocking)
+			Logger.log('[Onboarding] Detecting bean-price...');
+			const bpResult = await detector.detectBeanPriceCommand(false);
+			beanPriceValid = bpResult.isValid;
+			beanPriceCommand = bpResult.command;
+			beanPriceVersion = bpResult.version;
+
 			if (beanPriceValid && beanPriceCommand) {
 				plugin.settings.beanPriceCommand = beanPriceCommand;
 			}
+
 			await plugin.saveSettings();
 
-			Logger.log('[Onboarding] Svelte prerequisites check completed', {
-				pythonValid,
-				beanQueryValid,
-				beanPriceValid
-			});
+			Logger.log('[Onboarding] Detection complete', { beanQueryValid, beanPriceValid });
 		} catch (error) {
-			Logger.error('[Onboarding] Prerequisites check failed', error);
-			new Notice('Prerequisites check failed. Check console for details.');
+			Logger.error('[Onboarding] Detection failed', error);
 		} finally {
-			isCheckingPrereqs = false;
+			isDetecting = false;
 		}
+	}
+
+	async function verifyManualCommand() {
+		const cmd = manualCommand.trim();
+		if (!cmd) {
+			verifyResult = 'error';
+			verifyMessage = 'Please enter a command.';
+			return;
+		}
+
+		isVerifying = true;
+		verifyResult = 'idle';
+		verifyMessage = '';
+
+		try {
+			const detector = SystemDetector.getInstance();
+
+			// First try --version
+			let result = await detector.testCommand(cmd, ['--version'], 5000);
+			if (!result.success) {
+				// Fallback to --help
+				result = await detector.testCommand(cmd, ['--help'], 5000);
+			}
+
+			if (result.success) {
+				const versionMatch = (result.output || '').match(/(\d+\.\d+\.\d+)/);
+				beanQueryValid = true;
+				beanQueryCommand = cmd;
+				beanQueryVersion = versionMatch ? versionMatch[1] : 'unknown';
+				verifyResult = 'success';
+				verifyMessage = `Verified! ${beanQueryVersion !== 'unknown' ? `v${beanQueryVersion}` : ''}`;
+
+				// Save to settings
+				plugin.settings.beancountCommand = cmd;
+				await plugin.saveSettings();
+
+				isEditing = false;
+			} else {
+				verifyResult = 'error';
+				verifyMessage = `Command failed: ${result.error || 'Not found or not executable'}`;
+			}
+		} catch (error: any) {
+			verifyResult = 'error';
+			verifyMessage = `Error: ${error?.message || 'Unknown error'}`;
+		} finally {
+			isVerifying = false;
+		}
+	}
+
+	function startEditing() {
+		isEditing = true;
+		manualCommand = beanQueryCommand || plugin.settings.beancountCommand || '';
+		verifyResult = 'idle';
+		verifyMessage = '';
+	}
+
+	function cancelEditing() {
+		isEditing = false;
+		verifyResult = 'idle';
+		verifyMessage = '';
 	}
 
 	function selectDataChoice(choice: 'demo' | 'existing') {
 		dataChoice = choice;
 		if (choice === 'demo') {
-			operatingCurrency = 'USD'; // Demo data uses USD
+			operatingCurrency = 'USD';
 		}
 	}
 
+	// ── Step 2: File setup ──
 	async function handleFinish() {
 		if (isSubmitting) return;
 
@@ -171,7 +219,14 @@
 				await handleExistingStructured();
 			}
 
-			currentStep = 'verification';
+			// Mark onboarding as completed
+			plugin.settings.onboardingCompleted = true;
+			await plugin.saveSettings();
+
+			// Update runtime connection state
+			plugin.isConnectionReady = beanQueryValid;
+
+			currentStep = 'ready';
 			new Notice('🎉 Setup completed successfully!');
 		} catch (error: any) {
 			Logger.error('[Onboarding] Setup failed', error);
@@ -248,7 +303,7 @@
 	}
 
 	function skipOnboarding() {
-		new Notice('You can configure commands manually in Settings → Connection');
+		new Notice('You can set up bean-query anytime in Settings → Connection.');
 		modal.close();
 	}
 
@@ -257,486 +312,945 @@
 		await plugin.activateView(UNIFIED_DASHBOARD_VIEW_TYPE, 'tab');
 		modal.close();
 	}
+
+	// ── Helpers ──
+	function getTransactionExample(): string {
+		if (fileOrganization === 'monthly') {
+			return `${structuredFolderName}/transactions/2026/2026-07.beancount`;
+		}
+		return `${structuredFolderName}/transactions/2026.beancount`;
+	}
+
+	$: folderPreviewFiles = [
+		`${structuredFolderName}/`,
+		`  ledger.beancount`,
+		`  accounts.beancount`,
+		`  commodities.beancount`,
+		`  prices.beancount`,
+		`  transactions/`,
+		`    ${fileOrganization === 'monthly' ? '2026/' : ''}`,
+		`    ${fileOrganization === 'monthly' ? '  2026-01.beancount' : '2026.beancount'}`,
+	];
 </script>
 
 <div class="onboarding-container">
 	<!-- Header -->
 	<div class="onboarding-header">
 		<h2>Welcome to Obsidian Finance</h2>
-		<!-- Step Indicator -->
-		<div class="step-indicator">
-			<div class="step-item" class:is-active={currentStep === 'prerequisites'}>
-				<span>🔍 1. Prerequisites</span>
-			</div>
-			<div class="step-item" class:is-active={currentStep === 'file-setup'}>
-				<span>📁 2. File Setup</span>
-			</div>
-			<div class="step-item" class:is-active={currentStep === 'verification'}>
-				<span>✅ 3. Verification</span>
-			</div>
+		<!-- Step progress bar -->
+		<div class="step-bar">
+			<button
+				class="step-node"
+				class:is-active={currentStep === 'connect'}
+				class:is-done={currentStep === 'organize' || currentStep === 'ready'}
+				on:click={() => { if (currentStep !== 'connect') currentStep = 'connect'; }}
+			>
+				<span class="step-num">1</span>
+				<span class="step-label">Connect</span>
+			</button>
+			<div class="step-line" class:is-done={currentStep === 'organize' || currentStep === 'ready'}></div>
+			<button
+				class="step-node"
+				class:is-active={currentStep === 'organize'}
+				class:is-done={currentStep === 'ready'}
+				disabled={!beanQueryValid && currentStep === 'connect'}
+				on:click={() => { if (beanQueryValid && currentStep !== 'organize') currentStep = 'organize'; }}
+			>
+				<span class="step-num">2</span>
+				<span class="step-label">Organize</span>
+			</button>
+			<div class="step-line" class:is-done={currentStep === 'ready'}></div>
+			<button
+				class="step-node"
+				class:is-active={currentStep === 'ready'}
+				disabled
+			>
+				<span class="step-num">3</span>
+				<span class="step-label">Ready</span>
+			</button>
 		</div>
 	</div>
 
 	<!-- Step Content -->
 	<div class="onboarding-body">
-		{#if currentStep === 'prerequisites'}
-			<p class="setting-item-description">
-				First, let's verify that your system has the required tools installed to run Beancount.
+
+		<!-- ═══════════════════════════════════════════════ -->
+		<!-- STEP 1: CONNECT                                -->
+		<!-- ═══════════════════════════════════════════════ -->
+		{#if currentStep === 'connect'}
+			<p class="step-description">
+				This plugin uses <strong>bean-query</strong> — a command-line tool from the Beancount ecosystem — to query your financial data.
+				Obsidian must be able to run it.
 			</p>
 
-			<!-- Required list -->
-			<div class="info-section">
-				<h4>📋 Required Software</h4>
-				<ul>
-					<li>Python 3.8 or higher</li>
-					<li>Beancount v3+ (<code>pip install beancount</code>)</li>
-					<li>Bean Query (separate package: <code>pip install beanquery</code>)</li>
-					<li>Bean Price <em class="text-muted">(optional)</em> — for fetching commodity prices (<code>pip install beanprice</code>)</li>
-				</ul>
-				<p class="optional-note">
-					<strong>Note:</strong> <code>bean-query</code> and <code>bean-price</code> are NOT included automatically with Beancount and require separate pip installations.
-				</p>
-			</div>
-
-			<!-- Check status -->
-			{#if prerequisitesChecked}
-				<div class="prereq-status-grid">
-					<!-- Python Card -->
-					<div class="status-card" class:is-valid={pythonValid} class:is-invalid={!pythonValid}>
-						<div class="status-card-header">
-							<strong>Python</strong>
-							<span>{pythonValid ? '✅' : '❌'}</span>
+			{#if isDetecting}
+				<!-- Loading state -->
+				<div class="detect-loading">
+					<div class="spinner"></div>
+					<span>Detecting bean-query on your system…</span>
+				</div>
+			{:else}
+				<!-- ── bean-query status ── -->
+				<div class="command-status-card" class:is-valid={beanQueryValid} class:is-invalid={!beanQueryValid}>
+					<div class="command-status-header">
+						<div class="command-status-left">
+							<span class="command-status-icon">{beanQueryValid ? '✅' : '❌'}</span>
+							<strong>bean-query</strong>
+							<span class="required-badge">required</span>
 						</div>
-						<div class="status-card-content">
-							{#if pythonValid}
-								<code>{pythonCommand}</code>
-								{#if pythonVersion}<div class="version-info">v{pythonVersion}</div>{/if}
-							{:else}
-								<span class="error-text">Not found</span>
-							{/if}
-						</div>
+						{#if beanQueryValid && beanQueryVersion}
+							<span class="version-badge">v{beanQueryVersion}</span>
+						{/if}
 					</div>
 
-					<!-- Bean Query Card -->
-					<div class="status-card" class:is-valid={beanQueryValid} class:is-invalid={!beanQueryValid}>
-						<div class="status-card-header">
-							<strong>Bean Query</strong>
-							<span>{beanQueryValid ? '✅' : '❌'}</span>
-						</div>
-						<div class="status-card-content">
-							{#if beanQueryValid}
+					{#if beanQueryValid && !isEditing}
+						<!-- Found state -->
+						<div class="command-status-body">
+							<div class="command-display">
 								<code>{beanQueryCommand}</code>
-								{#if beanQueryVersion}<div class="version-info">v{beanQueryVersion}</div>{/if}
-							{:else}
-								<span class="error-text">Not found</span>
+								<!-- svelte-ignore a11y-click-events-have-key-events -->
+								<!-- svelte-ignore a11y-no-static-element-interactions -->
+								<span class="edit-link" on:click={startEditing}>Edit</span>
+							</div>
+						</div>
+					{:else}
+						<!-- Not found OR editing state -->
+						<div class="command-status-body">
+							{#if !beanQueryValid && !isEditing}
+								<p class="not-found-text">
+									Not detected automatically. If it's installed, enter the full command below.
+								</p>
 							{/if}
+							<div class="manual-entry">
+								<div class="manual-input-row">
+									<input
+										type="text"
+										bind:value={manualCommand}
+										placeholder="bean-query, /usr/local/bin/bean-query, wsl bean-query…"
+										on:keydown={(e) => { if (e.key === 'Enter') verifyManualCommand(); }}
+									/>
+									<button class="mod-cta verify-btn" on:click={verifyManualCommand} disabled={isVerifying || !manualCommand.trim()}>
+										{isVerifying ? '⏳' : '🔍'} Verify
+									</button>
+									{#if isEditing}
+										<button class="cancel-edit-btn" on:click={cancelEditing}>Cancel</button>
+									{/if}
+								</div>
+								{#if verifyResult !== 'idle'}
+									<div class="verify-feedback" class:is-success={verifyResult === 'success'} class:is-error={verifyResult === 'error'}>
+										{verifyMessage}
+									</div>
+								{/if}
+								<p class="command-hint">
+									💡 This is the exact command Obsidian will execute. Common values:
+									<code>bean-query</code>, <code>wsl bean-query</code>,
+									<code>/home/user/.local/bin/bean-query</code>
+								</p>
+							</div>
 						</div>
-					</div>
-
-					<!-- Bean Price Card -->
-					<div class="status-card" class:is-valid={beanPriceValid} class:is-optional={!beanPriceValid}>
-						<div class="status-card-header">
-							<strong>Bean Price</strong>
-							<span>{beanPriceValid ? '✅' : '➖ Optional'}</span>
-						</div>
-						<div class="status-card-content">
-							{#if beanPriceValid}
-								<code>{beanPriceCommand}</code>
-								{#if beanPriceVersion}<div class="version-info">v{beanPriceVersion}</div>{/if}
-							{:else}
-								<span class="muted-text">Not detected</span>
-							{/if}
-						</div>
-					</div>
+					{/if}
 				</div>
 
-				<!-- Instructions if missing -->
-				{#if !pythonValid || !beanQueryValid}
-					<div class="info-section help-section">
-						<h4>📚 Installation Instructions</h4>
-						<div class="platform-instructions">
-							{#if platformDisplay.includes('Windows')}
-								<p><strong>Windows Native:</strong></p>
-								<ol>
-									<li>Install Python 3.8+ from <a href="https://www.python.org/downloads/">python.org</a></li>
-									<li>Open PowerShell or Command Prompt and run:</li>
-									<pre><code>pip install beancount beanquery</code></pre>
-									<li>Verify via: <code>bean-query --version</code></li>
-								</ol>
-								<p><em>WSL note: If you run Obsidian in Windows but want Beancount in WSL, make sure WSL is set up and query tools are installed in WSL.</em></p>
-							{:else}
-								<p><strong>macOS / Linux:</strong></p>
-								<ol>
-									<li>Open your terminal</li>
-									<li>Run python installer or brew commands:</li>
-									<pre><code>pip3 install beancount beanquery</code></pre>
-									<li>Verify via: <code>bean-query --version</code></li>
-								</ol>
-							{/if}
-							<p>📖 <a href="https://beancount.github.io/docs/installing_beancount.html" target="_blank">Official Beancount Installation Guide</a></p>
-						</div>
-					</div>
+				<!-- ── Installation help (only when NOT found) ── -->
+				{#if !beanQueryValid}
+					<div class="install-help">
+						<h4>📦 How to install</h4>
 
-					<div class="info-section warning-banner" style="border-left: 4px solid var(--text-warning);">
-						<h4 class="error-text">⚠ Beancount Environment Not Detected</h4>
-						<p style="font-size: var(--font-ui-small); margin: 4px 0;">
-							The system check could not find <code>python</code> or <code>bean-query</code> in your system PATH.
-						</p>
-						<p style="font-size: var(--font-ui-smaller); color: var(--text-muted); margin: 4px 0;">
-							You can still proceed with the File Setup, but dashboard queries and file migrations will fail until you configure your python/beancount command paths in <strong>Settings → Connection</strong>.
-						</p>
+						<!-- Platform tabs -->
+						<div class="install-tabs">
+							<!-- svelte-ignore a11y-click-events-have-key-events -->
+							<!-- svelte-ignore a11y-no-static-element-interactions -->
+							<span class="install-tab" class:is-active={activeInstallTab === 'windows'} on:click={() => activeInstallTab = 'windows'}>Windows</span>
+							<!-- svelte-ignore a11y-click-events-have-key-events -->
+							<!-- svelte-ignore a11y-no-static-element-interactions -->
+							<span class="install-tab" class:is-active={activeInstallTab === 'macos'} on:click={() => activeInstallTab = 'macos'}>macOS</span>
+							<!-- svelte-ignore a11y-click-events-have-key-events -->
+							<!-- svelte-ignore a11y-no-static-element-interactions -->
+							<span class="install-tab" class:is-active={activeInstallTab === 'linux'} on:click={() => activeInstallTab = 'linux'}>Linux</span>
+						</div>
+
+						<div class="install-content">
+							{#if activeInstallTab === 'windows'}
+								<ol>
+									<li>Install <a href="https://www.python.org/downloads/" target="_blank">Python 3.8+</a> (check "Add to PATH" during install)</li>
+									<li>Open PowerShell and run:
+										<pre><code>pip install beancount beanquery</code></pre>
+									</li>
+									<li>Verify: <code>bean-query --version</code></li>
+								</ol>
+								<div class="install-note">
+									<strong>WSL users:</strong> If you prefer running Beancount inside WSL,
+									install it there and use <code>wsl bean-query</code> as the command.
+								</div>
+
+							{:else if activeInstallTab === 'macos'}
+								<ol>
+									<li>Open Terminal and run:
+										<pre><code>pip3 install beancount beanquery</code></pre>
+									</li>
+									<li>Verify: <code>bean-query --version</code></li>
+								</ol>
+								<div class="install-note">
+									<strong>Note:</strong> GUI apps on macOS may not see <code>~/.local/bin</code>.
+									If auto-detection fails, enter the full path:
+									<code>/Users/you/.local/bin/bean-query</code>
+									(find it with <code>which bean-query</code> in Terminal).
+								</div>
+
+							{:else if activeInstallTab === 'linux'}
+								<ol>
+									<li>Open your terminal and run:
+										<pre><code>pip3 install beancount beanquery</code></pre>
+									</li>
+									<li>Verify: <code>bean-query --version</code></li>
+								</ol>
+
+								<details class="sandbox-details">
+									<summary>⚠ Using Obsidian via Flatpak, Snap, or AppImage?</summary>
+									<div class="sandbox-content">
+										<p><strong>Flatpak</strong> — Obsidian runs sandboxed and cannot see your user PATH.
+										Use the full path to bean-query:</p>
+										<pre><code>flatpak-spawn --host bean-query</code></pre>
+										<p>Or enter the absolute path: <code>/home/you/.local/bin/bean-query</code></p>
+
+										<p><strong>Snap</strong> — Similar sandbox restrictions. Find the full path with
+										<code>which bean-query</code> in your terminal and enter it here.</p>
+
+										<p><strong>AppImage</strong> — Usually inherits your user PATH. If detection fails,
+										enter the full path from <code>which bean-query</code>.</p>
+									</div>
+								</details>
+							{/if}
+						</div>
+
+						<div class="install-docs-link">
+							📖 <a href="https://beancount.github.io/docs/installing_beancount.html" target="_blank">Official Beancount installation guide</a>
+						</div>
 					</div>
 				{/if}
+
+				<!-- ── bean-price (optional info) ── -->
+				<div class="optional-dep">
+					<div class="optional-dep-header">
+						<span>{beanPriceValid ? '✅' : '➖'}</span>
+						<strong>bean-price</strong>
+						<span class="optional-badge">optional</span>
+					</div>
+					<div class="optional-dep-body">
+						{#if beanPriceValid}
+							<code>{beanPriceCommand}</code>
+							{#if beanPriceVersion}<span class="version-text">v{beanPriceVersion}</span>{/if}
+							— automatic commodity price fetching available.
+						{:else}
+							Not detected. Install with <code>pip install beanprice</code> to enable automatic price fetching. You can set this up later in Settings.
+						{/if}
+					</div>
+				</div>
 			{/if}
 
-			<!-- Action Buttons -->
-			<div class="action-buttons-row">
-				<button class="mod-warning" on:click={() => currentStep = 'file-setup'}>Skip Prerequisites →</button>
-				
-				<div class="main-buttons">
-					<button class="mod-cta" on:click={checkPrerequisites} disabled={isCheckingPrereqs}>
-						{isCheckingPrereqs ? '⏳ Checking...' : '🔍 Check Prerequisites'}
+			<!-- Action buttons -->
+			<div class="action-row">
+				<!-- svelte-ignore a11y-click-events-have-key-events -->
+				<!-- svelte-ignore a11y-no-static-element-interactions -->
+				<span class="skip-link" on:click={skipOnboarding}>Skip for now</span>
+				<div class="action-buttons">
+					<button
+						class="mod-cta"
+						on:click={detectBeanQuery}
+						disabled={isDetecting}
+					>
+						{isDetecting ? '⏳ Detecting…' : '🔍 Re-detect'}
 					</button>
-
-					<button class="mod-cta next-btn" on:click={() => currentStep = 'file-setup'}>
-						Next: File Setup →
+					<button
+						class="mod-cta next-btn"
+						on:click={() => currentStep = 'organize'}
+						disabled={!beanQueryValid}
+					>
+						Next: Organize →
 					</button>
 				</div>
 			</div>
 
-		{:else}
-			{#if currentStep === 'file-setup'}
-				<p class="setting-item-description">
-					Choose your starting point. A structured folder layout will be created to organize your finances.
-				</p>
 
-				<!-- CARD LAYOUT FOR OPTION SELECTION -->
-				<div class="setup-cards-grid">
-					<!-- Card A: Demo -->
-					<!-- svelte-ignore a11y-click-events-have-key-events -->
-					<!-- svelte-ignore a11y-no-static-element-interactions -->
-					<div class="setup-card" class:is-selected={dataChoice === 'demo'} on:click={() => selectDataChoice('demo')}>
-						<div class="card-badge">✨ Recommended for Beginners</div>
-						<div class="card-icon">📊</div>
-						<h4>Start with Demo Data</h4>
-						<p>We'll set up a complete sample ledger with realistic accounts and transactions so you can explore the dashboard immediately.</p>
-					</div>
+		<!-- ═══════════════════════════════════════════════ -->
+		<!-- STEP 2: ORGANIZE                               -->
+		<!-- ═══════════════════════════════════════════════ -->
+		{:else if currentStep === 'organize'}
+			<p class="step-description">
+				Choose how to start and configure your folder layout. All your finance files will be organized in a single folder.
+			</p>
 
-					<!-- Card B: Existing -->
-					<!-- svelte-ignore a11y-click-events-have-key-events -->
-					<!-- svelte-ignore a11y-no-static-element-interactions -->
-					<div class="setup-card" class:is-selected={dataChoice === 'existing'} on:click={() => selectDataChoice('existing')}>
-						<div class="card-icon">📁</div>
-						<h4>Use My Existing Ledger</h4>
-						<p>Select your existing Beancount file to migrate it into structured layout folders under your vault.</p>
-					</div>
+			<!-- Data choice cards -->
+			<div class="setup-cards-grid">
+				<!-- svelte-ignore a11y-click-events-have-key-events -->
+				<!-- svelte-ignore a11y-no-static-element-interactions -->
+				<div class="setup-card" class:is-selected={dataChoice === 'demo'} on:click={() => selectDataChoice('demo')}>
+					<div class="card-badge">✨ Recommended for beginners</div>
+					<div class="card-icon">📊</div>
+					<h4>Start with Demo Data</h4>
+					<p>A complete sample ledger with realistic accounts and transactions so you can explore the dashboard immediately.</p>
 				</div>
 
-				<!-- Config Form - Native Obsidian setting-item layout -->
-				{#if dataChoice}
-					<div class="setup-form-container">
-						{#if dataChoice === 'existing'}
-							{#if beancountFiles.length > 0 && !showManualPathInput}
-								<!-- Dropdown Selection -->
-								<div class="setting-item">
-									<div class="setting-item-info">
-										<div class="setting-item-name">Select Beancount file</div>
-										<div class="setting-item-description">
-											Choose from existing .beancount files in your vault, or
+				<!-- svelte-ignore a11y-click-events-have-key-events -->
+				<!-- svelte-ignore a11y-no-static-element-interactions -->
+				<div class="setup-card" class:is-selected={dataChoice === 'existing'} on:click={() => selectDataChoice('existing')}>
+					<div class="card-icon">📁</div>
+					<h4>Use My Existing Ledger</h4>
+					<p>Select your existing Beancount file to migrate it into the structured folder layout.</p>
+				</div>
+			</div>
+
+			<!-- Config form -->
+			{#if dataChoice}
+				<div class="setup-form">
+					{#if dataChoice === 'existing'}
+						{#if beancountFiles.length > 0 && !showManualPathInput}
+							<div class="setting-item">
+								<div class="setting-item-info">
+									<div class="setting-item-name">Select Beancount file</div>
+									<div class="setting-item-description">
+										Choose from existing .beancount files in your vault, or
+										<!-- svelte-ignore a11y-click-events-have-key-events -->
+										<!-- svelte-ignore a11y-no-static-element-interactions -->
+										<span class="setup-link" on:click={() => { showManualPathInput = true; existingFilePath = ''; }}>enter path manually</span>.
+									</div>
+								</div>
+								<div class="setting-item-control">
+									<select bind:value={existingFilePath}>
+										{#each beancountFiles as file}
+											<option value={file}>{file}</option>
+										{/each}
+									</select>
+								</div>
+							</div>
+						{:else}
+							<div class="setting-item">
+								<div class="setting-item-info">
+									<div class="setting-item-name">Beancount file path</div>
+									<div class="setting-item-description">
+										Vault-relative path to your ledger file (must be inside your vault).
+										{#if beancountFiles.length > 0}
 											<!-- svelte-ignore a11y-click-events-have-key-events -->
 											<!-- svelte-ignore a11y-no-static-element-interactions -->
-											<span class="setup-link" on:click={() => { showManualPathInput = true; existingFilePath = ''; }}>enter path manually</span>.
-										</div>
-									</div>
-									<div class="setting-item-control">
-										<select bind:value={existingFilePath}>
-											{#each beancountFiles as file}
-												<option value={file}>{file}</option>
-											{/each}
-										</select>
+											Or <span class="setup-link" on:click={() => { showManualPathInput = false; existingFilePath = beancountFiles[0]; }}>choose file from vault</span>.
+										{/if}
 									</div>
 								</div>
-							{:else}
-								<!-- Manual Text Input -->
-								<div class="setting-item">
-									<div class="setting-item-info">
-										<div class="setting-item-name">Beancount file path</div>
-										<div class="setting-item-description">
-											Vault-relative path to your ledger file (must be inside your vault).
-											{#if beancountFiles.length > 0}
-												<!-- svelte-ignore a11y-click-events-have-key-events -->
-												<!-- svelte-ignore a11y-no-static-element-interactions -->
-												Or <span class="setup-link" on:click={() => { showManualPathInput = false; existingFilePath = beancountFiles[0]; }}>choose file from vault</span>.
-											{/if}
-										</div>
-									</div>
-									<div class="setting-item-control">
-										<input type="text" bind:value={existingFilePath} placeholder="ledger.beancount" />
-									</div>
+								<div class="setting-item-control">
+									<input type="text" bind:value={existingFilePath} placeholder="ledger.beancount" />
 								</div>
-							{/if}
+							</div>
 						{/if}
+					{/if}
 
-						<!-- Structured Folder Name -->
-						<div class="setting-item">
-							<div class="setting-item-info">
-								<div class="setting-item-name">Structured folder name</div>
-								<div class="setting-item-description">Folder in your vault where organised finance files will live</div>
-							</div>
-							<div class="setting-item-control">
-								<input type="text" bind:value={structuredFolderName} placeholder="Finances" />
-							</div>
+					<!-- Structured Folder Name -->
+					<div class="setting-item">
+						<div class="setting-item-info">
+							<div class="setting-item-name">Folder name</div>
+							<div class="setting-item-description">Folder in your vault where organized finance files will live</div>
 						</div>
-
-						<!-- Transaction File Organization -->
-						<div class="setting-item">
-							<div class="setting-item-info">
-								<div class="setting-item-name">Transaction File Organization</div>
-								<div class="setting-item-description">How transactions will be split into sub-files inside your ledger</div>
-							</div>
-							<div class="setting-item-control">
-								<select bind:value={fileOrganization}>
-									<option value="yearly">Yearly (e.g. transactions/2026.beancount)</option>
-									<option value="monthly">Monthly (e.g. transactions/2026/2026-06.beancount)</option>
-								</select>
-							</div>
+						<div class="setting-item-control">
+							<input type="text" bind:value={structuredFolderName} placeholder="Finances" />
 						</div>
-
-						<!-- Operating Currency -->
-						<div class="setting-item">
-							<div class="setting-item-info">
-								<div class="setting-item-name">Operating currency</div>
-								<div class="setting-item-description">The primary currency of your financial records</div>
-							</div>
-							<div class="setting-item-control">
-								<input 
-									type="text" 
-									bind:value={operatingCurrency} 
-									placeholder="USD" 
-									on:input={() => operatingCurrency = operatingCurrency.toUpperCase()}
-								/>
-							</div>
-						</div>
-
-						{#if dataChoice === 'demo'}
-							<p class="currency-demo-hint">
-								💡 Demo data uses USD currency. You can adjust settings or currencies later in settings.
-							</p>
-						{/if}
 					</div>
-				{/if}
 
-				<!-- Action Buttons -->
-				<div class="action-buttons-row">
-					<button on:click={() => currentStep = 'prerequisites'}>← Back</button>
-					<div class="main-buttons">
-						<button class="mod-warning" on:click={() => modal.close()}>Cancel</button>
-						<button class="mod-cta" on:click={handleFinish} disabled={isSubmitting || !dataChoice}>
-							{isSubmitting ? '⏳ Setting up...' : 'Start Setup'}
-						</button>
+					<!-- Transaction File Organization -->
+					<div class="setting-item">
+						<div class="setting-item-info">
+							<div class="setting-item-name">Transaction file period</div>
+							<div class="setting-item-description">How transaction files are organized inside the folder</div>
+						</div>
+						<div class="setting-item-control">
+							<select bind:value={fileOrganization}>
+								<option value="yearly">Yearly (e.g. 2026.beancount)</option>
+								<option value="monthly">Monthly (e.g. 2026/2026-07.beancount)</option>
+							</select>
+						</div>
 					</div>
-				</div>
 
-			{:else if currentStep === 'verification'}
-				<p class="setting-item-description">
-					Beancount for Obsidian is now configured and ready to use!
-				</p>
+					<!-- Operating Currency -->
+					<div class="setting-item">
+						<div class="setting-item-info">
+							<div class="setting-item-name">Operating currency</div>
+							<div class="setting-item-description">Primary currency for your financial records</div>
+						</div>
+						<div class="setting-item-control">
+							<input
+								type="text"
+								bind:value={operatingCurrency}
+								placeholder="USD"
+								on:input={() => operatingCurrency = operatingCurrency.toUpperCase()}
+							/>
+						</div>
+					</div>
 
-				<!-- SUCCESS SUMMARY SECTION -->
-				<div class="success-banner">
-					<span class="success-icon">🎉</span>
-					<h3>Setup Complete!</h3>
-				</div>
+					{#if dataChoice === 'demo'}
+						<p class="currency-hint">
+							💡 Demo data uses USD. You can change the currency later in Settings.
+						</p>
+					{/if}
 
-				<div class="info-section success-summary-card">
-					<h4>Configuration Summary:</h4>
-					<ul>
-						<li><strong>Python:</strong> {pythonCommand || 'N/A'} ({pythonVersion || 'unknown'})</li>
-						<li><strong>Bean Query:</strong> {beanQueryCommand || 'N/A'}</li>
-						<li><strong>Bean Price:</strong> {beanPriceValid ? `${beanPriceCommand} (Automatic price fetching available)` : 'Not detected (install beanprice to enable)'}</li>
-						<li><strong>File Layout:</strong> Structured Layout (under <code>{structuredFolderName}/</code>)</li>
-						<li><strong>Data Source:</strong> {dataChoice === 'demo' ? 'Demo Data' : 'Existing Ledger'}</li>
-						<li><strong>Operating Currency:</strong> <span class="text-success">{operatingCurrency}</span></li>
-					</ul>
-				</div>
-
-				<!-- NEXT STEPS -->
-				<div class="info-section">
-					<h4>🚀 Next Steps:</h4>
-					<ol>
-						<li>Open the Finance Dashboard (Command Palette → <strong>"Open Finance Dashboard"</strong>)</li>
-						<li>Explore the 5 tabs: Overview, Transactions, Journal, Balance Sheet, Commodities</li>
-						<li>Try query writing in Markdown notes with BQL blocks</li>
-						{#if beanPriceValid}
-							<li>Enable Automatic Price Fetching in Settings → Connection to keep commodity prices up to date</li>
-						{/if}
-					</ol>
-				</div>
-
-				<div class="action-buttons-row centered">
-					<button on:click={() => modal.close()}>Close</button>
-					<button class="mod-cta" on:click={finishAndOpenDashboard}>Open Dashboard & Close</button>
+					<!-- Live folder tree preview -->
+					<div class="folder-preview">
+						<h4>📂 Folder structure preview</h4>
+						<div class="tree">
+							{#each folderPreviewFiles as line}
+								<div class="tree-line">{line}</div>
+							{/each}
+							<div class="tree-line tree-more">  …and more</div>
+						</div>
+					</div>
 				</div>
 			{/if}
+
+			<!-- Action buttons -->
+			<div class="action-row">
+				<button on:click={() => currentStep = 'connect'}>← Back</button>
+				<div class="action-buttons">
+					<button class="mod-warning" on:click={() => modal.close()}>Cancel</button>
+					<button class="mod-cta" on:click={handleFinish} disabled={isSubmitting || !dataChoice}>
+						{isSubmitting ? '⏳ Setting up…' : '🚀 Set Up'}
+					</button>
+				</div>
+			</div>
+
+
+		<!-- ═══════════════════════════════════════════════ -->
+		<!-- STEP 3: READY                                  -->
+		<!-- ═══════════════════════════════════════════════ -->
+		{:else if currentStep === 'ready'}
+			<div class="success-banner">
+				<span class="success-icon">🎉</span>
+				<h3>You're all set!</h3>
+			</div>
+
+			<div class="summary-card">
+				<h4>Configuration Summary</h4>
+				<div class="summary-grid">
+					<div class="summary-row">
+						<span class="summary-label">bean-query</span>
+						<span class="summary-value"><code>{beanQueryCommand}</code> {#if beanQueryVersion}<span class="version-text">v{beanQueryVersion}</span>{/if}</span>
+					</div>
+					<div class="summary-row">
+						<span class="summary-label">bean-price</span>
+						<span class="summary-value">{beanPriceValid ? beanPriceCommand : 'Not configured (optional)'}</span>
+					</div>
+					<div class="summary-row">
+						<span class="summary-label">Folder</span>
+						<span class="summary-value"><code>{structuredFolderName}/</code></span>
+					</div>
+					<div class="summary-row">
+						<span class="summary-label">Data source</span>
+						<span class="summary-value">{dataChoice === 'demo' ? 'Demo Data' : 'Existing Ledger'}</span>
+					</div>
+					<div class="summary-row">
+						<span class="summary-label">Currency</span>
+						<span class="summary-value currency">{operatingCurrency}</span>
+					</div>
+					<div class="summary-row">
+						<span class="summary-label">Transactions</span>
+						<span class="summary-value">{fileOrganization === 'monthly' ? 'Monthly' : 'Yearly'} files</span>
+					</div>
+				</div>
+			</div>
+
+			<div class="next-steps">
+				<h4>🚀 Next steps</h4>
+				<ol>
+					<li>Open the <strong>Finance Dashboard</strong> to explore your data</li>
+					<li>Browse the 5 tabs: Overview, Transactions, Journal, Balance Sheet, Commodities</li>
+					<li>Try BQL queries in your Markdown notes using <code>```bql</code> code blocks</li>
+					{#if beanPriceValid}
+						<li>Enable <strong>Automatic Price Fetching</strong> in Settings → General</li>
+					{/if}
+					<li>Manage commands anytime in <strong>Settings → Connection</strong></li>
+				</ol>
+			</div>
+
+			<div class="action-row centered">
+				<button on:click={() => modal.close()}>Close</button>
+				<button class="mod-cta" on:click={finishAndOpenDashboard}>Open Dashboard</button>
+			</div>
 		{/if}
 	</div>
 </div>
 
 <style>
+	/* ═══ Container ═══ */
 	.onboarding-container {
 		padding: var(--size-4-4);
 		max-width: 680px;
 		margin: 0 auto;
 	}
 
+	/* ═══ Header ═══ */
 	.onboarding-header h2 {
-		margin: 0;
+		margin: 0 0 var(--size-4-3) 0;
 		color: var(--text-normal);
 		font-size: var(--font-ui-large);
 		text-align: center;
 	}
 
-	/* Steps indicator */
-	.step-indicator {
+	/* ═══ Step progress bar ═══ */
+	.step-bar {
 		display: flex;
-		justify-content: space-between;
-		gap: var(--size-4-3);
-		margin-top: var(--size-4-4);
+		align-items: center;
+		justify-content: center;
+		gap: 0;
 		margin-bottom: var(--size-4-4);
 	}
 
-	.step-item {
-		flex: 1;
-		text-align: center;
-		padding: var(--size-4-2) var(--size-4-1);
+	.step-node {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4px;
+		padding: 8px 16px;
 		border-radius: var(--radius-m);
-		font-size: var(--font-ui-small);
-		background-color: var(--background-secondary-alt);
-		color: var(--text-muted);
 		border: 1px solid var(--background-modifier-border);
-		transition: all 0.2s ease-in-out;
+		background: var(--background-secondary-alt);
+		color: var(--text-muted);
+		cursor: pointer;
+		transition: all 0.2s;
+		font-size: var(--font-ui-smaller);
+		min-width: 80px;
 	}
 
-	.step-item.is-active {
-		background-color: var(--interactive-accent);
+	.step-node:disabled {
+		cursor: not-allowed;
+		opacity: 0.5;
+	}
+
+	.step-node.is-active {
+		background: var(--interactive-accent);
 		color: var(--text-on-accent);
-		font-weight: bold;
 		border-color: var(--interactive-accent-hover);
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		font-weight: 600;
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 	}
 
-	/* General Section Box */
-	.info-section {
-		background-color: var(--background-secondary);
+	.step-node.is-done {
+		background: var(--background-modifier-success);
+		color: var(--text-on-accent);
+		border-color: var(--text-success);
+	}
+
+	.step-num {
+		font-weight: 700;
+		font-size: 14px;
+	}
+
+	.step-label {
+		font-size: 11px;
+	}
+
+	.step-line {
+		width: 40px;
+		height: 2px;
+		background: var(--background-modifier-border);
+		transition: background 0.3s;
+	}
+
+	.step-line.is-done {
+		background: var(--text-success);
+	}
+
+	/* ═══ Body ═══ */
+	.onboarding-body {
+		min-height: 300px;
+	}
+
+	.step-description {
+		color: var(--text-muted);
+		font-size: var(--font-ui-small);
+		margin: 0 0 var(--size-4-4) 0;
+		line-height: var(--line-height-normal);
+	}
+
+	/* ═══ Detection loading ═══ */
+	.detect-loading {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--size-4-3);
+		padding: var(--size-4-6) 0;
+		color: var(--text-muted);
+		font-size: var(--font-ui-small);
+	}
+
+	.spinner {
+		width: 20px;
+		height: 20px;
+		border: 2px solid var(--background-modifier-border);
+		border-top-color: var(--interactive-accent);
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
+	}
+
+	/* ═══ Command status card ═══ */
+	.command-status-card {
+		background: var(--background-secondary);
+		border: 1px solid var(--background-modifier-border);
+		border-radius: var(--radius-m);
+		padding: var(--size-4-3) var(--size-4-4);
+		margin-bottom: var(--size-4-4);
+		transition: border-color 0.2s;
+	}
+
+	.command-status-card.is-valid {
+		border-left: 4px solid var(--text-success);
+	}
+
+	.command-status-card.is-invalid {
+		border-left: 4px solid var(--text-error);
+	}
+
+	.command-status-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: var(--size-4-2);
+	}
+
+	.command-status-left {
+		display: flex;
+		align-items: center;
+		gap: var(--size-4-2);
+	}
+
+	.command-status-icon {
+		font-size: 16px;
+	}
+
+	.required-badge {
+		font-size: 9px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		padding: 1px 6px;
+		border-radius: 8px;
+		background: var(--text-error);
+		color: var(--text-on-accent);
+	}
+
+	.version-badge {
+		font-size: var(--font-ui-smaller);
+		font-weight: 600;
+		color: var(--text-success);
+		background: rgba(0, 180, 0, 0.1);
+		padding: 2px 8px;
+		border-radius: var(--radius-s);
+	}
+
+	.command-status-body {
+		font-size: var(--font-ui-small);
+	}
+
+	.command-display {
+		display: flex;
+		align-items: center;
+		gap: var(--size-4-3);
+	}
+
+	.command-display code {
+		background: var(--background-primary);
+		padding: 4px 10px;
+		border-radius: var(--radius-s);
+		font-size: 12px;
+		flex: 1;
+	}
+
+	.edit-link {
+		color: var(--text-accent);
+		cursor: pointer;
+		font-size: var(--font-ui-smaller);
+		text-decoration: underline;
+	}
+
+	.edit-link:hover {
+		color: var(--text-accent-hover);
+	}
+
+	.not-found-text {
+		color: var(--text-muted);
+		margin: 0 0 var(--size-4-2) 0;
+		font-size: var(--font-ui-smaller);
+	}
+
+	/* ── Manual entry ── */
+	.manual-entry {
+		margin-top: var(--size-4-2);
+	}
+
+	.manual-input-row {
+		display: flex;
+		gap: var(--size-4-2);
+		align-items: center;
+	}
+
+	.manual-input-row input {
+		flex: 1;
+		background: var(--background-primary);
+		border: 1px solid var(--background-modifier-border);
+		border-radius: var(--radius-s);
+		padding: 6px 10px;
+		color: var(--text-normal);
+		font-size: 12px;
+	}
+
+	.manual-input-row input:focus {
+		border-color: var(--interactive-accent);
+		outline: none;
+	}
+
+	.verify-btn {
+		white-space: nowrap;
+		font-size: 12px;
+		padding: 6px 12px;
+	}
+
+	.cancel-edit-btn {
+		font-size: 12px;
+		padding: 6px 10px;
+		white-space: nowrap;
+	}
+
+	.verify-feedback {
+		margin-top: var(--size-4-2);
+		padding: 6px 10px;
+		border-radius: var(--radius-s);
+		font-size: var(--font-ui-smaller);
+	}
+
+	.verify-feedback.is-success {
+		background: rgba(0, 180, 0, 0.1);
+		color: var(--text-success);
+	}
+
+	.verify-feedback.is-error {
+		background: rgba(220, 50, 50, 0.1);
+		color: var(--text-error);
+	}
+
+	.command-hint {
+		margin: var(--size-4-2) 0 0 0;
+		font-size: 11px;
+		color: var(--text-faint);
+		line-height: 1.5;
+	}
+
+	.command-hint code {
+		background: var(--background-primary);
+		padding: 1px 4px;
+		border-radius: 3px;
+		font-size: 10px;
+	}
+
+	/* ═══ Install help ═══ */
+	.install-help {
+		background: var(--background-secondary);
 		border: 1px solid var(--background-modifier-border);
 		border-radius: var(--radius-m);
 		padding: var(--size-4-4);
 		margin-bottom: var(--size-4-4);
 	}
 
-	.info-section h4 {
-		margin: 0 0 var(--size-4-2) 0;
+	.install-help h4 {
+		margin: 0 0 var(--size-4-3) 0;
 		font-size: var(--font-ui-medium);
 		color: var(--text-normal);
 	}
 
-	.info-section ul, .info-section ol {
-		margin: var(--size-4-2) 0;
-		padding-left: var(--size-4-5);
+	.install-tabs {
+		display: flex;
+		gap: 0;
+		border-bottom: 1px solid var(--background-modifier-border);
+		margin-bottom: var(--size-4-3);
+	}
+
+	.install-tab {
+		padding: 6px 16px;
+		font-size: var(--font-ui-small);
+		cursor: pointer;
+		color: var(--text-muted);
+		border-bottom: 2px solid transparent;
+		transition: all 0.2s;
+		user-select: none;
+	}
+
+	.install-tab:hover {
+		color: var(--text-normal);
+	}
+
+	.install-tab.is-active {
+		color: var(--interactive-accent);
+		border-bottom-color: var(--interactive-accent);
+		font-weight: 600;
+	}
+
+	.install-content {
 		font-size: var(--font-ui-small);
 		line-height: var(--line-height-normal);
 	}
 
-	.info-section li {
-		margin-bottom: var(--size-4-1);
+	.install-content ol {
+		margin: 0;
+		padding-left: var(--size-4-5);
 	}
 
-	.optional-note {
-		margin-top: var(--size-4-2);
-		font-size: var(--font-ui-smaller);
-		color: var(--text-muted);
+	.install-content li {
+		margin-bottom: var(--size-4-2);
 	}
 
-	/* Status Grid cards */
-	.prereq-status-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-		gap: var(--size-4-3);
-		margin-bottom: var(--size-4-4);
-	}
-
-	.status-card {
-		background-color: var(--background-secondary);
-		border: 1px solid var(--background-modifier-border);
-		border-radius: var(--radius-m);
-		padding: var(--size-4-3);
-		display: flex;
-		flex-direction: column;
-		justify-content: space-between;
-		gap: var(--size-4-2);
-		transition: transform 0.2s, border-color 0.2s;
-	}
-
-	.status-card-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		font-size: var(--font-ui-small);
-	}
-
-	.status-card-content {
-		font-size: var(--font-ui-smaller);
-	}
-
-	.status-card code {
-		display: block;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		font-size: 10px;
-		background: var(--background-primary);
-		padding: 2px 4px;
-		border-radius: var(--radius-s);
-		margin-bottom: 4px;
-	}
-
-	.status-card .version-info {
-		color: var(--text-success);
-		font-weight: 600;
-	}
-
-	/* Card status borders */
-	.status-card.is-valid {
-		border-left: 3px solid var(--text-success);
-	}
-
-	.status-card.is-invalid {
-		border-left: 3px solid var(--text-error);
-	}
-
-	.status-card.is-optional {
-		border-left: 3px solid var(--text-muted);
-	}
-
-	.error-text {
-		color: var(--text-error);
-	}
-
-	.muted-text {
-		color: var(--text-muted);
-	}
-
-	/* Instructions block */
-	pre {
+	.install-content pre {
 		background: var(--background-primary);
 		padding: var(--size-4-2);
 		border-radius: var(--radius-s);
 		border: 1px solid var(--background-modifier-border);
 		font-size: 11px;
 		overflow-x: auto;
+		margin: var(--size-4-1) 0;
 	}
 
-	/* Card Options layout for Step 2 */
+	.install-note {
+		margin-top: var(--size-4-3);
+		padding: var(--size-4-2) var(--size-4-3);
+		background: rgba(var(--color-accent-rgb, 0, 122, 255), 0.06);
+		border-radius: var(--radius-s);
+		font-size: var(--font-ui-smaller);
+		color: var(--text-muted);
+		line-height: 1.5;
+	}
+
+	.sandbox-details {
+		margin-top: var(--size-4-3);
+		border: 1px solid var(--background-modifier-border);
+		border-radius: var(--radius-s);
+	}
+
+	.sandbox-details summary {
+		padding: var(--size-4-2) var(--size-4-3);
+		cursor: pointer;
+		font-size: var(--font-ui-small);
+		font-weight: 500;
+		color: var(--text-warning);
+		user-select: none;
+	}
+
+	.sandbox-content {
+		padding: 0 var(--size-4-3) var(--size-4-3);
+		font-size: var(--font-ui-smaller);
+		line-height: 1.6;
+		color: var(--text-muted);
+	}
+
+	.sandbox-content p {
+		margin: var(--size-4-2) 0;
+	}
+
+	.sandbox-content pre {
+		background: var(--background-primary);
+		padding: var(--size-4-2);
+		border-radius: var(--radius-s);
+		font-size: 11px;
+		margin: var(--size-4-1) 0;
+	}
+
+	.install-docs-link {
+		margin-top: var(--size-4-3);
+		font-size: var(--font-ui-smaller);
+	}
+
+	/* ═══ Optional dependency ═══ */
+	.optional-dep {
+		background: var(--background-secondary);
+		border: 1px solid var(--background-modifier-border);
+		border-left: 3px solid var(--text-muted);
+		border-radius: var(--radius-m);
+		padding: var(--size-4-2) var(--size-4-3);
+		margin-bottom: var(--size-4-4);
+		font-size: var(--font-ui-small);
+	}
+
+	.optional-dep-header {
+		display: flex;
+		align-items: center;
+		gap: var(--size-4-2);
+		margin-bottom: 4px;
+	}
+
+	.optional-badge {
+		font-size: 9px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		padding: 1px 5px;
+		border-radius: 8px;
+		background: var(--background-modifier-border);
+		color: var(--text-muted);
+	}
+
+	.optional-dep-body {
+		font-size: var(--font-ui-smaller);
+		color: var(--text-muted);
+		padding-left: 28px;
+	}
+
+	.optional-dep-body code {
+		background: var(--background-primary);
+		padding: 1px 4px;
+		border-radius: 3px;
+		font-size: 10px;
+	}
+
+	.version-text {
+		color: var(--text-success);
+		font-weight: 600;
+		font-size: var(--font-ui-smaller);
+	}
+
+	/* ═══ Action row ═══ */
+	.action-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-top: var(--size-4-4);
+		padding-top: var(--size-4-3);
+		border-top: 1px solid var(--background-modifier-border);
+	}
+
+	.action-row.centered {
+		justify-content: center;
+		gap: var(--size-4-3);
+	}
+
+	.action-buttons {
+		display: flex;
+		gap: var(--size-4-2);
+	}
+
+	.skip-link {
+		color: var(--text-muted);
+		font-size: var(--font-ui-smaller);
+		cursor: pointer;
+		text-decoration: underline;
+		transition: color 0.15s;
+	}
+
+	.skip-link:hover {
+		color: var(--text-normal);
+	}
+
+	.next-btn:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+
+	/* ═══ Step 2: Setup cards ═══ */
 	.setup-cards-grid {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
@@ -745,7 +1259,7 @@
 	}
 
 	.setup-card {
-		background-color: var(--background-secondary);
+		background: var(--background-secondary);
 		border: 1px solid var(--background-modifier-border);
 		border-radius: var(--radius-l);
 		padding: var(--size-4-4);
@@ -761,25 +1275,25 @@
 	.setup-card:hover {
 		border-color: var(--interactive-accent);
 		transform: translateY(-2px);
-		background-color: var(--background-secondary-alt);
+		background: var(--background-secondary-alt);
 	}
 
 	.setup-card.is-selected {
 		border-color: var(--interactive-accent);
-		background-color: rgba(var(--color-accent-rgb), 0.05);
+		background: rgba(var(--color-accent-rgb, 0, 122, 255), 0.05);
 		box-shadow: 0 0 0 2px var(--interactive-accent);
 	}
 
 	.card-badge {
 		position: absolute;
 		top: -10px;
-		background-color: var(--interactive-accent);
+		background: var(--interactive-accent);
 		color: var(--text-on-accent);
 		font-size: 9px;
 		font-weight: bold;
-		padding: 2px 6px;
+		padding: 2px 8px;
 		border-radius: 10px;
-		box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 	}
 
 	.card-icon {
@@ -800,41 +1314,95 @@
 		line-height: var(--line-height-normal);
 	}
 
-	/* Setup Form styles */
-	.setup-form-container {
-		background-color: var(--background-secondary);
+	/* ═══ Setup form ═══ */
+	.setup-form {
+		background: var(--background-secondary);
 		border: 1px solid var(--background-modifier-border);
 		border-radius: var(--radius-m);
 		padding: var(--size-4-4);
 		margin-bottom: var(--size-4-4);
 	}
 
-	.currency-demo-hint {
+	.setting-item {
+		border-top: none;
+		border-bottom: 1px solid var(--background-modifier-border);
+		padding: var(--size-4-3) 0;
+	}
+
+	.setting-item:last-of-type {
+		border-bottom: none;
+	}
+
+	.setting-item-name {
+		font-weight: 500;
+	}
+
+	input[type='text'], select {
+		width: 100%;
+		max-width: 220px;
+		background: var(--background-primary);
+		border: 1px solid var(--background-modifier-border);
+		border-radius: var(--radius-s);
+		padding: 4px 8px;
+		color: var(--text-normal);
+	}
+
+	input[type='text']:focus, select:focus {
+		border-color: var(--interactive-accent);
+		outline: none;
+	}
+
+	.setup-link {
+		color: var(--text-accent);
+		cursor: pointer;
+		text-decoration: underline;
+	}
+
+	.setup-link:hover {
+		color: var(--text-accent-hover);
+	}
+
+	.currency-hint {
 		margin: var(--size-4-2) 0 0 0;
 		font-size: var(--font-ui-smaller);
 		color: var(--text-muted);
 		font-style: italic;
 	}
 
-	/* Action Buttons styling */
-	.action-buttons-row {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-top: var(--size-4-4);
+	/* ═══ Folder preview ═══ */
+	.folder-preview {
+		margin-top: var(--size-4-3);
+		padding-top: var(--size-4-3);
+		border-top: 1px solid var(--background-modifier-border);
 	}
 
-	.action-buttons-row.centered {
-		justify-content: center;
-		gap: var(--size-4-3);
+	.folder-preview h4 {
+		margin: 0 0 var(--size-4-2) 0;
+		font-size: var(--font-ui-small);
+		color: var(--text-normal);
 	}
 
-	.main-buttons {
-		display: flex;
-		gap: var(--size-4-2);
+	.tree {
+		background: var(--background-primary);
+		border: 1px solid var(--background-modifier-border);
+		border-radius: var(--radius-s);
+		padding: var(--size-4-2) var(--size-4-3);
+		font-family: var(--font-monospace);
+		font-size: 11px;
+		line-height: 1.6;
+		color: var(--text-muted);
 	}
 
-	/* Verification Step Success banner */
+	.tree-line {
+		white-space: pre;
+	}
+
+	.tree-more {
+		color: var(--text-faint);
+		font-style: italic;
+	}
+
+	/* ═══ Step 3: Success ═══ */
 	.success-banner {
 		display: flex;
 		align-items: center;
@@ -854,53 +1422,84 @@
 		font-size: 28px;
 	}
 
-	.success-summary-card {
+	.summary-card {
+		background: var(--background-secondary);
+		border: 1px solid var(--background-modifier-border);
 		border-left: 4px solid var(--text-success);
+		border-radius: var(--radius-m);
+		padding: var(--size-4-4);
+		margin-bottom: var(--size-4-4);
 	}
 
-	.text-success {
+	.summary-card h4 {
+		margin: 0 0 var(--size-4-3) 0;
+		font-size: var(--font-ui-medium);
+		color: var(--text-normal);
+	}
+
+	.summary-grid {
+		display: flex;
+		flex-direction: column;
+		gap: var(--size-4-2);
+	}
+
+	.summary-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 4px 0;
+		font-size: var(--font-ui-small);
+		border-bottom: 1px solid var(--background-modifier-border);
+	}
+
+	.summary-row:last-child {
+		border-bottom: none;
+	}
+
+	.summary-label {
+		color: var(--text-muted);
+		font-weight: 500;
+	}
+
+	.summary-value {
+		color: var(--text-normal);
+	}
+
+	.summary-value code {
+		background: var(--background-primary);
+		padding: 2px 6px;
+		border-radius: var(--radius-s);
+		font-size: 11px;
+	}
+
+	.summary-value.currency {
 		color: var(--text-success);
 		font-weight: 600;
 	}
 
-	/* Input controls override to feel polished */
-	input[type='text'], select {
-		width: 100%;
-		max-width: 220px;
-		background-color: var(--background-primary);
+	/* ═══ Next steps ═══ */
+	.next-steps {
+		background: var(--background-secondary);
 		border: 1px solid var(--background-modifier-border);
-		border-radius: var(--radius-s);
-		padding: 4px 8px;
+		border-radius: var(--radius-m);
+		padding: var(--size-4-4);
+		margin-bottom: var(--size-4-4);
+	}
+
+	.next-steps h4 {
+		margin: 0 0 var(--size-4-2) 0;
+		font-size: var(--font-ui-medium);
 		color: var(--text-normal);
 	}
 
-	input[type='text']:focus, select:focus {
-		border-color: var(--interactive-accent);
-		outline: none;
+	.next-steps ol {
+		margin: 0;
+		padding-left: var(--size-4-5);
+		font-size: var(--font-ui-small);
+		line-height: var(--line-height-normal);
 	}
 
-	/* Setting items style tweaks */
-	.setting-item {
-		border-top: none;
-		border-bottom: 1px solid var(--background-modifier-border);
-		padding: var(--size-4-3) 0;
-	}
-
-	.setting-item:last-child {
-		border-bottom: none;
-	}
-
-	.setting-item-name {
-		font-weight: 500;
-	}
-
-	.setup-link {
-		color: var(--text-accent);
-		cursor: pointer;
-		text-decoration: underline;
-	}
-
-	.setup-link:hover {
-		color: var(--text-accent-hover);
+	.next-steps li {
+		margin-bottom: var(--size-4-1);
 	}
 </style>

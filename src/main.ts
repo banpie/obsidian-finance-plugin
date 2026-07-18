@@ -20,6 +20,7 @@ import { JournalService } from './services/journal.service';
 import { PriceService } from './services/price.service';
 import { createJournalStore } from './stores/journal.store';
 import { Logger } from './utils/logger';
+import { SystemDetector } from './utils/SystemDetector';
 
 // --------------------------------------------------
 
@@ -42,6 +43,9 @@ export default class BeancountPlugin extends Plugin {
 	public journalService: JournalService;
 	public priceService: PriceService;
 	public journalStore: ReturnType<typeof createJournalStore>;
+
+	/** Whether bean-query is currently reachable (runtime state, NOT persisted). */
+	public isConnectionReady = false;
 
 	/**
 	 * Called when the plugin is loaded by Obsidian.
@@ -67,12 +71,17 @@ export default class BeancountPlugin extends Plugin {
 		this.priceService = new PriceService(this);
 		this.journalStore = createJournalStore(this.journalService);
 
-		// Check for onboarding — structuredFolderName is the source of truth for setup completion
-		if (!this.settings.structuredFolderName) {
-			Logger.log('No Beancount folder configured. Triggering onboarding.');
+		// Check for onboarding — use dedicated flag instead of structuredFolderName
+		if (!this.settings.onboardingCompleted) {
+			Logger.log('Onboarding not completed. Triggering onboarding wizard.');
 			this.app.workspace.onLayoutReady(() => {
 				new OnboardingModal(this.app, this).open();
 			});
+		}
+
+		// Non-blocking runtime probe to check if bean-query is reachable
+		if (this.settings.beancountCommand) {
+			void this.probeConnection();
 		}
 
 		// Initialize and register BQL code block processor
@@ -272,6 +281,28 @@ export default class BeancountPlugin extends Plugin {
 				})();
 			}, intervalMs)
 		);
+	}
+
+	/**
+	 * Non-blocking runtime probe to check if bean-query is reachable.
+	 * Sets the in-memory `isConnectionReady` flag without persisting it.
+	 */
+	public async probeConnection(): Promise<void> {
+		if (!this.settings.beancountCommand) {
+			this.isConnectionReady = false;
+			return;
+		}
+		try {
+			const detector = SystemDetector.getInstance();
+			const result = await detector.testCommand(
+				this.settings.beancountCommand, ['--version'], 3000
+			);
+			this.isConnectionReady = result.success;
+			Logger.log(`[Main] Connection probe: ${result.success ? 'ready' : 'not reachable'}`);
+		} catch {
+			this.isConnectionReady = false;
+			Logger.log('[Main] Connection probe: failed (exception)');
+		}
 	}
 
 	/**
