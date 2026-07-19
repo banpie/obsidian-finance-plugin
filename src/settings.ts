@@ -612,11 +612,11 @@ export class BeancountSettingTab extends PluginSettingTab {
                 borderRadius: '5px'
             });
 
-            pathDiv.createEl('div', {
+            pathDiv.createDiv({
                 text: 'Main ledger file path:',
                 cls: 'setting-item-name'
             });
-            const descEl = pathDiv.createEl('div', {
+            const descEl = pathDiv.createDiv({
                 text: `${folderName}/ledger.beancount`,
                 cls: 'setting-item-description'
             });
@@ -641,7 +641,7 @@ export class BeancountSettingTab extends PluginSettingTab {
     }
 
     private createValidationElement(container: HTMLElement): HTMLElement {
-        const validationEl = container.createEl('div', {
+        const validationEl = container.createDiv({
             cls: 'beancount-validation-message'
         });
         return validationEl;

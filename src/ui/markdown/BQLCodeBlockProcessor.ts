@@ -64,7 +64,7 @@ export class BQLCodeBlockProcessor {
 		}
 
 		// Create container for the BQL result
-		const container = createEl('div', { cls: 'bql-query-container' });
+		const container = createDiv({ cls: 'bql-query-container' });
 		
 		// Get user preferences (with fallback to defaults if undefined)
 		const showTools = this.plugin.settings.bqlShowTools ?? true;
@@ -83,15 +83,15 @@ export class BQLCodeBlockProcessor {
 		let exportBtn: HTMLButtonElement | null = null;
 		
 		if (showTools || showQuery) {
-			header = container.createEl('div', { cls: 'bql-query-header' });
+			header = container.createDiv({ cls: 'bql-query-header' });
 			
 			if (showQuery) {
-				const queryLabel = header.createEl('div', { cls: 'bql-query-label' });
-				queryLabel.createEl('span', { text: 'BQL query', cls: 'bql-label' });
+				const queryLabel = header.createDiv({ cls: 'bql-query-label' });
+				queryLabel.createSpan({ text: 'BQL query', cls: 'bql-label' });
 			}
 			
 			if (showTools) {
-				controls = header.createEl('div', { cls: 'bql-query-controls' });
+				controls = header.createDiv({ cls: 'bql-query-controls' });
 
 				// Format selector
 				const formatSelect = controls.createEl('select', { cls: 'bql-format-select', title: 'Output format' });
@@ -140,7 +140,7 @@ export class BQLCodeBlockProcessor {
 		}
 		
 		// Create result area
-		const resultArea = container.createEl('div', { cls: 'bql-result-area' });
+		const resultArea = container.createDiv({ cls: 'bql-result-area' });
 		
 		// Function to execute query and update results
 		const executeQuery = async () => {
@@ -149,12 +149,12 @@ export class BQLCodeBlockProcessor {
 				resultArea.empty();
 				
 				if (showTools) {
-					const loadingEl = resultArea.createEl('div', { cls: 'bql-loading' });
-					loadingEl.createEl('span', { text: '⟳', cls: 'bql-loading-spinner' });
-					loadingEl.createEl('span', { text: 'Executing query...', cls: 'bql-loading-text' });
+					const loadingEl = resultArea.createDiv({ cls: 'bql-loading' });
+					loadingEl.createSpan({ text: '⟳', cls: 'bql-loading-spinner' });
+					loadingEl.createSpan({ text: 'Executing query...', cls: 'bql-loading-text' });
 				} else {
 					// Minimal loading for clean mode
-					const loadingEl = resultArea.createEl('div', { cls: 'bql-loading-minimal' });
+					const loadingEl = resultArea.createDiv({ cls: 'bql-loading-minimal' });
 					loadingEl.textContent = 'Loading...';
 				}
 				
@@ -166,7 +166,7 @@ export class BQLCodeBlockProcessor {
 				resultArea.empty();
 				
 				if (!queryResult || queryResult.trim() === '') {
-					resultArea.createEl('div', { 
+					resultArea.createDiv({ 
 						text: 'No results returned', 
 						cls: 'bql-no-results' 
 					});
@@ -242,17 +242,17 @@ export class BQLCodeBlockProcessor {
 	}
 	
 	private createCollapsibleError(container: HTMLElement, summary: string, fullError: string) {
-		const errorContainer = container.createEl('div', { cls: 'bql-error-container' });
+		const errorContainer = container.createDiv({ cls: 'bql-error-container' });
 		
 		// Create summary line with toggle
-		const summaryLine = errorContainer.createEl('div', { cls: 'bql-error-summary' });
+		const summaryLine = errorContainer.createDiv({ cls: 'bql-error-summary' });
 		
-		const toggleIcon = summaryLine.createEl('span', { 
+		const toggleIcon = summaryLine.createSpan({ 
 			text: '▶', 
 			cls: 'bql-error-toggle'
 		});
 		
-		const summaryText = summaryLine.createEl('span', { 
+		const summaryText = summaryLine.createSpan({ 
 			text: summary, 
 			cls: 'bql-error-summary-text'
 		});
@@ -266,7 +266,7 @@ export class BQLCodeBlockProcessor {
 		}
 		
 		// Create collapsible details
-		const details = errorContainer.createEl('div', { cls: 'bql-error-details' });
+		const details = errorContainer.createDiv({ cls: 'bql-error-details' });
 		details.setCssStyles({ display: 'none' });
 		
 		const fullErrorEl = details.createEl('pre', { cls: 'bql-error-full' });
