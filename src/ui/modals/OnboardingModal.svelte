@@ -380,7 +380,7 @@
 		<!-- ═══════════════════════════════════════════════ -->
 		{#if currentStep === 'connect'}
 			<p class="step-description">
-				This plugin uses <strong>bean-query</strong> — a command-line tool from the Beancount ecosystem — to query your financial data.
+				This plugin uses <strong>bean-query</strong>, a command-line tool from the Beancount ecosystem to query your financial data.
 				Obsidian must be able to run it.
 			</p>
 

@@ -64,8 +64,7 @@ export class BQLCodeBlockProcessor {
 		}
 
 		// Create container for the BQL result
-		const container = activeDocument.createElement('div');
-		container.className = 'bql-query-container';
+		const container = createEl('div', { cls: 'bql-query-container' });
 		
 		// Get user preferences (with fallback to defaults if undefined)
 		const showTools = this.plugin.settings.bqlShowTools ?? true;
@@ -102,8 +101,7 @@ export class BQLCodeBlockProcessor {
 					{ value: 'beancount', label: 'Beancount' },
 				];
 				formatOptions.forEach(opt => {
-					const option = formatSelect.createEl('option', { text: opt.label });
-					option.value = opt.value;
+					formatSelect.createEl('option', { text: opt.label, value: opt.value });
 				});
 				(container as BQLHTMLElement)._bqlFormat = 'csv';
 				formatSelect.value = 'csv';
@@ -321,8 +319,7 @@ export class BQLCodeBlockProcessor {
 			const rows = lines.slice(1).map(parseCSVLine);
 			
 			// Create table
-			const table = activeDocument.createElement('table');
-			table.className = 'bql-result-table';
+			const table = createEl('table', { cls: 'bql-result-table' });
 			
 			// Create header
 			const thead = table.createEl('thead');
@@ -365,15 +362,17 @@ export class BQLCodeBlockProcessor {
 	
 	private downloadFile(content: string, filename: string, mimeType: string) {
 		const blob = new Blob([content], { type: mimeType });
-		const link = activeDocument.createElement('a');
-		if (link.download !== undefined) {
+		if ('download' in HTMLAnchorElement.prototype) {
 			const url = URL.createObjectURL(blob);
-			link.setAttribute('href', url);
-			link.setAttribute('download', filename);
+			const link = activeDocument.body.createEl('a', {
+				attr: {
+					href: url,
+					download: filename
+				}
+			});
 			link.setCssStyles({ visibility: 'hidden' });
-			activeDocument.body.appendChild(link);
 			link.click();
-			activeDocument.body.removeChild(link);
+			link.detach();
 		}
 	}
 }
