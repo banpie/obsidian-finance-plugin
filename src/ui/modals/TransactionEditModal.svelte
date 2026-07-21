@@ -24,6 +24,12 @@
 	import { SnippetSuggestModal } from "./SnippetSuggestModal";
 	import { Notice } from "obsidian";
 
+	import PostingRow from "./transaction-edit/PostingRow.svelte";
+	import TagLinkInput from "./transaction-edit/TagLinkInput.svelte";
+	import BalanceTabForm from "./transaction-edit/BalanceTabForm.svelte";
+	import NoteTabForm from "./transaction-edit/NoteTabForm.svelte";
+	import QueryTabForm from "./transaction-edit/QueryTabForm.svelte";
+
 	const dispatch = createEventDispatcher();
 
 	// Beancount internal metadata fields that should not be shown to users
@@ -1171,291 +1177,27 @@
 			<!-- Postings -->
 			<div class="postings-section">
 				{#each postings as posting, index}
-					<div class="posting-container">
-						<div class="posting-row">
-							<div class="posting-account">
-						<label for="posting-account-{index}">Account *</label>
-						<input
-							id="posting-account-{index}"
-							type="text"
-							bind:value={posting.account}
-							list="accounts-list"
-							placeholder="Account name"
-							required
-						/>
-					</div>
-
-					<div class="posting-amount">
-						<label for="posting-amount-{index}">Amount</label>
-						<input
-							id="posting-amount-{index}"
-							type="number"
-							step="0.01"
-							bind:value={posting.amount}
-							placeholder="Optional amount"
-						/>
-					</div>
-
-					<div class="posting-currency">
-						<label for="posting-currency-{index}">Currency</label>
-						<input
-							id="posting-currency-{index}"
-									bind:value={posting.currency}
-									list="currencies-list"
-									placeholder="INR"
-									maxlength="3"
-								/>
-							</div>
-
-							<div class="posting-toggle-buttons">
-								<button
-									type="button"
-									class="posting-toggle-btn cost-btn"
-									class:active={showCost[index]}
-									on:click={() => toggleCost(index)}
-									title="Cost"
-								>
-									$
-								</button>
-								<button
-									type="button"
-									class="posting-toggle-btn price-btn"
-									class:active={showPrice[index]}
-									on:click={() => togglePrice(index)}
-									title="Price"
-								>
-									@
-								</button>
-								<button
-									type="button"
-									class="posting-toggle-btn flag-btn"
-									class:active={showPostingFlag[index]}
-									on:click={() => togglePostingFlag(index)}
-									title="Flag"
-								>
-									!
-								</button>
-								<button
-									type="button"
-									class="posting-toggle-btn comment-btn"
-									class:active={showPostingComment[index]}
-									on:click={() => togglePostingComment(index)}
-									title="Comment"
-								>
-									💬
-								</button>
-								<button
-									type="button"
-									class="posting-toggle-btn metadata-btn"
-									class:active={showPostingMetadata[index]}
-									on:click={() =>
-										togglePostingMetadata(index)}
-									title="Metadata"
-								>
-									📋
-								</button>
-								{#if postings.length > 2}
-									<button
-										type="button"
-										class="remove-posting"
-										on:click={() => removePosting(index)}
-										title="Remove posting"
-									>
-										&times;
-									</button>
-								{/if}
-							</div>
-						</div>
-
-						<!-- Cost Section -->
-						{#if showCost[index]}
-							<div class="posting-advanced cost-section">
-								<div class="advanced-grid">
-									<div class="advanced-field">
-									<label for="cost-amount-{index}">Amount</label>
-									<input
-										id="cost-amount-{index}"
-										type="number"
-										step="0.01"
-										bind:value={posting.cost.number}
-										placeholder="150.00"
-									/>
-								</div>
-
-								<div class="advanced-field">
-									<label for="cost-currency-{index}">Currency</label>
-									<input
-									id="cost-currency-{index}"
-										type="text"
-										bind:value={posting.cost.currency}
-										list="currencies-list"
-										placeholder="USD"
-										maxlength="3"
-									/>
-								</div>
-
-								<div class="advanced-field">
-									<label for="cost-date-{index}">Date</label>
-									<input
-										id="cost-date-{index}"
-										type="date"
-										bind:value={posting.cost.date}
-										max={date}
-										use:nativeDatePicker
-									/>
-								</div>
-
-								<div class="advanced-field">
-									<label for="cost-label-{index}">Label</label>
-									<input
-										id="cost-label-{index}"
-											bind:value={posting.cost.label}
-											placeholder="lot-001"
-										/>
-									</div>
-
-									<div class="advanced-field checkbox-field">
-										<label>
-											<input
-												type="checkbox"
-												bind:checked={
-													posting.cost.isTotal
-												}
-											/>
-											Total Cost {'{{}}'}
-										</label>
-									</div>
-								</div>
-							</div>
-						{/if}
-
-						<!-- Price Section -->
-						{#if showPrice[index]}
-							<div class="posting-advanced price-section">
-								<div class="advanced-grid">
-									<div class="advanced-field">
-									<label for="price-amount-{index}">Amount</label>
-									<input
-										id="price-amount-{index}"
-										type="number"
-										step="0.01"
-										bind:value={posting.price.amount}
-										placeholder="1.09"
-									/>
-								</div>
-
-								<div class="advanced-field">
-									<label for="price-currency-{index}">Currency</label>
-									<input
-										id="price-currency-{index}"
-											list="currencies-list"
-											placeholder="CAD"
-											maxlength="3"
-										/>
-									</div>
-
-									<div class="advanced-field checkbox-field">
-										<label>
-											<input
-												type="checkbox"
-												bind:checked={
-													posting.price.isTotal
-												}
-											/>
-											Total Price @@
-										</label>
-									</div>
-								</div>
-							</div>
-						{/if}
-
-						<!-- Posting Flag Section -->
-						{#if showPostingFlag[index]}
-							<div class="posting-advanced flag-section">
-								<div class="flag-field">
-									<label>
-										<input
-											type="radio"
-											bind:group={posting.flag}
-											value="!"
-										/>
-										! Incomplete
-									</label>
-									<label>
-										<input
-											type="radio"
-											bind:group={posting.flag}
-											value="*"
-										/>
-										* Complete
-									</label>
-								</div>
-							</div>
-						{/if}
-
-						<!-- Comment Section -->
-						{#if showPostingComment[index]}
-							<div class="posting-advanced comment-section">
-							<label for="posting-comment-{index}">Comment</label>
-							<input
-								id="posting-comment-{index}"
-									placeholder="Inline comment"
-									class="comment-input"
-								/>
-							</div>
-						{/if}
-
-						<!-- Posting Metadata Section -->
-						{#if showPostingMetadata[index]}
-							<div class="posting-advanced metadata-section">
-								<div class="metadata-list">
-									{#each Object.keys(posting.metadata || {}) as key}
-										<div class="metadata-item">
-											<input
-												type="text"
-												value={key}
-												placeholder="key"
-												class="metadata-key"
-												on:change={(e) =>
-													updatePostingMetadataKey(
-														index,
-														key,
-														e.currentTarget.value,
-													)}
-											/>
-											<input
-												type="text"
-												bind:value={
-													posting.metadata[key]
-												}
-												placeholder="Value"
-												class="metadata-value"
-											/>
-											<button
-												type="button"
-												class="remove-metadata"
-												on:click={() =>
-													removePostingMetadata(
-														index,
-														key,
-													)}
-											>
-												&times;
-											</button>
-										</div>
-									{/each}
-									<button
-										type="button"
-										class="add-metadata-btn"
-										on:click={() =>
-											addPostingMetadata(index)}
-									>
-										+ Add Metadata
-									</button>
-								</div>
-							</div>
-						{/if}
-					</div>
+					<PostingRow
+						{posting}
+						{index}
+						totalPostings={postings.length}
+						{date}
+						{operatingCurrency}
+						showCost={showCost[index]}
+						showPrice={showPrice[index]}
+						showPostingFlag={showPostingFlag[index]}
+						showPostingComment={showPostingComment[index]}
+						showPostingMetadata={showPostingMetadata[index]}
+						onToggleCost={toggleCost}
+						onTogglePrice={togglePrice}
+						onToggleFlag={togglePostingFlag}
+						onToggleComment={togglePostingComment}
+						onToggleMetadata={togglePostingMetadata}
+						onRemovePosting={removePosting}
+						onAddMetadata={addPostingMetadata}
+						onRemoveMetadata={removePostingMetadata}
+						onUpdateMetadataKey={updatePostingMetadataKey}
+					/>
 				{/each}
 
 				<button type="button" class="add-posting" on:click={addPosting}>
@@ -1463,268 +1205,50 @@
 				</button>
 			</div>
 
-			<!-- Tags & Links (side-by-side) -->
-			<div class="tags-links-section">
-				<div class="tags-links-row">
-					<div class="form-group">
-						<label for="tags">Tags</label>
-						<input
-							type="text"
-							id="tags"
-							on:keydown={handleTagInput}
-							list="tags-list"
-							placeholder="Tag + Enter"
-						/>
-						<datalist id="tags-list">
-							{#each tags as tag}
-								<option value={tag} />
-							{/each}
-						</datalist>
-						{#if selectedTags.length > 0}
-							<div class="selected-tags">
-								{#each selectedTags as tag}
-									<span class="tag"
-										>#{tag}<button
-											type="button"
-											on:click={() => removeTag(tag)}
-											>&times;</button
-										></span
-									>
-								{/each}
-							</div>
-						{/if}
-					</div>
-					<div class="form-group">
-						<label for="links">Links</label>
-						<input
-							type="text"
-							id="links"
-							on:keydown={handleLinkInput}
-							placeholder="Link + Enter"
-						/>
-						{#if selectedLinks.length > 0}
-							<div class="selected-links">
-								{#each selectedLinks as link}
-									<span class="link"
-										>^{link}<button
-											type="button"
-											on:click={() => removeLink(link)}
-											>&times;</button
-										></span
-									>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				</div>
-			</div>
+			<!-- Tags & Links -->
+			<TagLinkInput
+				bind:selectedTags
+				bind:selectedLinks
+				{tags}
+			/>
 		{/if}
 
 		<!-- Balance Form -->
 		{#if activeTab === "balance"}
-			<div class="form-grid">
-				<div class="form-group">
-					<label for="balance-date">Date *</label>
-					<input
-						type="date"
-						id="balance-date"
-						bind:value={date}
-						use:nativeDatePicker
-						required
-					/>
-				</div>
-
-				<div class="form-group">
-					<label for="balance-account">Account *</label>
-					<input
-						type="text"
-						id="balance-account"
-						bind:value={balanceAccount}
-						list="accounts-list"
-						placeholder="Account to check balance"
-						required
-					/>
-				</div>
-
-				<div class="form-group">
-					<label for="balance-amount">Amount *</label>
-					<input
-						type="number"
-						step="0.01"
-						id="balance-amount"
-						bind:value={balanceAmount}
-						placeholder="Expected balance"
-						required
-					/>
-				</div>
-
-				<div class="form-group">
-					<label for="balance-currency">Currency *</label>
-					<input
-						type="text"
-						id="balance-currency"
-						bind:value={balanceCurrency}
-						list="currencies-list"
-						placeholder="INR"
-						maxlength="3"
-						required
-					/>
-				</div>
-			</div>
+			<BalanceTabForm
+				bind:date
+				bind:balanceAccount
+				bind:balanceAmount
+				bind:balanceCurrency
+			/>
 		{/if}
 
 		<!-- Note Form -->
 		{#if activeTab === "note"}
-			<div class="form-grid">
-				<div class="form-group">
-					<label for="note-date">Date *</label>
-					<input
-						type="date"
-						id="note-date"
-						bind:value={date}
-						use:nativeDatePicker
-						required
-					/>
-				</div>
-
-				<div class="form-group">
-					<label for="note-account">Account *</label>
-					<input
-						type="text"
-						id="note-account"
-						bind:value={noteAccount}
-						list="accounts-list"
-						placeholder="Account for the note"
-						required
-					/>
-				</div>
-
-				<div class="form-group full-width">
-					<label for="note-comment">Comment *</label>
-					<textarea
-						id="note-comment"
-						bind:value={noteComment}
-						placeholder="Note content"
-						required
-						rows="3"
-					></textarea>
-				</div>
-			</div>
+			<NoteTabForm
+				bind:date
+				bind:noteAccount
+				bind:noteComment
+			/>
 		{/if}
 
 		<!-- Query Form -->
 		{#if activeTab === "query"}
-			<div class="form-grid">
-				<div class="form-group">
-					<label for="query-date">Date *</label>
-					<input
-						type="date"
-						id="query-date"
-						bind:value={date}
-						use:nativeDatePicker
-						required
-					/>
-				</div>
-
-				<div class="form-group">
-					<label for="query-name">Query name *</label>
-					<input
-						type="text"
-						id="query-name"
-						bind:value={queryName}
-						placeholder="e.g. my_expenses"
-						required
-					/>
-					<small class="query-hint">Use in notes with <code>bql-q:{queryName || 'name'}</code></small>
-				</div>
-
-				<div class="form-group full-width">
-					<label for="query-sql">SQL *</label>
-					<textarea
-						id="query-sql"
-						bind:value={querySql}
-						placeholder="SELECT account, sum(position) WHERE account ~ 'Expenses' GROUP BY account"
-						required
-						rows="4"
-						class="query-sql-textarea"
-					></textarea>
-					<button
-						type="button"
-						class="btn-test-query"
-						on:click={testQuerySQL}
-						disabled={queryTesting || !querySql.trim()}
-					>
-						{queryTesting ? "Running..." : "▶ Test Query"}
-					</button>
-				</div>
-
-				{#if queryTestError}
-					<div class="form-group full-width">
-						<div class="query-test-error">
-							<strong>Error:</strong> {queryTestError}
-						</div>
-					</div>
-				{/if}
-
-				{#if queryTestRows.length > 0}
-					<div class="form-group full-width">
-						<div class="query-test-results">
-							<small class="query-preview-label">
-								Preview {Math.min(queryTestRows.length - 1, 5)} row(s)
-							</small>
-							<table class="query-preview-table">
-								<thead>
-									<tr>{#each queryTestRows[0] as h}<th>{h}</th>{/each}</tr>
-								</thead>
-								<tbody>
-									{#each queryTestRows.slice(1) as row}
-										<tr>{#each row as cell}<td>{cell}</td>{/each}</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
-					</div>
-				{/if}
-			</div>
+			<QueryTabForm
+				bind:date
+				bind:queryName
+				bind:querySql
+				{queryTesting}
+				{queryTestRows}
+				{queryTestError}
+				{savedQueries}
+				{savedQueriesLoading}
+				onTestQuerySQL={testQuerySQL}
+				onLoadSavedQueries={loadSavedQueries}
+				onLoadQueryIntoForm={loadQueryIntoForm}
+			/>
 		{/if}
 
-		<!-- Saved Queries Browser -->
-		{#if activeTab === "query"}
-			<div class="saved-queries-section">
-				<div class="saved-queries-header">
-					<span>Saved Named Queries</span>
-					<button
-						type="button"
-						class="btn-refresh-queries"
-						on:click={() => { savedQueriesLoaded = false; loadSavedQueries(); }}
-						disabled={savedQueriesLoading}
-						title="Refresh list"
-					>↻</button>
-				</div>
-				{#if savedQueriesLoading}
-					<p class="saved-queries-empty">Loading…</p>
-				{:else if Object.keys(savedQueries).length === 0}
-					<p class="saved-queries-empty">No named queries saved yet.</p>
-				{:else}
-					<ul class="saved-queries-list">
-						{#each Object.entries(savedQueries) as [name, sql]}
-							<li class="saved-query-item">
-								<div class="saved-query-info">
-									<code class="saved-query-name">bql-q:{name}</code>
-									<span class="saved-query-sql">{sql}</span>
-								</div>
-								<button
-									type="button"
-									class="btn-load-query"
-									on:click={() => loadQueryIntoForm(name, sql)}
-									title="Load into editor"
-								>Load</button>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			</div>
-		{/if}
 		<datalist id="accounts-list">
 			{#each accounts as account}
 				<option value={account} />

@@ -2,9 +2,14 @@
 
 ![Plugin Logo](logo.png)
 
+[![CI Check](https://github.com/mkshp-dev/obsidian-finance-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/mkshp-dev/obsidian-finance-plugin/actions/workflows/ci.yml)
+[![Docs Portal](https://img.shields.io/badge/docs-docusaurus-blue.svg)](https://mkshp-dev.github.io/obsidian-finance-plugin/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Obsidian Plugin](https://img.shields.io/badge/Obsidian-v1.0.0+-purple.svg)](https://obsidian.md)
+
 A comprehensive Beancount integration for [Obsidian](https://obsidian.md) that transforms your vault into a powerful plain-text accounting dashboard.
 
-📘 **[Full Documentation](https://mkshp-dev.github.io/obsidian-finance-plugin/)** - Read the complete guide for features, configuration, and usage.
+📘 **[Full Documentation Portal](https://mkshp-dev.github.io/obsidian-finance-plugin/)** — Read the complete guide for features, configuration, and usage.
 
 ---
 
