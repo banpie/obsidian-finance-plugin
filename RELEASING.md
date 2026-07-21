@@ -41,7 +41,7 @@ Use npm to bump the version without creating a git tag:
 ```bash
 npm version <patch | minor | major> --no-git-tag-version
 ```
-*(For example, `npm version patch --no-git-tag-version` will automatically bump the patch number and update `manifest.json`, `package.json`, and `versions.json`)*.
+*(For example, `npm version patch --no-git-tag-version` will automatically bump the patch number, update `manifest.json`, `package.json`, `versions.json`, and run `version-bump.mjs` to tag the release version of the documentation site in `docs-site/`)*.
 
 > [!IMPORTANT]
 > **Criticality of `--no-git-tag-version`**: 
@@ -51,7 +51,7 @@ npm version <patch | minor | major> --no-git-tag-version
 Create a commit on `Dev` with the message prefix `Release ` followed by the new version. This prefix is **strictly required** to trigger the release pipeline.
 
 ```bash
-git add manifest.json package.json package-lock.json versions.json
+git add manifest.json package.json package-lock.json versions.json docs-site/
 git commit -m "Release 1.2.3"
 git push origin Dev
 ```
@@ -108,11 +108,12 @@ Once the workflows complete (usually 1-2 minutes):
 
 | File | Role |
 |------|------|
-| [manifest.json](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/obsidian-MOC-plugin/manifest.json) | Plugin metadata; `version` field must match the git tag |
-| [versions.json](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/obsidian-MOC-plugin/versions.json) | Maps each release version to the minimum Obsidian app version |
-| [package.json](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/obsidian-MOC-plugin/package.json) | `version` field kept in sync by `npm version` |
-| [version-bump.mjs](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/obsidian-MOC-plugin/version-bump.mjs) | Script run by `npm version` to update `manifest.json` and `versions.json` |
-| [.github/workflows/release-trigger.yml](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/obsidian-MOC-plugin/.github/workflows/release-trigger.yml) | Automates PR creation and merging from `Dev` to `master` |
-| [.github/workflows/release-finalize.yml](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/obsidian-MOC-plugin/.github/workflows/release-finalize.yml) | Compiles, tags, drafts the release, and prepares `CHANGELOG.md` for next cycle |
-| `master.js` | Built plugin bundle — uploaded as release asset |
+| [manifest.json](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/beancount-finance/manifest.json) | Plugin metadata; `version` field must match the git tag |
+| [versions.json](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/beancount-finance/versions.json) | Maps each release version to the minimum Obsidian app version |
+| [package.json](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/beancount-finance/package.json) | `version` field kept in sync by `npm version` |
+| [version-bump.mjs](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/beancount-finance/version-bump.mjs) | Script run by `npm version` to update `manifest.json`, `versions.json`, and snapshot `docs-site/` |
+| [docs-site/versions.json](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/beancount-finance/docs-site/versions.json) | Tracks released documentation version tags for Docusaurus |
+| [.github/workflows/release-trigger.yml](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/beancount-finance/.github/workflows/release-trigger.yml) | Automates PR creation and merging from `Dev` to `master` |
+| [.github/workflows/release-finalize.yml](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/beancount-finance/.github/workflows/release-finalize.yml) | Compiles, tags, drafts the release, and prepares `CHANGELOG.md` for next cycle |
+| `main.js` | Built plugin bundle — uploaded as release asset |
 | `styles.css` | Plugin styles — uploaded as release asset |

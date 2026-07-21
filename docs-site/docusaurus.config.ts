@@ -39,6 +39,11 @@ const config: Config = {
           editUrl:
             'https://github.com/mkshp-dev/obsidian-finance-plugin/tree/dev/docs-site/',
           routeBasePath: '/',
+          versions: {
+            current: {
+              label: 'In-Progress',
+            },
+          },
         },
         blog: false,
         theme: {
@@ -67,6 +72,11 @@ const config: Config = {
           sidebarId: 'tutorialSidebar',
           position: 'left',
           label: 'Documentation',
+        },
+        {
+          type: 'docsVersionDropdown',
+          position: 'right',
+          dropdownActiveClassDisabled: true,
         },
         {
           href: 'https://github.com/mkshp-dev/obsidian-finance-plugin',
