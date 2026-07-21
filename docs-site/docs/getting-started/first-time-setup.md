@@ -19,137 +19,125 @@ Open Command Palette (`Ctrl/Cmd + P`) → **"Obsidian Finance: Run Setup/Onboard
 
 ---
 
-## Step 1: Prerequisites Check 🔍
+## Step 1: Connect 🔌
 
-The plugin verifies your system has the required software (Python, Beancount, bean-query, and optionally bean-price).
+The plugin uses **`bean-query`** (a command-line tool from the Beancount ecosystem) to query your financial data. Obsidian must be able to detect and execute it.
 
-For a detailed list of system requirements and step-by-step installation instructions for Windows, macOS, Linux, and WSL, please refer to the **[Requirements](./requirements.md)** guide.
+### Required & Optional Components
 
-![Prerequisites Onboarding Welcome Screen](/img/Onboarding-checkingPreRequisites.png)
+- **`bean-query` (Required):** Essential for running BQL queries and powering the financial dashboard.
+- **`bean-price` (Optional):** Used for automatic commodity price fetching.
 
-### Running the Check
+### Detection & Manual Verification
 
-1. Click **"🔍 Check Prerequisites"** button
-2. The plugin automatically detects:
-   - Python executable and version
-   - bean-query command and version  
-   - **bean-price** command and version *(optional — green if found, neutral if not)*
-   - System environment (Windows, macOS, Linux, WSL)
+1. **Automatic Detection:** Upon opening Step 1, the plugin automatically scans your system environment for `bean-query` and `bean-price`.
+2. **Manual Entry:** If automatic detection fails, you can enter your exact executable command or absolute file path into the command input box.
+   - *Common Command Values:* `bean-query`, `wsl bean-query`, `/home/user/.local/bin/bean-query`, `/opt/homebrew/bin/bean-query`
+3. **Verify:** Click the **Verify** button to test execution and check the version output immediately.
 
-### Results
+![Connect Onboarding Step](/img/Onboarding-checkingPreRequisites.png)
 
-#### ✅ All Prerequisites Met
-If all requirements are satisfied, you'll see:
-- Python command path and version
-- bean-query command path and version
-- bean-price command path and version *(or a neutral notice if not installed)*
-- **"Next: File Setup →"** button to proceed
+### In-Modal Installation Guides ("📦 How to install")
 
-![Prerequisites Verification Results](/img/Onboarding-checkingPreRequisites_lowerPart.png)
+For convenience, Step 1 includes tabbed installation instructions directly inside the onboarding wizard:
 
-The detected commands are automatically saved to your settings — including `beanPriceCommand` if bean-price was found.
+#### 🪟 Windows
+1. Install [Python 3.8+](https://www.python.org/downloads/) (make sure to check **"Add Python to PATH"** during installation).
+2. Open PowerShell and run:
+   ```powershell
+   pip install beancount beanquery beanprice
+   ```
+3. Verify in PowerShell: `bean-query --version`
+4. **WSL Users:** If you prefer running Beancount inside WSL, install it in your WSL distro and set `wsl bean-query` as your command.
 
-#### ❌ Prerequisites Not Met
-If requirements are missing, you'll see:
-- Specific items that failed (Python or bean-query)
-- Direct link to the **[Requirements](./requirements.md)** guide for install instructions
-- Option to **"Skip (Manual Config)"** for later setup
+#### 🍎 macOS
+1. Open Terminal and run:
+   ```bash
+   pip3 install beancount beanquery beanprice
+   ```
+2. Verify in Terminal: `bean-query --version`
+3. **PATH Note for GUI Apps:** macOS GUI applications do not automatically inherit `~/.local/bin` from your shell. If auto-detection fails, enter your full absolute path (e.g., `/Users/<your-username>/.local/bin/bean-query`). Find it in Terminal with `which bean-query`.
 
+#### 🐧 Linux (AppImage / Deb)
+1. Open terminal and install via `pip` (recommended):
+   ```bash
+   pip install --user beancount beanquery beanprice
+   ```
+2. Verify in terminal: `bean-query --version`
+3. **System Packages Note:** Installing Beancount via system package managers (`apt`, `dnf`, `pacman`) often installs Beancount v2. You must install `beanquery` via `pip` separately.
 
-### Skipping Prerequisites
+#### 📦 Linux (Flatpak / Snap)
 
-Click **"Skip (Manual Config)"** to configure later in **Settings → Connection**. Useful if:
-- You have Beancount installed in a non-standard location
-- You're using WSL or a custom Python environment
-- You want to configure later
+**Flatpak (Recommended Setup):**
+1. Install packages via pip on host machine:
+   ```bash
+   pip install --user beancount beanquery beanprice
+   ```
+2. Find binary path by running `which bean-query` in terminal (e.g., `~/.local/bin/bean-query`).
+3. Grant Obsidian filesystem access to that directory using `flatpak override`:
+   ```bash
+   sudo flatpak override --filesystem=~/.local/bin md.obsidian.Obsidian
+   ```
+4. Restart Obsidian completely so the Flatpak sandbox recognizes the filesystem permission change.
+5. Enter the full path (e.g., `/home/user/.local/bin/bean-query`) into the command box in Step 1 and click **Verify**.
+
+**Snap:**
+1. Find absolute path on host running `which bean-query`.
+2. Enter full path into command box and click **Verify**.
+3. **Confinement Note:** If strictly confined Snap blocks host CLI execution, switch to the official AppImage or Flatpak release.
+
+### Step Controls
+
+- **Re-detect:** Re-scans your system environment for `bean-query` and `bean-price`.
+- **Skip for now:** Bypasses CLI verification so you can proceed with setting up your ledger folder (*Note: Dashboard features require `bean-query` to be configured later in Settings → Connection*).
+- **Next: Organize →:** Proceeds to Step 2.
 
 ---
 
-## Step 2: File Setup 📁
+## Step 2: Organize 📁
 
-Choose your starting point after prerequisites are verified.
+Choose how to start and configure your structured ledger folder layout. All your finance files will be organized inside a single folder in your vault.
 
 ![File Setup Section](/img/Onboarding-FileSetup_topPart.png)
 
-#### 📊 Option 1: Start with Demo Data
+### Data Choice Options
 
-**Best for:**
-- New Beancount users wanting to learn
-- Testing the plugin before committing
-- Understanding how the plugin works
-- Seeing examples of proper Beancount syntax
+#### 📊 Option 1: Start with Demo Data (Recommended for beginners)
+- A complete sample ledger with realistic accounts, commodities, and transactions.
+- Allows you to explore the dashboard immediately without existing files.
+- Includes sample checking, savings, credit card, investment, income, and expense entries.
 
-**What You Get:**
-- A complete structured folder layout in your vault
-- Sample accounts (checking, savings, investments, credit cards)
-- Realistic transactions spanning multiple months
-- Example investments with price tracking
-- Various transaction types (income, expenses, transfers)
-- Properly formatted directives to learn from
+#### 📁 Option 2: Use My Existing Ledger
+- Select an existing `.beancount` file in your vault (or enter a path manually) to migrate it into the structured folder layout.
+- *Note:* Requires `bean-query` to be configured and verified in Step 1.
 
-**Demo Data Includes:**
-- **Accounts**: Assets (Bank, Investments), Liabilities (Credit Card), Income, Expenses
-- **Transactions**: Salary deposits, grocery shopping, restaurant meals, utilities, investments
-- **Commodities**: Stock tickers (AAPL, GOOGL, VTSAX) with prices
-- **Balance Assertions**: Monthly reconciliation examples
+### Configuration Options
 
-The demo data is completely safe to explore and modify. You can delete it anytime and start fresh with your real data.
-
-#### 📁 Option 2: Use Existing Beancount File
-
-**Best for:**
-- Existing Beancount users migrating to Obsidian
-- Users with an existing Beancount file → imports and organizes it into structured layout
-- Safe to explore and modify. Delete it anytime and start fresh.
-
-### Option 2: Existing File 📁
-**Setup Steps:**
-1. **Select File**: Choose from existing `.beancount` files in your vault via dropdown
-2. **Or Enter Path Manually**: Provide absolute path to file outside vault
-3. **Configure Folder**: Set the folder name for structured layout (default: "Finances")
-4. **Import**: Plugin automatically imports and organizes your file into structured layout
-
-![Select or Import Existing File](/img/Onboarding-FileSetup_lowerPart.png)
-
-**Path Examples:**
-- Inside vault: Select from dropdown
-- Outside vault: `C:\Users\You\Documents\finances.beancount`
-- WSL: `/mnt/c/Users/You/Documents/finances.beancount`
-
-### Navigation
-
-- **← Back to Prerequisites**: Return to Step 1
-- **Start Setup**: Proceed with chosen configuration
+1. **Folder name:** Specifies the vault folder where organized finance files live (default: `Finances`).
+2. **Transaction file period:** Choose how transaction files are grouped inside `transactions/`:
+   - **Yearly:** `Finances/transactions/2026.beancount`
+   - **Monthly:** `Finances/transactions/2026/2026-07.beancount`
+3. **Operating currency:** Primary currency for your records (e.g. `USD`, `EUR`, `GBP`).
+4. **Folder structure preview:** Live tree view showing exact files and directories that will be created.
 
 ---
 
-## Step 3: Verification ✅
+## Step 3: Ready 🎉
 
-After setup completes, you'll see a success screen with:
+After setup completes, Step 3 displays a success screen and configuration summary:
 
 ![Verification Summary](/img/Onboarding-verification_topPart.png)
 
 ### Configuration Summary
 
-- Python command and version
-- Bean-query command
-- File organization (Structured Layout)
-- Data source (Demo or Existing)
-- Folder location
+- **bean-query Command & Version**
+- **bean-price Status** (Command or Not Configured)
+- **Structured Folder Location**
+- **Data Source** (Demo Data or Existing Ledger)
+- **Operating Currency**
+- **Transaction Period** (Yearly or Monthly)
 
-### Next Steps Provided
-
-1. Open the Finance Dashboard
-2. Explore the 5 tabs (Overview, Transactions, Journal, Balance Sheet, Commodities)
-3. Try BQL queries in markdown notes
-4. Customize settings
-
-### Actions
-
-- **Open Dashboard & Close**: Opens the unified dashboard view and closes the modal
-- **Close**: Just close the modal (can open dashboard later via Command Palette)
-
-![Onboarding Completed Successfully](/img/Onboarding-verification_lowerPart.png)
+Click **"🚀 Open Dashboard"** to finish setup and launch the unified Obsidian Finance dashboard!
 
 ---
 
@@ -175,7 +163,7 @@ Finances/                      # Your chosen folder name
 ├── pads.beancount           # Pad directives
 ├── notes.beancount          # Note directives
 ├── events.beancount         # Event directives
-└── transactions/            # Transaction files by year
+└── transactions/            # Transaction files by period
     ├── 2024.beancount
     ├── 2025.beancount
     └── 2026.beancount
@@ -186,14 +174,14 @@ Finances/                      # Your chosen folder name
 You can run the onboarding wizard anytime:
 
 1. Open Command Palette (`Ctrl/Cmd + P`)
-2. Type "Run Setup/Onboarding"
+2. Type **"Obsidian Finance: Run Setup/Onboarding"**
 3. Follow the wizard to reconfigure or start fresh
 
 **Use Cases:**
 - Switching from demo data to real data
 - Changing folder names or organization
 - Importing a different ledger file
-- Starting over with a clean slate
+- Re-detecting or updating `bean-query` / `bean-price` commands
 
 ## ⚙️ Post-Setup Configuration
 
@@ -206,18 +194,12 @@ After onboarding completes:
 
 ### Configure Preferences
 - **Operating Currency**: Set your default currency (USD, EUR, etc.)
-- **Automatic Price Fetching**: If bean-price was detected, enable this in **Settings → General** to keep commodity prices up to date automatically
+- **Automatic Price Fetching**: If `bean-price` was detected, enable this in **Settings → General** to keep commodity prices up to date automatically
 - **Performance**: Adjust limits based on your ledger size
 - **BQL**: Configure query display preferences
 - **Backups**: Enable automatic backups (recommended)
 
-### Start Using the Plugin
-
-Once configured, you're ready to:
-- **Open Dashboard**: Click the ribbon icon or use Command Palette
-- **Add Transactions**: Use the "Add Transaction" command
-- **Execute Queries**: Try BQL code blocks in your notes
-- **Explore Views**: Check out all dashboard tabs
+---
 
 ## 🎓 Learning Path
 
@@ -233,11 +215,13 @@ Once configured, you're ready to:
 ### For Existing Beancount Users
 
 1. **Point to Your Ledger**: Use existing file option
-2. **Test Connection**: Ensure bean-query works
+2. **Test Connection**: Ensure `bean-query` works
 3. **Explore Dashboard**: See your real data visualized
 4. **Try Features**: Test transaction editing, BQL queries
 5. **Consider Migration**: Optionally migrate to structured layout
 6. **Customize Settings**: Adjust to your preferences
+
+---
 
 ## 💡 Tips
 
@@ -248,7 +232,7 @@ Once configured, you're ready to:
 
 **File Paths:**
 - Use absolute paths for reliability
-- WSL users: use Linux-style paths (`/mnt/c/...`)
+- WSL users: use `wsl bean-query` command and Linux-style paths
 - Inside vault: plugin handles path conversion automatically
 
 **Structured Layout:**
@@ -256,30 +240,23 @@ Once configured, you're ready to:
 - Recommended for all ledgers, especially those with > 500 transactions
 - Easy to navigate and version control
 
-**Onboarding:**
-- Can be run multiple times safely
-- Each run offers to backup existing data
-- No data loss - always creates backups first
+---
 
 ## 🆘 Troubleshooting Onboarding
 
 ### Onboarding Modal Doesn't Appear
-- Check if `beancountFilePath` is already set in settings
-- Manually run: Command Palette → "Run Setup/Onboarding"
+- Check if onboarding is already completed in settings
+- Manually run: Command Palette → **"Obsidian Finance: Run Setup/Onboarding"**
 
 ### File Path Invalid
-- Ensure the file exists and has `.beancount` or `.bean` extension
+- Ensure the file exists and has `.beancount` extension
 - Check file permissions (readable by Obsidian)
 - For WSL: verify path format is correct
 
-### Demo Data Not Loading
-- Check console for errors (Ctrl+Shift+I)
-- Ensure vault has write permissions
-- Try using a different folder name
-
 ### Bean-query Not Found
-- Install Beancount: `pip install beancount`
+- Install Beancount & beanquery: `pip install beancount beanquery`
 - Verify installation: `bean-query --version` in terminal
-- Set manual path in Connection settings if auto-detect fails
+- Set manual path in Connection settings or Step 1 manual command input if auto-detect fails
+- If using Flatpak, grant filesystem permission via `flatpak override --filesystem=...`
 
 For more help, see the [Troubleshooting Guide](../troubleshooting.md).

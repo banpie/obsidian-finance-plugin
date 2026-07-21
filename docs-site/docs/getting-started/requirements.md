@@ -12,10 +12,10 @@ Before you can use Beancount Ledger, you need to set up the underlying Python an
 
 The plugin requires the following command-line tools to be available:
 
-1.  **Python 3.8 or newer**: The runtime environment for executing Beancount.
-2.  **Beancount v3 or newer**: The main plain-text accounting engine.
-3.  **bean-query** (via `beanquery`): The query tool for BQL execution. Starting with Beancount v3, `beanquery` is distributed as a separate package and must be installed explicitly.
-4.  **bean-price** *(Optional)*: The automated price-fetching tool, distributed as `beanprice`.
+1. **Python 3.8 or newer**: The runtime environment for executing Beancount.
+2. **Beancount v3 or newer**: The main plain-text accounting engine.
+3. **bean-query** (via `beanquery`): **Required**. The query tool for BQL execution. Starting with Beancount v3, `beanquery` is distributed as a separate package and must be installed explicitly.
+4. **bean-price** (via `beanprice`): *(Optional)*. The automated price-fetching tool.
 
 ---
 
@@ -44,92 +44,62 @@ Open PowerShell or Command Prompt and run:
 pip install beancount beanquery beanprice
 ```
 
-### Step 3: Find where bean-query was installed
+### Step 3: Verify installation
 
-Run this command in PowerShell:
+Run in PowerShell:
+```powershell
+bean-query --version
+```
+If this succeeds, you can use `bean-query` directly in the plugin's onboarding wizard or settings.
+
+If you need the full path, run:
 ```powershell
 Get-Command bean-query | Select-Object -ExpandProperty Source
 ```
-Save the full path from the output (e.g., `C:\Users\<YourUsername>\AppData\Local\Programs\Python\Python3X\Scripts\bean-query.exe`).
+Example path: `C:\Users\<YourUsername>\AppData\Local\Programs\Python\Python3X\Scripts\bean-query.exe`
 
-### Step 4: Restart Obsidian
-
-Close and reopen Obsidian completely so it can pick up any changes to your PATH environment variable.
-
-### Step 5: Configure your plugin
-
-In the plugin settings, set the **bean-query path** to the full path you found in Step 3:
-```
-C:\Users\<YourUsername>\AppData\Local\Programs\Python\Python3X\Scripts\bean-query.exe
-```
-
-:::tip
-If you added Python to your PATH correctly, you may also try just `bean-query` as the command. However, using the full path is always safer.
+:::tip WSL Users
+If you prefer running Beancount inside Windows Subsystem for Linux (WSL), install Beancount inside your WSL distribution and set your command in Obsidian to `wsl bean-query`.
 :::
 
-### Step 6: Test
+### Step 4: Configure in Obsidian
 
-Verify it works by running your plugin's bean-query functionality. You can also confirm the installation in PowerShell:
-```powershell
-python --version
-bean-check --version
-bean-query --version
-bean-price --version
-```
+In the Onboarding wizard (Step 1: Connect) or **Settings → Connection**, enter `bean-query` (or the full `.exe` path) and click **Verify**.
 
   </TabItem>
   <TabItem value="macos" label="macOS">
 
-### Step 1: Install Homebrew (if needed)
+### Step 1: Install Python (via Homebrew or Python.org)
 
-If you don't already have Homebrew, install it by running the following in Terminal:
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-Or visit [brew.sh](https://brew.sh) for more details.
-
-### Step 2: Install Python
-
+If using Homebrew:
 ```bash
 brew install python
 ```
 
-### Step 3: Install beancount and tools
+### Step 2: Install beancount and tools
 
+Open Terminal and run:
 ```bash
 pip3 install beancount beanquery beanprice
 ```
 
-### Step 4: Find where bean-query was installed
+### Step 3: Find the binary path
 
 ```bash
 which bean-query
 ```
-Save the output (e.g., `/opt/homebrew/bin/bean-query` or `/usr/local/bin/bean-query`).
+Output is typically `/Users/<username>/.local/bin/bean-query` or `/opt/homebrew/bin/bean-query`.
 
-### Step 5: Restart Obsidian
+:::important GUI App PATH Note
+macOS GUI applications like Obsidian do not automatically inherit shell `PATH` customizations from `~/.zshrc` or `~/.bash_profile`. If auto-detection fails in Obsidian, enter the full path (e.g., `/Users/<username>/.local/bin/bean-query`).
+:::
 
-Close and reopen Obsidian completely.
+### Step 4: Configure in Obsidian
 
-### Step 6: Configure your plugin
-
-In the plugin settings, set the **bean-query path** to the full path from Step 4:
-```
-/opt/homebrew/bin/bean-query
-```
-
-### Step 7: Test
-
-Verify it works by running your plugin's bean-query functionality. You can also confirm the installation in Terminal:
-```bash
-python3 --version
-bean-check --version
-bean-query --version
-bean-price --version
-```
+In the Onboarding wizard (Step 1: Connect) or **Settings → Connection**, enter your full path and click **Verify**.
 
   </TabItem>
-  <TabItem value="linux" label="Linux">
+  <TabItem value="linux-native" label="Linux (AppImage / Deb)">
 
 ### Step 1: Install Python and Pip
 
@@ -149,175 +119,87 @@ sudo dnf install python3 python3-pip
 sudo pacman -S python python-pip
 ```
 
-### Step 2: Install beancount and tools
+### Step 2: Install beancount and tools (via Pip)
 
-```bash
-pip3 install beancount beanquery beanprice
-```
-
-:::note
-If you get a permissions error, use the `--user` flag: `pip3 install --user beancount beanquery beanprice`
-:::
-
-### Step 3: Find where bean-query was installed
-
-```bash
-which bean-query
-```
-Save the output. For example: `~/.local/bin/bean-query` or `/usr/local/bin/bean-query`.
-
-### Step 4: Restart Obsidian
-
-Close and reopen Obsidian completely.
-
-### Step 5: Configure your plugin
-
-In the plugin settings, set the **bean-query path** to the full path from Step 3:
-```
-~/.local/bin/bean-query
-```
-
-### Step 6: Test
-
-Verify it works by running your plugin's bean-query functionality. You can also confirm the installation in your terminal:
-```bash
-python3 --version
-bean-check --version
-bean-query --version
-bean-price --version
-```
-
-  </TabItem>
-  <TabItem value="wsl" label="WSL">
-
-### Step 1: Open your WSL terminal
-
-Open your WSL terminal (e.g. Ubuntu on Windows).
-
-### Step 2: Install Python and Pip
-
-```bash
-sudo apt update
-sudo apt install python3 python3-pip
-```
-
-### Step 3: Install beancount and tools
-
-```bash
-pip3 install beancount beanquery beanprice
-```
-
-### Step 4: Find where bean-query was installed
-
-```bash
-which bean-query
-```
-Save the output (e.g., `~/.local/bin/bean-query` or `/usr/local/bin/bean-query`).
-
-### Step 5: Restart Obsidian
-
-Close and reopen Obsidian completely. The plugin will automatically detect WSL on startup and run commands through `wsl <command>`.
-
-:::important
-Your vault and files must be accessible within WSL (e.g., located under `/mnt/c/Users/...`). Files stored only in the Windows filesystem are accessible at `/mnt/c/`, while files stored inside WSL are typically not directly accessible from Windows.
-:::
-
-### Step 6: Configure your plugin
-
-In the plugin settings, set the **bean-query path** to the full path from Step 4:
-```
-~/.local/bin/bean-query
-```
-
-### Step 7: Test
-
-Verify it works by running your plugin's bean-query functionality.
-
-  </TabItem>
-  <TabItem value="linux-flatpak" label="Linux (Flatpak)">
-
-:::note
-This guide is for users running Obsidian as a **Flatpak** package. Because Flatpak apps run in a sandbox, Obsidian cannot see system binaries by default. The extra step below grants Obsidian access to your `bean-query` binary.
-:::
-
-### Step 1: Install beancount and tools
-
-Install via **pip** (recommended — installs Beancount v3 and `beanquery`):
 ```bash
 pip install --user beancount beanquery beanprice
 ```
 
-Or via your **system package manager** (installs Beancount v2 only — `beanquery` must still be installed via pip separately):
+:::note System Packages Note
+Installing Beancount directly via `apt`, `dnf`, or `pacman` often installs Beancount v2. You must install `beanquery` separately via `pip` to get `bean-query`.
+:::
 
-**Ubuntu/Debian:**
+### Step 3: Verify & Configure
+
+1. Check location: `which bean-query` (usually `~/.local/bin/bean-query`).
+2. Open Obsidian Onboarding (Step 1: Connect) or **Settings → Connection**.
+3. Enter `bean-query` or the full path and click **Verify**.
+
+  </TabItem>
+  <TabItem value="linux-sandbox" label="Linux (Flatpak / Snap)">
+
+:::note Sandboxed Application Access
+Sandboxed packages like Flatpak cannot see your host system's binaries by default. Follow these steps to grant Obsidian access to `bean-query`.
+:::
+
+### Flatpak Setup (Recommended)
+
+1. **Install tools on host machine:**
+   ```bash
+   pip install --user beancount beanquery beanprice
+   ```
+2. **Find binary folder directory:**
+   ```bash
+   which bean-query
+   ```
+   *Note the directory containing `bean-query` (e.g., if output is `~/.local/bin/bean-query`, the folder is `~/.local/bin`).*
+
+3. **Grant filesystem access via `flatpak override`:**
+   ```bash
+   sudo flatpak override --filesystem=~/.local/bin md.obsidian.Obsidian
+   ```
+   *(Replace `~/.local/bin` with your actual folder if using conda or custom paths).*
+
+4. **Restart Obsidian completely** to apply the new sandbox permissions.
+
+5. **Configure & Verify:** In Onboarding Step 1 (Connect) or **Settings → Connection**, enter the full path (e.g., `/home/username/.local/bin/bean-query`) and click **Verify**.
+
+### Snap Setup
+
+1. Find the host binary path: `which bean-query`.
+2. Enter the full path in Onboarding Step 1 / Settings.
+3. *Note:* If Snap strict confinement blocks host execution, switch to the official Obsidian AppImage or Flatpak release.
+
+  </TabItem>
+  <TabItem value="wsl" label="WSL">
+
+### Step 1: Open WSL Terminal
+
+Open your WSL terminal (e.g., Ubuntu on Windows).
+
+### Step 2: Install Python & Beancount inside WSL
+
 ```bash
-sudo apt-get install beancount
-pip install --user beanquery beanprice
+sudo apt update
+sudo apt install python3 python3-pip
+pip3 install beancount beanquery beanprice
 ```
 
-**Fedora/RHEL:**
-```bash
-sudo dnf install beancount
-pip install --user beanquery beanprice
-```
-
-**Arch:**
-```bash
-sudo pacman -S beancount
-pip install --user beanquery beanprice
-```
-
-Or via **conda** (if you have it):
-```bash
-conda install -c conda-forge beancount beanquery
-```
-
-### Step 2: Find where bean-query was installed
+### Step 3: Verify inside WSL
 
 ```bash
-which bean-query
+bean-query --version
 ```
 
-Save the output. For example:
-- If using pip (user install): `~/.local/bin/bean-query`
-- If using system apt: `/usr/bin/bean-query`
-- If using conda: `~/miniconda3/bin/bean-query`
+### Step 4: Configure Obsidian
 
-### Step 3: Grant Obsidian access to bean-query
+In Obsidian Onboarding (Step 1: Connect) or **Settings → Connection**:
+- Set the command to: `wsl bean-query`
+- Click **Verify**.
 
-Run `flatpak override` to allow Obsidian access to the **directory** containing `bean-query` (replace with the directory portion from Step 2):
-
-```bash
-sudo flatpak override --filesystem=/path/to/bin md.obsidian.Obsidian
-```
-
-**Examples:**
-```bash
-# If it's in ~/.local/bin
-sudo flatpak override --filesystem=~/.local/bin md.obsidian.Obsidian
-
-# If it's in /usr/bin
-sudo flatpak override --filesystem=/usr/bin md.obsidian.Obsidian
-
-# If it's in ~/miniconda3/bin
-sudo flatpak override --filesystem=~/miniconda3/bin md.obsidian.Obsidian
-```
-
-### Step 4: Restart Obsidian
-
-Close and reopen Obsidian completely.
-
-### Step 5: Configure your plugin
-
-In the plugin settings, set the **bean-query path** to the **full path** of the `bean-query` binary from Step 2:
-
-```
-~/.local/bin/bean-query
-```
-
-### Step 6: Test
-
-Verify it works by running your plugin's bean-query functionality.
+:::important Vault Location
+Ensure your vault files are accessible from WSL (e.g. located under `/mnt/c/Users/...`).
+:::
 
   </TabItem>
 </Tabs>

@@ -47,6 +47,15 @@
 	let isSubmitting = false;
 	let showManualPathInput = false;
 
+	// ── Folder name validation ──
+	const INVALID_FOLDER_CHARS = /[/\\:*?"<>|]/;
+	$: folderNameError = !structuredFolderName.trim()
+		? 'Folder name cannot be empty'
+		: INVALID_FOLDER_CHARS.test(structuredFolderName)
+			? 'Folder name contains invalid characters ( / \\ : * ? " < > | )'
+			: '';
+	$: isFolderNameValid = !folderNameError;
+
 	onMount(async () => {
 		// Detect platform for install tab defaults
 		const detector = SystemDetector.getInstance();
@@ -195,6 +204,8 @@
 	}
 
 	function selectDataChoice(choice: 'demo' | 'existing') {
+		// Prevent selecting 'existing' when bean-query isn't configured (migration requires it)
+		if (choice === 'existing' && !beanQueryValid) return;
 		dataChoice = choice;
 		if (choice === 'demo') {
 			operatingCurrency = 'USD';
@@ -225,6 +236,7 @@
 			}
 
 			// Atomically commit settings only after filesystem migration succeeds
+			plugin.settings.operatingCurrency = operatingCurrency;
 			plugin.settings.fileOrganization = fileOrganization;
 			plugin.settings.onboardingCompleted = true;
 			await plugin.saveSettings();
@@ -354,8 +366,7 @@
 				class="step-node"
 				class:is-active={currentStep === 'organize'}
 				class:is-done={currentStep === 'ready'}
-				disabled={!beanQueryValid && currentStep === 'connect'}
-				on:click={() => { if (beanQueryValid && currentStep !== 'organize') currentStep = 'organize'; }}
+				on:click={() => { if (currentStep !== 'organize') currentStep = 'organize'; }}
 			>
 				<span class="step-circle">2</span>
 				<span class="step-label">Organize</span>
@@ -409,9 +420,7 @@
 						<div class="command-status-body">
 							<div class="command-display">
 								<code>{beanQueryCommand}</code>
-								<!-- svelte-ignore a11y-click-events-have-key-events -->
-								<!-- svelte-ignore a11y-no-static-element-interactions -->
-								<span class="edit-link" on:click={startEditing}>Edit</span>
+								<button class="edit-link" on:click={startEditing}>Edit</button>
 							</div>
 						</div>
 					{:else}
@@ -477,18 +486,10 @@
 
 						<!-- Platform tabs -->
 						<div class="install-tabs">
-							<!-- svelte-ignore a11y-click-events-have-key-events -->
-							<!-- svelte-ignore a11y-no-static-element-interactions -->
-							<span class="install-tab" class:is-active={activeInstallTab === 'windows'} on:click={() => activeInstallTab = 'windows'}>Windows</span>
-							<!-- svelte-ignore a11y-click-events-have-key-events -->
-							<!-- svelte-ignore a11y-no-static-element-interactions -->
-							<span class="install-tab" class:is-active={activeInstallTab === 'macos'} on:click={() => activeInstallTab = 'macos'}>macOS</span>
-							<!-- svelte-ignore a11y-click-events-have-key-events -->
-							<!-- svelte-ignore a11y-no-static-element-interactions -->
-							<span class="install-tab" class:is-active={activeInstallTab === 'linux-native'} on:click={() => activeInstallTab = 'linux-native'}>Linux (AppImage / Deb)</span>
-							<!-- svelte-ignore a11y-click-events-have-key-events -->
-							<!-- svelte-ignore a11y-no-static-element-interactions -->
-							<span class="install-tab" class:is-active={activeInstallTab === 'linux-sandbox'} on:click={() => activeInstallTab = 'linux-sandbox'}>Linux (Flatpak / Snap)</span>
+							<button class="install-tab" class:is-active={activeInstallTab === 'windows'} on:click={() => activeInstallTab = 'windows'}>Windows</button>
+							<button class="install-tab" class:is-active={activeInstallTab === 'macos'} on:click={() => activeInstallTab = 'macos'}>macOS</button>
+							<button class="install-tab" class:is-active={activeInstallTab === 'linux-native'} on:click={() => activeInstallTab = 'linux-native'}>Linux (AppImage / Deb)</button>
+							<button class="install-tab" class:is-active={activeInstallTab === 'linux-sandbox'} on:click={() => activeInstallTab = 'linux-sandbox'}>Linux (Flatpak / Snap)</button>
 						</div>
 
 						<div class="install-content">
@@ -583,9 +584,7 @@
 
 			<!-- Action buttons -->
 			<div class="action-row">
-				<!-- svelte-ignore a11y-click-events-have-key-events -->
-				<!-- svelte-ignore a11y-no-static-element-interactions -->
-				<span class="skip-link" on:click={skipOnboarding}>Skip for now</span>
+				<button class="skip-link" on:click={skipOnboarding}>Skip for now</button>
 				<div class="action-buttons">
 					<!-- Dynamically apply mod-cta when detection fails; revert to secondary when valid -->
 					<button
@@ -599,7 +598,6 @@
 					<button
 						class="mod-cta next-btn"
 						on:click={() => currentStep = 'organize'}
-						disabled={!beanQueryValid}
 					>
 						Next: Organize →
 					</button>
@@ -615,23 +613,44 @@
 				Choose how to start and configure your folder layout. All your finance files will be organized in a single folder.
 			</p>
 
+			{#if !beanQueryValid}
+				<div class="onboarding-warning-callout">
+					<strong>⚠️ bean-query not configured</strong> — Dashboard features won't work until it's set up in Settings → Connection.
+					You can still create the folder structure with demo data now.
+				</div>
+			{/if}
+
 			<!-- Data choice cards -->
 			<div class="setup-cards-grid">
-				<!-- svelte-ignore a11y-click-events-have-key-events -->
-				<!-- svelte-ignore a11y-no-static-element-interactions -->
-				<div class="setup-card" class:is-selected={dataChoice === 'demo'} on:click={() => selectDataChoice('demo')}>
+				<div
+					class="setup-card"
+					class:is-selected={dataChoice === 'demo'}
+					role="button"
+					tabindex="0"
+					on:click={() => selectDataChoice('demo')}
+					on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') selectDataChoice('demo'); }}
+				>
 					<div class="card-badge">✨ Recommended for beginners</div>
 					<div class="card-icon">📊</div>
 					<h4>Start with Demo Data</h4>
 					<p>A complete sample ledger with realistic accounts and transactions so you can explore the dashboard immediately.</p>
 				</div>
 
-				<!-- svelte-ignore a11y-click-events-have-key-events -->
-				<!-- svelte-ignore a11y-no-static-element-interactions -->
-				<div class="setup-card" class:is-selected={dataChoice === 'existing'} on:click={() => selectDataChoice('existing')}>
+				<div
+					class="setup-card"
+					class:is-selected={dataChoice === 'existing'}
+					class:is-disabled={!beanQueryValid}
+					role="button"
+					tabindex={beanQueryValid ? 0 : -1}
+					on:click={() => selectDataChoice('existing')}
+					on:keydown={(e) => { if (beanQueryValid && (e.key === 'Enter' || e.key === ' ')) selectDataChoice('existing'); }}
+				>
 					<div class="card-icon">📁</div>
 					<h4>Use My Existing Ledger</h4>
 					<p>Select your existing Beancount file to migrate it into the structured folder layout.</p>
+					{#if !beanQueryValid}
+						<div class="card-disabled-hint">Requires bean-query</div>
+					{/if}
 				</div>
 			</div>
 
@@ -645,9 +664,7 @@
 									<div class="setting-item-name">Select Beancount file</div>
 									<div class="setting-item-description">
 										Choose from existing .beancount files in your vault, or
-										<!-- svelte-ignore a11y-click-events-have-key-events -->
-										<!-- svelte-ignore a11y-no-static-element-interactions -->
-										<span class="setup-link" on:click={() => { showManualPathInput = true; existingFilePath = ''; }}>enter path manually</span>.
+										<button class="setup-link" on:click={() => { showManualPathInput = true; existingFilePath = ''; }}>enter path manually</button>.
 									</div>
 								</div>
 								<div class="setting-item-control">
@@ -665,9 +682,7 @@
 									<div class="setting-item-description">
 										Vault-relative path to your ledger file (must be inside your vault).
 										{#if beancountFiles.length > 0}
-											<!-- svelte-ignore a11y-click-events-have-key-events -->
-											<!-- svelte-ignore a11y-no-static-element-interactions -->
-											Or <span class="setup-link" on:click={() => { showManualPathInput = false; existingFilePath = beancountFiles[0]; }}>choose file from vault</span>.
+											Or <button class="setup-link" on:click={() => { showManualPathInput = false; existingFilePath = beancountFiles[0]; }}>choose file from vault</button>.
 										{/if}
 									</div>
 								</div>
@@ -685,8 +700,11 @@
 							<div class="setting-item-description">Folder in your vault where organized finance files will live</div>
 						</div>
 						<div class="setting-item-control">
-							<input type="text" bind:value={structuredFolderName} placeholder="Finances" />
+							<input type="text" bind:value={structuredFolderName} placeholder="Finances" class:is-invalid={!isFolderNameValid} />
 						</div>
+						{#if folderNameError}
+							<div class="validation-error">{folderNameError}</div>
+						{/if}
 					</div>
 
 					<!-- Transaction File Organization -->
@@ -743,7 +761,7 @@
 				<button on:click={() => currentStep = 'connect'}>← Back</button>
 				<div class="action-buttons">
 					<button class="mod-warning" on:click={() => modal.close()}>Cancel</button>
-					<button class="mod-cta" on:click={handleFinish} disabled={isSubmitting || !dataChoice}>
+					<button class="mod-cta" on:click={handleFinish} disabled={isSubmitting || !dataChoice || !isFolderNameValid}>
 						{isSubmitting ? '⏳ Setting up…' : '🚀 Set Up'}
 					</button>
 				</div>
@@ -1028,6 +1046,11 @@
 	}
 
 	.edit-link {
+		background: transparent;
+		border: none;
+		box-shadow: none;
+		padding: 0;
+		font-family: inherit;
 		color: var(--text-accent);
 		cursor: pointer;
 		font-size: var(--font-ui-smaller);
@@ -1144,6 +1167,11 @@
 	}
 
 	.install-tab {
+		background: transparent;
+		border: none;
+		box-shadow: none;
+		border-radius: 0;
+		font-family: inherit;
 		padding: 6px 16px;
 		font-size: var(--font-ui-small);
 		cursor: pointer;
@@ -1390,6 +1418,11 @@
 	}
 
 	.skip-link {
+		background: transparent;
+		border: none;
+		box-shadow: none;
+		padding: 0;
+		font-family: inherit;
 		color: var(--text-muted);
 		font-size: var(--font-ui-smaller);
 		cursor: pointer;
@@ -1411,6 +1444,7 @@
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: var(--size-4-4);
+		margin-top: var(--size-4-3);
 		margin-bottom: var(--size-4-4);
 	}
 
@@ -1426,18 +1460,46 @@
 		text-align: center;
 		position: relative;
 		transition: all 0.2s ease-in-out;
+		font-family: inherit;
+		box-shadow: none;
+		box-sizing: border-box;
+		user-select: none;
 	}
 
-	.setup-card:hover {
+	.setup-card:hover:not(.is-disabled) {
 		border-color: var(--interactive-accent);
 		transform: translateY(-2px);
 		background: var(--background-secondary-alt);
+	}
+
+	.setup-card:focus-visible {
+		outline: 2px solid var(--interactive-accent);
+		outline-offset: 2px;
 	}
 
 	.setup-card.is-selected {
 		border-color: var(--interactive-accent);
 		background: rgba(var(--color-accent-rgb, 0, 122, 255), 0.05);
 		box-shadow: 0 0 0 2px var(--interactive-accent);
+	}
+
+	.setup-card.is-disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+		border-style: dashed;
+	}
+
+	.setup-card.is-disabled:hover {
+		transform: none;
+		border-color: var(--background-modifier-border);
+		background: var(--background-secondary);
+	}
+
+	.card-disabled-hint {
+		margin-top: var(--size-4-2);
+		font-size: var(--font-ui-smaller);
+		color: var(--text-error);
+		font-weight: 500;
 	}
 
 	.card-badge {
@@ -1468,6 +1530,7 @@
 		font-size: var(--font-ui-smaller);
 		color: var(--text-muted);
 		line-height: var(--line-height-normal);
+		white-space: normal;
 	}
 
 	/* ═══ Setup form ═══ */
@@ -1509,13 +1572,41 @@
 	}
 
 	.setup-link {
+		background: transparent;
+		border: none;
+		box-shadow: none;
+		padding: 0;
+		font-family: inherit;
 		color: var(--text-accent);
 		cursor: pointer;
 		text-decoration: underline;
+		display: inline;
 	}
 
 	.setup-link:hover {
 		color: var(--text-accent-hover);
+	}
+
+	.onboarding-warning-callout {
+		background: rgba(255, 165, 0, 0.1);
+		border-left: 4px solid var(--text-warning);
+		padding: var(--size-4-3);
+		border-radius: var(--radius-s);
+		margin-bottom: var(--size-4-4);
+		font-size: var(--font-ui-small);
+		color: var(--text-normal);
+		line-height: var(--line-height-normal);
+	}
+
+	.validation-error {
+		color: var(--text-error);
+		font-size: var(--font-ui-smaller);
+		margin-top: var(--size-4-1);
+		font-weight: 500;
+	}
+
+	input[type='text'].is-invalid {
+		border-color: var(--text-error);
 	}
 
 	.currency-hint {

@@ -135,7 +135,16 @@ export default class BeancountPlugin extends Plugin {
 		this.addCommand({
 			id: 'run-beancount-onboarding',
 			name: 'Run setup/onboarding',
-			callback: () => { new OnboardingModal(this.app, this).open(); }
+			callback: () => {
+				if (this.settings.onboardingCompleted) {
+					/* eslint-disable-next-line no-alert */
+					const proceed = confirm(
+						"You have already completed setup. Running the onboarding wizard again will allow you to recreate the structured folder layout or migrate another ledger. Do you want to proceed?"
+					);
+					if (!proceed) return;
+				}
+				new OnboardingModal(this.app, this).open();
+			}
 		});
 		this.addCommand({
 			id: 'format-beancount-document',
@@ -407,6 +416,12 @@ export default class BeancountPlugin extends Plugin {
 			const migrated = (legacyReporting || legacyDefault || DEFAULT_SETTINGS.operatingCurrency) as string;
 			this.settings.operatingCurrency = typeof migrated === 'string' ? migrated.toUpperCase() : DEFAULT_SETTINGS.operatingCurrency;
 			// Persist migrated value
+			await this.saveSettings();
+		}
+
+		// Migration: upgrade guard to infer onboarding completion for existing users
+		if (raw && !('onboardingCompleted' in raw) && this.settings.structuredFolderName) {
+			this.settings.onboardingCompleted = true;
 			await this.saveSettings();
 		}
 	}
