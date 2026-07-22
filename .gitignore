@@ -45,3 +45,4 @@ docs-site/.docusaurus/
 docs-site/.cache-loader/
 docs-site/npm-debug.log*
 docs-site/.env*.local
+**.graphify**

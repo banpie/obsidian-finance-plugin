@@ -10,4 +10,21 @@ export default defineConfig({
 			obsidian: path.resolve(__dirname, 'tests/mocks/obsidian.ts'),
 		},
 	},
+	plugins: [
+		{
+			name: 'svelte-mock-plugin',
+			load(id) {
+				if (id.endsWith('.svelte')) {
+					return `
+						export default class SvelteComponent {
+							$on() {}
+							$set() {}
+							$destroy() {}
+						}
+					`;
+				}
+				return null;
+			},
+		},
+	],
 });

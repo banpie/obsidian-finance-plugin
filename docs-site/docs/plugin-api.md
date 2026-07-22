@@ -11,7 +11,7 @@ The Obsidian Finance plugin exposes a public JavaScript API so that other Obsidi
 ## Accessing the API
 
 ```typescript
-const financePlugin = (app.plugins.plugins as any)['obsidian-finance-plugin'];
+const financePlugin = (app.plugins.plugins as any)['beancount-finance'];
 
 if (!financePlugin?.api) {
   console.warn('Obsidian Finance Plugin is not enabled.');
@@ -107,6 +107,6 @@ interface BeancountPluginApi {
 Then cast the plugin instance:
 
 ```typescript
-const api = (app.plugins.plugins as any)['obsidian-finance-plugin']
+const api = (app.plugins.plugins as any)['beancount-finance']
   ?.api as BeancountPluginApi | undefined;
 ```

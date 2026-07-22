@@ -5,7 +5,7 @@
 [![CI Check](https://github.com/mkshp-dev/obsidian-finance-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/mkshp-dev/obsidian-finance-plugin/actions/workflows/ci.yml)
 [![Docs Portal](https://img.shields.io/badge/docs-docusaurus-blue.svg)](https://mkshp-dev.github.io/obsidian-finance-plugin/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Obsidian Plugin](https://img.shields.io/badge/Obsidian-v1.0.0+-purple.svg)](https://obsidian.md)
+[![Obsidian Plugin](https://img.shields.io/badge/Obsidian-v1.7.2+-purple.svg)](https://obsidian.md)
 
 A comprehensive Beancount integration for [Obsidian](https://obsidian.md) that transforms your vault into a powerful plain-text accounting dashboard.
 
@@ -37,7 +37,7 @@ This plugin integrates with your existing Beancount setup:
 
 ### Manual Installation
 1. Download the latest release from [GitHub Releases](https://github.com/mkshp-dev/obsidian-finance-plugin/releases)
-2. Extract files to `<vault>/.obsidian/plugins/obsidian-finance-plugin/`
+2. Extract files to `<vault>/.obsidian/plugins/beancount-finance/`
 3. Enable the plugin in Obsidian Settings → Community Plugins
 
 ### BRAT Beta Installation

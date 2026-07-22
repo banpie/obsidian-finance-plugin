@@ -51,6 +51,17 @@ const config: Config = {
         },
       } satisfies Preset.Options,
     ],
+  plugins: [
+    [
+      require.resolve('@easyops-cn/docusaurus-search-local'),
+      {
+        hashed: true,
+        language: ['en'],
+        docsRouteBasePath: '/',
+        indexDocs: true,
+        indexBlog: false,
+      },
+    ],
   ],
 
   themeConfig: {

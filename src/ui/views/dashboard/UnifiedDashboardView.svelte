@@ -38,6 +38,7 @@
 </script>
 
 <div class="beancount-dashboard">
+
     <div class="tabs-header">
         {#each tabs as tab}
             <button

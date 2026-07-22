@@ -13,6 +13,7 @@ import { UnifiedDashboardView, UNIFIED_DASHBOARD_VIEW_TYPE } from './ui/views/da
 import { BQLCodeBlockProcessor } from './ui/markdown/BQLCodeBlockProcessor';
 import { InlineBQLProcessor } from './ui/markdown/InlineBQLProcessor';
 import { OnboardingModal } from './ui/modals/OnboardingModal';
+import { ConfirmModal } from './ui/modals/ConfirmModal';
 import { formatBeancountCommand } from './lang/beancount-format';
 import type { EditorView } from '@codemirror/view';
 
@@ -137,13 +138,17 @@ export default class BeancountPlugin extends Plugin {
 			name: 'Run setup/onboarding',
 			callback: () => {
 				if (this.settings.onboardingCompleted) {
-					/* eslint-disable-next-line no-alert */
-					const proceed = confirm(
-						"You have already completed setup. Running the onboarding wizard again will allow you to recreate the structured folder layout or migrate another ledger. Do you want to proceed?"
-					);
-					if (!proceed) return;
+					new ConfirmModal(
+						this.app,
+						"Run Setup / Onboarding",
+						"You have already completed setup. Running the onboarding wizard again will allow you to recreate the structured folder layout or migrate another ledger. Do you want to proceed?",
+						() => {
+							new OnboardingModal(this.app, this).open();
+						}
+					).open();
+				} else {
+					new OnboardingModal(this.app, this).open();
 				}
-				new OnboardingModal(this.app, this).open();
 			}
 		});
 		this.addCommand({
@@ -303,9 +308,15 @@ export default class BeancountPlugin extends Plugin {
 		}
 		try {
 			const detector = SystemDetector.getInstance();
-			const result = await detector.testCommand(
+			let result = await detector.testCommand(
 				this.settings.beancountCommand, ['--version'], 3000
 			);
+			if (!result.success) {
+				// bean-query does not support --version, so fallback to --help
+				result = await detector.testCommand(
+					this.settings.beancountCommand, ['--help'], 3000
+				);
+			}
 			this.isConnectionReady = result.success;
 			Logger.log(`[Main] Connection probe: ${result.success ? 'ready' : 'not reachable'}`);
 		} catch {
