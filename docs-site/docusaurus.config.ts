@@ -51,6 +51,7 @@ const config: Config = {
         },
       } satisfies Preset.Options,
     ],
+  ],
   plugins: [
     [
       require.resolve('@easyops-cn/docusaurus-search-local'),
