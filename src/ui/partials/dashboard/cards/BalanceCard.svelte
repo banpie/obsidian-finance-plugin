@@ -36,7 +36,7 @@
              <div class="balance-row diff">
                 <div class="label">Difference:</div>
                 <div class="amount error">
-                    {entry.diff_amount} {entry.currency}
+                    {entry.diff_amount}
                 </div>
             </div>
         {/if}

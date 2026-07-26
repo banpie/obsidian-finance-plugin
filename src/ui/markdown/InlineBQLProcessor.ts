@@ -97,8 +97,7 @@ export class InlineBQLProcessor {
 		if (!query) return;
 
 		// Create wrapper for the inline BQL result
-		const wrapper = activeDocument.createElement('span');
-		wrapper.className = 'bql-inline-wrapper';
+		const wrapper = createSpan({ cls: 'bql-inline-wrapper' });
 
 		// Store original content for refresh capability
 		(wrapper as InlineBQLHTMLElement)._bqlQuery = query;

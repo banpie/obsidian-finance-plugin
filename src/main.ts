@@ -13,6 +13,7 @@ import { UnifiedDashboardView, UNIFIED_DASHBOARD_VIEW_TYPE } from './ui/views/da
 import { BQLCodeBlockProcessor } from './ui/markdown/BQLCodeBlockProcessor';
 import { InlineBQLProcessor } from './ui/markdown/InlineBQLProcessor';
 import { OnboardingModal } from './ui/modals/OnboardingModal';
+import { ConfirmModal } from './ui/modals/ConfirmModal';
 import { formatBeancountCommand } from './lang/beancount-format';
 import type { EditorView } from '@codemirror/view';
 
@@ -20,6 +21,7 @@ import { JournalService } from './services/journal.service';
 import { PriceService } from './services/price.service';
 import { createJournalStore } from './stores/journal.store';
 import { Logger } from './utils/logger';
+import { SystemDetector } from './utils/SystemDetector';
 
 // --------------------------------------------------
 
@@ -42,6 +44,9 @@ export default class BeancountPlugin extends Plugin {
 	public journalService: JournalService;
 	public priceService: PriceService;
 	public journalStore: ReturnType<typeof createJournalStore>;
+
+	/** Whether bean-query is currently reachable (runtime state, NOT persisted). */
+	public isConnectionReady = false;
 
 	/**
 	 * Called when the plugin is loaded by Obsidian.
@@ -67,12 +72,17 @@ export default class BeancountPlugin extends Plugin {
 		this.priceService = new PriceService(this);
 		this.journalStore = createJournalStore(this.journalService);
 
-		// Check for onboarding — structuredFolderName is the source of truth for setup completion
-		if (!this.settings.structuredFolderName) {
-			Logger.log('No Beancount folder configured. Triggering onboarding.');
+		// Check for onboarding — use dedicated flag instead of structuredFolderName
+		if (!this.settings.onboardingCompleted) {
+			Logger.log('Onboarding not completed. Triggering onboarding wizard.');
 			this.app.workspace.onLayoutReady(() => {
 				new OnboardingModal(this.app, this).open();
 			});
+		}
+
+		// Non-blocking runtime probe to check if bean-query is reachable
+		if (this.settings.beancountCommand) {
+			void this.probeConnection();
 		}
 
 		// Initialize and register BQL code block processor
@@ -126,7 +136,20 @@ export default class BeancountPlugin extends Plugin {
 		this.addCommand({
 			id: 'run-beancount-onboarding',
 			name: 'Run setup/onboarding',
-			callback: () => { new OnboardingModal(this.app, this).open(); }
+			callback: () => {
+				if (this.settings.onboardingCompleted) {
+					new ConfirmModal(
+						this.app,
+						"Run Setup / Onboarding",
+						"You have already completed setup. Running the onboarding wizard again will allow you to recreate the structured folder layout or migrate another ledger. Do you want to proceed?",
+						() => {
+							new OnboardingModal(this.app, this).open();
+						}
+					).open();
+				} else {
+					new OnboardingModal(this.app, this).open();
+				}
+			}
 		});
 		this.addCommand({
 			id: 'format-beancount-document',
@@ -275,6 +298,34 @@ export default class BeancountPlugin extends Plugin {
 	}
 
 	/**
+	 * Non-blocking runtime probe to check if bean-query is reachable.
+	 * Sets the in-memory `isConnectionReady` flag without persisting it.
+	 */
+	public async probeConnection(): Promise<void> {
+		if (!this.settings.beancountCommand) {
+			this.isConnectionReady = false;
+			return;
+		}
+		try {
+			const detector = SystemDetector.getInstance();
+			let result = await detector.testCommand(
+				this.settings.beancountCommand, ['--version'], 3000
+			);
+			if (!result.success) {
+				// bean-query does not support --version, so fallback to --help
+				result = await detector.testCommand(
+					this.settings.beancountCommand, ['--help'], 3000
+				);
+			}
+			this.isConnectionReady = result.success;
+			Logger.log(`[Main] Connection probe: ${result.success ? 'ready' : 'not reachable'}`);
+		} catch {
+			this.isConnectionReady = false;
+			Logger.log('[Main] Connection probe: failed (exception)');
+		}
+	}
+
+	/**
 	 * Activates a specific view type in the workspace.
 	 *
 	 * @param {string} viewType - The type of view to activate.
@@ -376,6 +427,12 @@ export default class BeancountPlugin extends Plugin {
 			const migrated = (legacyReporting || legacyDefault || DEFAULT_SETTINGS.operatingCurrency) as string;
 			this.settings.operatingCurrency = typeof migrated === 'string' ? migrated.toUpperCase() : DEFAULT_SETTINGS.operatingCurrency;
 			// Persist migrated value
+			await this.saveSettings();
+		}
+
+		// Migration: upgrade guard to infer onboarding completion for existing users
+		if (raw && !('onboardingCompleted' in raw) && this.settings.structuredFolderName) {
+			this.settings.onboardingCompleted = true;
 			await this.saveSettings();
 		}
 	}

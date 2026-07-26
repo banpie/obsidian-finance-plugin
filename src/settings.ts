@@ -61,6 +61,8 @@ export interface BeancountPluginSettings {
     formatOnSave: boolean;
     /** Lint mode for inline bean-check diagnostics: 'off' | 'on-save' | 'on-change'. */
     lintMode: LintMode;
+    /** Whether the user has completed the onboarding wizard. */
+    onboardingCompleted: boolean;
 }
 
 /**
@@ -92,6 +94,7 @@ export const DEFAULT_SETTINGS: BeancountPluginSettings = {
     enableUserSnippets: false,
     formatOnSave: false,
     lintMode: 'on-save',
+    onboardingCompleted: false,
 }
 
 /**
@@ -109,6 +112,25 @@ export class BeancountSettingTab extends PluginSettingTab {
     constructor(app: App, plugin: BeancountPlugin) {
         super(app, plugin);
         this.plugin = plugin;
+    }
+
+    getSettingDefinitions(): Record<string, { name: string; description: string }> {
+        return {
+            operatingCurrency: { name: 'Operating currency', description: 'The currency to use for transaction defaults and for consolidating totals.' },
+            dashboardDefaultPeriod: { name: 'Default dashboard period', description: 'Choose the period shown by dashboard summaries when the dashboard first loads.' },
+            structuredFolderName: { name: 'Base folder name', description: 'The name of the root folder in your vault where Beancount files will be stored.' },
+            fileOrganization: { name: 'File organization', description: 'How transactions should be split into separate files.' },
+            accountAutocomplete: { name: 'Editor autocomplete', description: 'Show context-aware completions in .beancount files.' },
+            enableUserSnippets: { name: 'User-defined snippets', description: 'Enable user-defined transaction snippets loaded from snippets.beancount.' },
+            formatOnSave: { name: 'Format on save', description: 'Automatically format the Beancount file when saving.' },
+            lintMode: { name: 'Inline lint mode', description: 'Show Beancount validation errors as inline squiggly underlines.' },
+            bqlShowTools: { name: 'Show query tools', description: 'Display refresh, copy, and download buttons above BQL query results.' },
+            bqlShowQuery: { name: 'Show query text', description: 'Display the BQL query text above the results in a collapsible section.' },
+            maxTransactionResults: { name: 'Max transaction results', description: 'Maximum number of transactions to load at once.' },
+            maxJournalResults: { name: 'Max journal results', description: 'Maximum number of journal entries to load at once.' },
+            createBackups: { name: 'Create backups', description: 'Create timestamped backup files before modifying your Beancount file.' },
+            maxBackupFiles: { name: 'Max backup files', description: 'Maximum number of backup files to keep.' }
+        };
     }
 
     display(): void {
@@ -130,9 +152,9 @@ export class BeancountSettingTab extends PluginSettingTab {
             { id: 'general', label: '⚙️ General' },
             { id: 'connection', label: '🔌 Connection' },
             { id: 'files', label: '📁 File Organization' },
+            { id: 'editor', label: '📝 Editor' },
             { id: 'bql', label: '📊 BQL' },
-            { id: 'performance', label: '⚡ Performance' },
-            { id: 'backup', label: '💾 Backup' }
+            { id: 'performance', label: '⚡ Performance' }
         ];
 
         // Create tab buttons
@@ -159,14 +181,14 @@ export class BeancountSettingTab extends PluginSettingTab {
             case 'files':
                 this.renderFilesTab(tabsContent);
                 break;
+            case 'editor':
+                this.renderEditorTab(tabsContent);
+                break;
             case 'bql':
                 this.renderBQLTab(tabsContent);
                 break;
             case 'performance':
                 this.renderPerformanceTab(tabsContent);
-                break;
-            case 'backup':
-                this.renderBackupTab(tabsContent);
                 break;
         }
 
@@ -350,7 +372,9 @@ export class BeancountSettingTab extends PluginSettingTab {
                     this.plugin.settings.bqlShowQuery = value;
                     await this.plugin.saveSettings();
                 }));
+    }
 
+    private renderEditorTab(containerEl: HTMLElement): void {
         new Setting(containerEl).setName('Editor configuration').setHeading();
 
         new Setting(containerEl)
@@ -400,36 +424,6 @@ export class BeancountSettingTab extends PluginSettingTab {
                     this.plugin.settings.lintMode = value as LintMode;
                     await this.plugin.saveSettings();
                 }));
-
-        new Setting(containerEl).setName('Named queries').setHeading();
-
-        const queryInfoEl = containerEl.createDiv({ cls: 'setting-item-description' });
-        queryInfoEl.setCssStyles({ marginBottom: '12px' });
-        
-        const p1 = queryInfoEl.createEl('p');
-        p1.textContent = 'Define reusable BQL queries using the Beancount ';
-        const codeQuery = p1.createEl('code');
-        const queryText = 'query';
-        codeQuery.textContent = queryText;
-        p1.appendText(' directive stored in ');
-        const codeQueries = p1.createEl('code');
-        const queriesText = 'queries.beancount';
-        codeQueries.textContent = queriesText;
-        p1.appendText('.');
-
-        const p2 = queryInfoEl.createEl('p');
-        p2.textContent = 'Use the ';
-        p2.createEl('strong', { text: 'Add' });
-        p2.appendText(' ribbon button → ');
-        p2.createEl('em', { text: '🔍 Query' });
-        p2.appendText(' tab to create named queries.');
-
-        const p3 = queryInfoEl.createEl('p');
-        p3.textContent = 'In your notes, use ';
-        const codeBqlq = p3.createEl('code');
-        const bqlqText = 'bql-q:name';
-        codeBqlq.textContent = bqlqText;
-        p3.appendText(' to insert the query result inline.');
     }
 
     private renderPerformanceTab(containerEl: HTMLElement): void {
@@ -462,9 +456,7 @@ export class BeancountSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }
                 }));
-    }
 
-    private renderBackupTab(containerEl: HTMLElement): void {
         new Setting(containerEl).setName('Backups').setHeading();
 
         new Setting(containerEl)
@@ -620,11 +612,11 @@ export class BeancountSettingTab extends PluginSettingTab {
                 borderRadius: '5px'
             });
 
-            pathDiv.createEl('div', {
+            pathDiv.createDiv({
                 text: 'Main ledger file path:',
                 cls: 'setting-item-name'
             });
-            const descEl = pathDiv.createEl('div', {
+            const descEl = pathDiv.createDiv({
                 text: `${folderName}/ledger.beancount`,
                 cls: 'setting-item-description'
             });
@@ -649,7 +641,7 @@ export class BeancountSettingTab extends PluginSettingTab {
     }
 
     private createValidationElement(container: HTMLElement): HTMLElement {
-        const validationEl = container.createEl('div', {
+        const validationEl = container.createDiv({
             cls: 'beancount-validation-message'
         });
         return validationEl;

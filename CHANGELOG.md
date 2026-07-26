@@ -7,7 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
-- **Journal Tab: Fix search functionality for Balances and Notes** — Fixed a bug where the search field text filter did not affect `Balance` and `Note` directives, causing them to stay visible even when they did not match the search term. Added robust in-memory filtering for search terms (on account, amount, currency, and comment fields), payees, and tags for both directives.
+### Added 🚀
+
+- **Onboarding Wizard: Full redesign with connection probing** — Replaced the previous onboarding trigger (keyed on `structuredFolderName`) with a dedicated `onboardingCompleted` settings flag and a companion runtime connection probe (`probeConnection`) that non-blockingly verifies `bean-query` reachability on startup. The wizard Svelte component was rewritten with new step-based UI including dependency detection cards, folder-structure tree preview, setup-card selection, a polished summary/next-steps screen, and refined CSS using Obsidian design tokens throughout.
+
+- **Settings: Structured metadata definitions and Editor tab** — Added a `getSettingDefinitions()` method that returns human-readable names and descriptions for all settings, enabling programmatic access for onboarding and documentation. Reorganised the settings tabs: the former "Backup" tab was merged into "Performance", the "Named queries" help block was removed from the BQL tab, and a new dedicated **📝 Editor** tab was created to house autocomplete, snippets, format-on-save, and lint-mode settings.
+
+- **Documentation Site: Docusaurus-based docs-site** — Shipped a complete `docs-site/` directory containing a Docusaurus project with 20+ documentation pages covering installation, requirements, first-time setup, all dashboard tabs, adding data, advanced queries, Beancount syntax reference, settings, troubleshooting, plugin API, and the changelog. Includes screenshots, videos, and custom CSS theming.
+
+### Improved 🔨
+
+- **Journal Tab: Robust in-memory filtering for Balances and Notes** — Balance and Note directives now honour the search field, payee, and tag filters. Balances are filtered client-side by account, amount, and currency; Notes are filtered by account, comment, and tags. When a payee filter is active, Balances and Notes are correctly excluded since those directive types have no payee. Re-sort logic was extended to cover all three filter dimensions.
+
+- **UI Polish** — Changed the "Open Account" modal date field from a plain text input to a native `<input type="date">` picker. Aligned the Journal tab search debounce delay from 800 ms to 300 ms (matching the Transactions tab). Fixed double currency rendering on Balance cards where `{entry.diff_amount}` already included the currency symbol.
+
+- **BQL Processors: Obsidian-native DOM helpers** — Replaced all raw `activeDocument.createElement` calls in `BQLCodeBlockProcessor` and `InlineBQLProcessor` with Obsidian's native helpers (`createDiv`, `createSpan`, `createEl`). Refactored the file-download anchor creation to use `createEl('a', { attr: { … } })` with proper `detach()` cleanup and a feature-detection guard (`'download' in HTMLAnchorElement.prototype`).
+
+- **ESLint & Code Quality** — Updated the ESLint ignore path from `docs/` to `docs-site/`, renamed the npm script from `eslint` to `lint` for standardisation, pinned `@eslint/js` to `^9.0.0`, and upgraded `eslint-plugin-obsidianmd` to `latest`. Resolved all new linting issues raised by the updated ruleset (Obsidian-native DOM APIs, `createDiv`/`createSpan` usage, safe element creation patterns).
+
+### Fixed 🐛
+
+- **Settings DOM: Replace `createEl('div')` with `createDiv()`** — Updated three instances in the File Organisation settings tab (`pathDiv`, `descEl`, `validationEl`) to use Obsidian's `createDiv()` helper instead of `createEl('div', …)`, resolving lint warnings from `eslint-plugin-obsidianmd`.
+
+### Changed (internal) 🔧
+
+- **CI/CD: Release and deployment workflow fixes** — Restructured `release-finalize.yml` to prevent false failures, standardised the changelog-rewriting regex, fixed the docs directory path in `release-trigger.yml`, added `CHANGELOG.md` and workflow files to deploy triggers, and migrated the documentation deployment to direct GitHub Actions deployment.
+
+- **Licensing & Manifest** — Standardised `LICENSE` to MIT and converted `manifest.json` `fundingUrl` from a plain string to the multi-platform object format (`GitHub Sponsors` + `Buy Me a Coffee`).
 
 ## 2.3.0 - 2026-07-15
 

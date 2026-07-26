@@ -81,12 +81,14 @@ export class AccountManagementModal extends Modal {
         new Setting(contentEl)
             .setName('Date')
             .setDesc('Enter the date in YYYY-MM-DD format')
-            .addText(text => text
-                .setPlaceholder(new Date().toISOString().split('T')[0])
-                .setValue(this.date)
-                .onChange(value => {
-                    this.date = value;
-                }));
+            .addText(text => {
+                text.inputEl.type = 'date';
+                return text
+                    .setValue(this.date)
+                    .onChange(value => {
+                        this.date = value;
+                    });
+            });
 
         // Currencies field (only for open mode)
         if (this.mode === 'open') {

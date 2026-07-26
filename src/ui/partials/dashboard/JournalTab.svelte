@@ -106,7 +106,7 @@
             return;
         }
         applyFilters();
-    }, 800);
+    }, 300);
 
     async function fetchSuggestions() {
         if (!plugin) return;
