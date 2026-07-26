@@ -40,49 +40,9 @@ The plugin uses **`bean-query`** (a command-line tool from the Beancount ecosyst
 - **Skip for now:** Bypasses CLI verification so you can proceed with setting up your ledger folder (*Note: Dashboard features require `bean-query` to be configured later in Settings → Connection*).
 - **Next: Organize →:** Advances to Step 2.
 
-### In-Modal Installation Guides ("📦 How to install")
+### Installation Instructions & Prerequisites
 
-For convenience, Step 1 includes tabbed installation instructions directly inside the onboarding wizard:
-
-#### 🪟 Windows
-1. Install [Python 3.8+](https://www.python.org/downloads/) (make sure to check **"Add Python to PATH"** during installation).
-2. Open PowerShell and run:
-   ```powershell
-   pip install beancount beanquery beanprice
-   ```
-3. Verify in PowerShell: `bean-query --version`
-4. **WSL Users:** If you prefer running Beancount inside WSL, install it in your WSL distro and set `wsl bean-query` as your command.
-
-#### 🍎 macOS
-1. Open Terminal and run:
-   ```bash
-   pip3 install beancount beanquery beanprice
-   ```
-2. Verify in Terminal: `bean-query --version`
-3. **PATH Note for GUI Apps:** macOS GUI applications do not automatically inherit `~/.local/bin` from your shell. If auto-detection fails, enter your full absolute path (e.g., `/Users/<your-username>/.local/bin/bean-query`). Find it in Terminal with `which bean-query`.
-
-#### 🐧 Linux (AppImage / Deb)
-1. Open terminal and install via `pip` (recommended):
-   ```bash
-   pip install --user beancount beanquery beanprice
-   ```
-2. Verify in terminal: `bean-query --version`
-3. **System Packages Note:** Installing Beancount via system package managers (`apt`, `dnf`, `pacman`) often installs Beancount v2. You must install `beanquery` via `pip` separately.
-
-#### 📦 Linux (Flatpak / Snap)
-
-**Flatpak (Recommended Setup):**
-1. Install packages via pip on host machine:
-   ```bash
-   pip install --user beancount beanquery beanprice
-   ```
-2. Find binary path by running `which bean-query` in terminal (e.g., `~/.local/bin/bean-query`).
-3. Grant Obsidian filesystem access to that directory using `flatpak override`:
-   ```bash
-   sudo flatpak override --filesystem=~/.local/bin md.obsidian.Obsidian
-   ```
-4. Restart Obsidian completely so the Flatpak sandbox recognizes the filesystem permission change.
-5. Enter the full path into the command box in Step 1 and click **Next: Organize →**.
+If `bean-query` or `bean-price` is not yet installed on your machine, see the complete OS-specific installation guides for Windows, macOS, Linux, Flatpak, and WSL in the [System Requirements & Installation Guide](./requirements.md).
 
 ---
 
