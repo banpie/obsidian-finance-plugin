@@ -34,7 +34,7 @@ Because GitHub's default token cannot trigger subsequent workflows (e.g. trigger
 ## Release Process
 
 ### Step 1 — Prepare the Release Changes
-Ensure all your release changes (such as updates to features, styling, etc.) are committed to `Dev`. Write all your release notes under the `## In-progress` section in [CHANGELOG.md](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/obsidian-MOC-plugin/CHANGELOG.md).
+Follow the steps in [PRE_RELEASE_CHECKLIST.md](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/beancount-finance/PRE_RELEASE_CHECKLIST.md) to complete code quality checks, screenshot updates across the documentation, and release preparations. Ensure all release changes are committed to `Dev`. Write all your release notes under the `## In-progress` section in [CHANGELOG.md](file:///c:/Users/Asus/Documents/Vaults/plugin_maker/.obsidian/plugins/beancount-finance/CHANGELOG.md).
 
 ### Step 2 — Bump the Version
 Use npm to bump the version without creating a git tag:

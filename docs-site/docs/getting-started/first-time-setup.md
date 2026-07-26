@@ -15,27 +15,30 @@ The **Onboarding Modal** appears automatically when:
 **Manual Launch:**
 Open Command Palette (`Ctrl/Cmd + P`) → **"Obsidian Finance: Run Setup/Onboarding"**
 
-![Onboarding Welcome](/img/Onboarding-modal1.png)
-
 ---
 
 ## Step 1: Connect 🔌
 
 The plugin uses **`bean-query`** (a command-line tool from the Beancount ecosystem) to query your financial data. Obsidian must be able to detect and execute it.
 
+![Connect Onboarding Step](/img/Onboarding-checkingPreRequisites.png)
+
 ### Required & Optional Components
 
-- **`bean-query` (Required):** Essential for running BQL queries and powering the financial dashboard.
-- **`bean-price` (Optional):** Used for automatic commodity price fetching.
+- **`bean-query` (Required):** Status indicator (green dot when detected with version badge e.g. `v0.2.0`), absolute executable path, and an **Edit** button to customize the command.
+- **`bean-price` (Optional):** Used for automatic commodity price fetching (`Not detected. Install with pip install beanprice to enable automatic price fetching. You can set this up later in Settings.`).
 
 ### Detection & Manual Verification
 
 1. **Automatic Detection:** Upon opening Step 1, the plugin automatically scans your system environment for `bean-query` and `bean-price`.
-2. **Manual Entry:** If automatic detection fails, you can enter your exact executable command or absolute file path into the command input box.
-   - *Common Command Values:* `bean-query`, `wsl bean-query`, `/home/user/.local/bin/bean-query`, `/opt/homebrew/bin/bean-query`
-3. **Verify:** Click the **Verify** button to test execution and check the version output immediately.
+2. **Manual Entry:** Click **Edit** or enter your exact executable command or absolute file path into the command input box.
+   - *Common Command Values:* `bean-query`, `wsl bean-query`, `C:\Users\<user>\AppData\Roaming\Python\Python313\Scripts\bean-query.exe`, `/usr/local/bin/bean-query`
 
-![Connect Onboarding Step](/img/Onboarding-checkingPreRequisites.png)
+### Step Controls
+
+- **Re-detect:** Re-scans your system environment for `bean-query` and `bean-price`.
+- **Skip for now:** Bypasses CLI verification so you can proceed with setting up your ledger folder (*Note: Dashboard features require `bean-query` to be configured later in Settings → Connection*).
+- **Next: Organize →:** Advances to Step 2.
 
 ### In-Modal Installation Guides ("📦 How to install")
 
@@ -79,18 +82,7 @@ For convenience, Step 1 includes tabbed installation instructions directly insid
    sudo flatpak override --filesystem=~/.local/bin md.obsidian.Obsidian
    ```
 4. Restart Obsidian completely so the Flatpak sandbox recognizes the filesystem permission change.
-5. Enter the full path (e.g., `/home/user/.local/bin/bean-query`) into the command box in Step 1 and click **Verify**.
-
-**Snap:**
-1. Find absolute path on host running `which bean-query`.
-2. Enter full path into command box and click **Verify**.
-3. **Confinement Note:** If strictly confined Snap blocks host CLI execution, switch to the official AppImage or Flatpak release.
-
-### Step Controls
-
-- **Re-detect:** Re-scans your system environment for `bean-query` and `bean-price`.
-- **Skip for now:** Bypasses CLI verification so you can proceed with setting up your ledger folder (*Note: Dashboard features require `bean-query` to be configured later in Settings → Connection*).
-- **Next: Organize →:** Proceeds to Step 2.
+5. Enter the full path into the command box in Step 1 and click **Next: Organize →**.
 
 ---
 
@@ -109,35 +101,39 @@ Choose how to start and configure your structured ledger folder layout. All your
 
 #### 📁 Option 2: Use My Existing Ledger
 - Select an existing `.beancount` file in your vault (or enter a path manually) to migrate it into the structured folder layout.
-- *Note:* Requires `bean-query` to be configured and verified in Step 1.
 
-### Configuration Options
+### Layout & Currency Configuration Options
 
 1. **Folder name:** Specifies the vault folder where organized finance files live (default: `Finances`).
 2. **Transaction file period:** Choose how transaction files are grouped inside `transactions/`:
-   - **Yearly:** `Finances/transactions/2026.beancount`
-   - **Monthly:** `Finances/transactions/2026/2026-07.beancount`
+   - **Yearly (e.g. 2026.beancount):** Group entries by calendar year.
+   - **Monthly:** Group entries by year and month directory.
 3. **Operating currency:** Primary currency for your records (e.g. `USD`, `EUR`, `GBP`).
-4. **Folder structure preview:** Live tree view showing exact files and directories that will be created.
+   - *Note:* Demo data uses USD by default. You can change the operating currency later in Settings.
 
 ---
 
 ## Step 3: Ready 🎉
 
-After setup completes, Step 3 displays a success screen and configuration summary:
+After configuring your folder and options, Step 3 displays a success screen (**"🎉 You're all set!"**) with a configuration summary and recommended next steps:
 
 ![Verification Summary](/img/Onboarding-verification_topPart.png)
 
 ### Configuration Summary
 
-- **bean-query Command & Version**
-- **bean-price Status** (Command or Not Configured)
-- **Structured Folder Location**
-- **Data Source** (Demo Data or Existing Ledger)
-- **Operating Currency**
-- **Transaction Period** (Yearly or Monthly)
+- **bean-query**: Command path & detected version badge (e.g. `v0.2.0`).
+- **bean-price**: Connection status (`Not configured (optional)` or verified path).
+- **Folder**: Location in vault (e.g. `Finances/`).
+- **Data source**: Selected mode (`Demo Data` or `Existing Ledger`).
+- **Currency**: Primary operating currency (e.g. `USD`).
+- **Transactions**: Grouping scheme (`Yearly files`).
 
-Click **"🚀 Open Dashboard"** to finish setup and launch the unified Obsidian Finance dashboard!
+### 🚀 Next Steps Checklist
+
+1. Open the **Finance Dashboard** to explore your financial data.
+2. Browse the 5 main tabs: Overview, Transactions, Journal, Balance Sheet, Commodities.
+3. Try BQL queries in your Markdown notes using ` ```bql ` code blocks.
+4. Manage commands anytime in **Settings → Connection**.
 
 ---
 
