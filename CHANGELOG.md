@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+## 2.3.1 - 2026-07-26
+
 ### Added 🚀
 
 - **Onboarding Wizard: Full redesign with connection probing** — Replaced the previous onboarding trigger (keyed on `structuredFolderName`) with a dedicated `onboardingCompleted` settings flag and a companion runtime connection probe (`probeConnection`) that non-blockingly verifies `bean-query` reachability on startup. The wizard Svelte component was rewritten with new step-based UI including dependency detection cards, folder-structure tree preview, setup-card selection, a polished summary/next-steps screen, and refined CSS using Obsidian design tokens throughout.
@@ -34,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI/CD: Release and deployment workflow fixes** — Restructured `release-finalize.yml` to prevent false failures, standardised the changelog-rewriting regex, fixed the docs directory path in `release-trigger.yml`, added `CHANGELOG.md` and workflow files to deploy triggers, and migrated the documentation deployment to direct GitHub Actions deployment.
 
 - **Licensing & Manifest** — Standardised `LICENSE` to MIT and converted `manifest.json` `fundingUrl` from a plain string to the multi-platform object format (`GitHub Sponsors` + `Buy Me a Coffee`).
+
 
 ## 2.3.0 - 2026-07-15
 
