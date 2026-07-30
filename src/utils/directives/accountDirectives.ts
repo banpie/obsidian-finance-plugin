@@ -11,6 +11,7 @@ export async function saveOpenDirective(
 	account: string,
 	currencies?: string[],
 	booking?: string,
+	metadata?: Record<string, string>,
 	createBackup = true
 ): Promise<{ success: boolean; error?: string }> {
 	try {
@@ -21,7 +22,14 @@ export async function saveOpenDirective(
 		const parts = [date, 'open', account];
 		if (currencies && currencies.length > 0) parts.push(currencies.join(','));
 		if (booking) parts.push(`"${booking}"`);
-		const directiveText = parts.join(' ');
+
+		const directiveLines = [parts.join(' ')];
+		if (metadata) {
+			for (const [key, value] of Object.entries(metadata)) {
+				directiveLines.push(`  ${key}: ${value}`);
+			}
+		}
+		const directiveText = directiveLines.join('\n');
 
 		await createBackupFile(plugin, normalizedPath, createBackup, 'saveOpenDirective');
 		const content = await readFileContent(plugin, normalizedPath);

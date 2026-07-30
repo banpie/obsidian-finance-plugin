@@ -284,3 +284,26 @@ export function getCommodityPriceHistoryQuery(symbol: string): string {
 export function getAllCurrenciesQuery(): string {
 	return `SELECT distinct(currency) AS currency_`;
 }
+
+// --- Reconciliation Queries ---
+
+/**
+ * Returns open accounts that have a `reconcile` metadata key on their open directive.
+ * The value is the number of days the user wants between reconciliations.
+ *
+ * Uses `open.meta['reconcile']` dict-key access on the `#accounts` table,
+ * since `account_meta()` is not available in all beanquery versions.
+ */
+export function getReconcileAccountsQuery(): string {
+	return `SELECT account, open.meta['reconcile'] AS reconcile_days FROM #accounts WHERE NOT bool(close) AND open.meta['reconcile'] IS NOT NULL`;
+}
+
+/**
+ * Returns the most recent balance assertion date for each account that has
+ * at least one balance directive. Uses the dedicated `#balances` table which
+ * exposes `account` as a plain string (unlike `#entries.accounts` which is a
+ * set and cannot be grouped).
+ */
+export function getLastBalanceDateQuery(): string {
+	return `SELECT account, max(date) AS last_balance_date FROM #balances GROUP BY account`;
+}

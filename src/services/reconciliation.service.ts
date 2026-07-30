@@ -1,0 +1,128 @@
+// src/services/reconciliation.service.ts
+
+import { parse as parseCsv } from 'csv-parse/sync';
+import type BeancountPlugin from '../main';
+import { runQuery } from '../utils/queryRunner';
+import { getReconcileAccountsQuery, getLastBalanceDateQuery } from '../queries/index';
+import { Logger } from '../utils/logger';
+
+/**
+ * Per-account reconciliation status.
+ */
+export interface ReconciliationAccountStatus {
+	/** Fully-qualified account name. */
+	account: string;
+	/** Desired reconciliation interval (days), from the open directive metadata. */
+	reconcileDays: number;
+	/** ISO date of the most recent balance assertion, or null if never reconciled. */
+	lastBalanceDate: string | null;
+	/** Number of days since the last balance assertion, or null if never reconciled. */
+	daysSinceLastBalance: number | null;
+	/** True when the account is past its reconciliation window. */
+	isOverdue: boolean;
+}
+
+/**
+ * Aggregate reconciliation health for the whole ledger.
+ */
+export interface ReconciliationStatus {
+	overdueCount: number;
+	upToDateCount: number;
+	/** Detailed per-account breakdown (sorted: overdue first, then by days-since desc). */
+	accounts: ReconciliationAccountStatus[];
+}
+
+/**
+ * Computes reconciliation status for every open account that carries
+ * a `reconcile: <days>` metadata key on its `open` directive.
+ *
+ * Runs two BQL queries in parallel:
+ *   1. Accounts with `reconcile` metadata  (`#accounts` table)
+ *   2. Latest balance date per account      (`#balances` table)
+ * Then joins client-side and classifies each account.
+ */
+export async function getReconciliationStatus(plugin: BeancountPlugin): Promise<ReconciliationStatus> {
+	Logger.log('[Reconciliation] Fetching reconciliation status');
+
+	const [reconcileAccountsCsv, balanceDatesCsv] = await Promise.all([
+		runQuery(plugin, getReconcileAccountsQuery()),
+		runQuery(plugin, getLastBalanceDateQuery()),
+	]);
+
+	// --- Parse reconcile accounts ---
+	const reconcileRows = parseCsv(reconcileAccountsCsv, {
+		columns: true,
+		skip_empty_lines: true,
+		trim: true,
+	}) as unknown as { account: string; reconcile_days: string }[];
+
+	Logger.log('[Reconciliation] Accounts with reconcile metadata:', reconcileRows.length);
+
+	if (reconcileRows.length === 0) {
+		return { overdueCount: 0, upToDateCount: 0, accounts: [] };
+	}
+
+	// --- Parse balance dates into a lookup map ---
+	const balanceRows = parseCsv(balanceDatesCsv, {
+		columns: true,
+		skip_empty_lines: true,
+		trim: true,
+	}) as unknown as { account: string; last_balance_date: string }[];
+
+	const balanceDateMap = new Map<string, string>();
+	for (const row of balanceRows) {
+		if (row.account && row.last_balance_date) {
+			balanceDateMap.set(row.account, row.last_balance_date);
+		}
+	}
+
+	// --- Compute per-account status ---
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+
+	const accounts: ReconciliationAccountStatus[] = [];
+
+	for (const row of reconcileRows) {
+		const reconcileDays = parseInt(row.reconcile_days, 10);
+		if (isNaN(reconcileDays) || reconcileDays <= 0) {
+			Logger.log(`[Reconciliation] Skipping ${row.account}: invalid reconcile_days="${row.reconcile_days}"`);
+			continue;
+		}
+
+		const lastBalanceDateStr = balanceDateMap.get(row.account) ?? null;
+		let daysSinceLastBalance: number | null = null;
+		let isOverdue = true; // Default: overdue if never reconciled
+
+		if (lastBalanceDateStr) {
+			const lastDate = new Date(lastBalanceDateStr);
+			lastDate.setHours(0, 0, 0, 0);
+			daysSinceLastBalance = Math.floor(
+				(today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)
+			);
+			isOverdue = daysSinceLastBalance > reconcileDays;
+		}
+
+		accounts.push({
+			account: row.account,
+			reconcileDays,
+			lastBalanceDate: lastBalanceDateStr,
+			daysSinceLastBalance,
+			isOverdue,
+		});
+	}
+
+	// Sort: overdue first, then by days-since descending
+	accounts.sort((a, b) => {
+		if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
+		const aDays = a.daysSinceLastBalance ?? Infinity;
+		const bDays = b.daysSinceLastBalance ?? Infinity;
+		return bDays - aDays;
+	});
+
+	const overdueCount = accounts.filter(a => a.isOverdue).length;
+	const upToDateCount = accounts.length - overdueCount;
+
+	Logger.log(`[Reconciliation] Result: ${overdueCount} overdue, ${upToDateCount} up to date`);
+
+	return { overdueCount, upToDateCount, accounts };
+}

@@ -201,6 +201,7 @@ export class UnifiedTransactionModal extends Modal {
                     entryData.account!,
                     entryData.currencies || [],
                     entryData.booking,
+                    undefined,
                     this.plugin.settings.createBackups ?? true
                 );
                 
