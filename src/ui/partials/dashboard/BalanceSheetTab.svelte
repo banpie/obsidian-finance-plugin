@@ -186,59 +186,40 @@
 		<!-- Chart Area -->
 		<div class="chart-area">
 			<div class="chart-area-header">
-				<div class="chart-selector" role="group" aria-label="Select chart">
-					<button
-						class="chart-selector-btn"
-						class:active={selectedChart === 'trend'}
-						on:click={() => (selectedChart = 'trend')}
-						aria-pressed={selectedChart === 'trend'}
+				<div class="chart-dropdown-container">
+					<select
+						class="chart-select-dropdown"
+						bind:value={selectedChart}
+						aria-label="Select chart view"
 					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-						</svg>
-						Net Worth Trend
-					</button>
-					<button
-						class="chart-selector-btn"
-						class:active={selectedChart === 'balances'}
-						on:click={() => (selectedChart = 'balances')}
-						aria-pressed={selectedChart === 'balances'}
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<circle cx="12" cy="12" r="3"/>
-							<circle cx="12" cy="12" r="7"/>
-							<circle cx="12" cy="12" r="11"/>
-						</svg>
-						Balances
-					</button>
+						<option value="trend">Net Worth Trend</option>
+						<option value="balances">Balances</option>
+					</select>
 				</div>
 				{#if selectedChart === 'trend'}
-					<div class="interval-toggle">
-						<button
-							class:active={state.chartInterval === 'month'}
-							on:click={() => handleIntervalChange('month')}
+					<div class="interval-dropdown-container">
+						<select
+							class="chart-select-dropdown"
+							value={state.chartInterval}
+							on:change={(e) => handleIntervalChange(e.currentTarget.value === 'week' ? 'week' : 'month')}
 							disabled={state.chartLoading}
-						>Monthly</button>
-						<button
-							class:active={state.chartInterval === 'week'}
-							on:click={() => handleIntervalChange('week')}
-							disabled={state.chartLoading}
-						>Weekly</button>
+							aria-label="Select chart interval"
+						>
+							<option value="month">Monthly</option>
+							<option value="week">Weekly</option>
+						</select>
 					</div>
 				{:else if selectedChart === 'balances'}
-					<div class="balance-section-toggle">
-						<button
-							class:active={selectedBalanceSection === 'assets'}
-							on:click={() => (selectedBalanceSection = 'assets')}
-						>Assets</button>
-						<button
-							class:active={selectedBalanceSection === 'liabilities'}
-							on:click={() => (selectedBalanceSection = 'liabilities')}
-						>Liabilities</button>
-						<button
-							class:active={selectedBalanceSection === 'equity'}
-							on:click={() => (selectedBalanceSection = 'equity')}
-						>Equity</button>
+					<div class="balance-section-dropdown-container">
+						<select
+							class="chart-select-dropdown"
+							bind:value={selectedBalanceSection}
+							aria-label="Select balance section"
+						>
+							<option value="assets">Assets</option>
+							<option value="liabilities">Liabilities</option>
+							<option value="equity">Equity</option>
+						</select>
 					</div>
 				{/if}
 			</div>
@@ -503,77 +484,29 @@
 		gap: var(--size-4-2);
 	}
 
-	.chart-selector {
-		display: flex;
+	.chart-select-dropdown {
+		background: var(--background-primary);
 		border: 1px solid var(--background-modifier-border);
 		border-radius: var(--radius-s);
-		overflow: hidden;
-	}
-
-	.chart-selector-btn {
-		display: flex;
-		align-items: center;
-		gap: 5px;
-		padding: 4px 12px;
-		border: none;
-		background: var(--interactive-normal);
-		color: var(--text-muted);
-		cursor: pointer;
-		font-size: var(--font-ui-small);
-		transition: background 0.15s, color 0.15s;
-	}
-
-	.chart-selector-btn:not(:last-child) {
-		border-right: 1px solid var(--background-modifier-border);
-	}
-
-	.chart-selector-btn:hover {
-		background: var(--interactive-hover);
-		color: var(--text-normal);
-	}
-
-	.chart-selector-btn.active {
-		background: var(--interactive-accent);
-		color: var(--text-on-accent);
-	}
-
-	.interval-toggle,
-	.balance-section-toggle {
-		display: flex;
-		border: 1px solid var(--background-modifier-border);
-		border-radius: var(--radius-s);
-		overflow: hidden;
-	}
-
-	.interval-toggle button,
-	.balance-section-toggle button {
 		padding: var(--size-4-1) var(--size-4-3);
-		background: var(--interactive-normal);
-		border: none;
-		color: var(--text-muted);
-		cursor: pointer;
-		font-size: var(--font-ui-small);
-		transition: background-color 0.15s, color 0.15s;
-	}
-
-	.interval-toggle button:not(:last-child),
-	.balance-section-toggle button:not(:last-child) {
-		border-right: 1px solid var(--background-modifier-border);
-	}
-
-	.interval-toggle button.active,
-	.balance-section-toggle button.active {
-		background: var(--interactive-accent);
-		color: var(--text-on-accent);
-	}
-
-	.interval-toggle button:hover:not(.active):not(:disabled),
-	.balance-section-toggle button:hover:not(.active) {
-		background: var(--interactive-hover);
 		color: var(--text-normal);
+		font-size: var(--font-ui-small);
+		font-weight: 500;
+		cursor: pointer;
+		transition: border-color 0.15s ease, background-color 0.15s ease;
 	}
 
-	.interval-toggle button:disabled {
+	.chart-select-dropdown:hover:not(:disabled) {
+		border-color: var(--interactive-accent);
+		background-color: var(--interactive-hover);
+	}
+
+	.chart-select-dropdown:focus {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 1px;
+	}
+
+	.chart-select-dropdown:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}

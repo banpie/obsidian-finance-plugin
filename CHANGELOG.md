@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Snapshot Sidebar & Open Account Modal: Stage I Reconciliation support** — Accounts with a `reconcile: <days>` metadata key on their `open` directive are now tracked for reconciliation health. The Snapshot sidebar gains an **Errors | Reconciliation** tab strip below the KPI section. The Reconciliation tab displays overdue/up-to-date summary counts and a per-account list with status indicators. An account is considered overdue when the number of days since its most recent `balance` assertion exceeds the configured reconcile interval; accounts that have never been reconciled are also flagged. Data is fetched via two new BQL queries (`open.meta['reconcile']` on `#accounts`, `max(date)` on `#balances`) run in parallel with existing KPI and validation queries. Added an optional "Reconciliation interval (days)" input to the "Open Account" modal in the Accounts tab, passing the `reconcile` metadata to `saveOpenDirective()`.
 
+### Improved 🔨
+
+- **Dashboard Charts: Dropdown controls for view & interval selection** — Converted side-by-side button toggles in the chart headers ("Net Worth Trend" vs "Balances" and "Monthly" vs "Weekly") into clean select dropdowns (`<select>`). This streamlines chart area controls in both the "Accounts and Balances" tab and the "Income & Expenses" tab while saving horizontal header space.
+
 ## 2.3.1 - 2026-07-26
 
 ### Added 🚀
