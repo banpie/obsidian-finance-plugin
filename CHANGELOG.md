@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+## 2.3.2 - 2026-08-07
+
 ### Added 🚀
 
 - **Account Reconciliation Tracking** — Never lose track of which accounts are overdue for reconciliation. Assign a `reconcile: <days>` interval to any account's `open` directive and the plugin will continuously monitor how long ago each account last had a `balance` assertion — flagging any that exceed their interval or have never been reconciled at all. A new **Reconciliation tab** in the Snapshot sidebar shows an at-a-glance summary (overdue count vs. up-to-date count) and a per-account status list with clear ✅ / ⚠️ indicators. Setting up intervals is just as easy: the **Open Account** modal in the Accounts tab now includes an optional **"Reconciliation interval (days)"** field, so you can configure the schedule directly from the UI without touching your `.beancount` files.
@@ -14,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improved 🔨
 
 - **Custom Pill Dropdown Controls** — Redesigned the chart area selectors and filter controls across the "Accounts and Balances", "Income Statement", and "Commodities" tabs with a polished custom dropdown component. Primary selectors ("Net Worth Trend" / "Trends" / "All Commodities") use a vibrant purple accent with custom SVG icons, paired with cascading sub-option menus ("Balances", "Monthly", "Weekly", "Assets", "Liabilities", etc.). Popovers are 100% opaque across all Obsidian themes and support full keyboard navigation (`Escape`, `Enter`, Arrow keys) and click-outside dismissal.
+
 
 ## 2.3.1 - 2026-07-26
 
