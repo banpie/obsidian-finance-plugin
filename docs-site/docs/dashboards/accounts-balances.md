@@ -15,9 +15,9 @@ The **Accounts & Balances** view is the tree-grid representation of your active 
 ![Net Worth Trend](/img/AccountsTab-NetWorthTrend.png)
 ![Asset Allocation Chart](/img/AccountsTab-PieChart.png)
 
-The top portion of the tab provides visual analytics:
-*   **Net Worth Trend**: An interactive chart showing your historical net worth over time. You can toggle the interval between **Weekly** and **Monthly**.
-*   **Balances (Sunburst Chart)**: A visual sunburst diagram of either **Assets**, **Liabilities**, or **Equity**. You can click on segments to drill down into sub-account distributions.
+The top portion of the tab provides visual analytics using interactive **Custom Pill Dropdown Controls**:
+*   **Net Worth Trend**: An interactive chart showing your historical net worth over time. Use the purple pill selector to toggle the view ("Net Worth Trend" vs sub-options) and aggregate intervals between **Weekly** and **Monthly**.
+*   **Balances (Sunburst Chart)**: A visual sunburst diagram of either **Assets**, **Liabilities**, or **Equity**. Click on segments to drill down into sub-account distributions.
 
 ---
 
@@ -55,7 +55,8 @@ You can create or retire accounts directly from this tab without writing plain t
     *   **Account Name**: Select a parent prefix and append your new sub-account name (e.g., `Assets:Savings:VacationFund`).
     *   **Date**: Select when this account becomes active (typically the current date or start of the year).
     *   **Allowed Currencies**: List comma-separated currencies (e.g., `USD, EUR`) if you wish to restrict the currencies this account can hold (optional).
-3.  Click **Create**. The plugin appends the `open` directive to `accounts.beancount`.
+    *   **Reconciliation interval (days)**: Set an optional interval (e.g., `30`) to track reconciliation health in the Snapshot sidebar.
+3.  Click **Create**. The plugin appends the `open` directive with metadata to `accounts.beancount`.
 
 ### 2. Closing an Account
 1.  Click the **❌ Close Account** button in the header.

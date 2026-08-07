@@ -25,9 +25,9 @@ View all commodities declared in your ledger with:
 
 The top control bar allows you to quickly query and filter down your list of commodities:
 *   **Search Input**: Filter commodities by typing their symbol.
-*   **Filter Toggle Buttons**:
-    *   **All**: Shows every commodity declared in the ledger.
-    *   **Has Holding**: Displays only commodities that have a positive holdings balance (plus the operating currency).
+*   **Filter Pill Dropdown**:
+    *   **All Commodities**: Shows every commodity declared in the ledger.
+    *   **Has Holding**: Displays only commodities that have a non-zero holdings balance (plus the operating currency).
     *   **Has Price**: Displays only commodities that have recorded price data.
     *   **Has Both**: Displays only commodities with active holdings AND available price data.
 

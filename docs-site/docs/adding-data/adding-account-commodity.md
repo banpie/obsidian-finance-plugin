@@ -39,7 +39,7 @@ You don't have to write these directives manually. You can manage accounts direc
 
 1.  Open the **Unified Dashboard** and navigate to the **Accounts & Balances** tab.
 2.  In the top right header controls, click:
-    *   **➕ Open Account**: Launches a modal where you enter the new account name (with autocomplete prefixes), select the opening date, and list allowed currencies.
+    *   **➕ Open Account**: Launches a modal where you enter the new account name (with autocomplete prefixes), select the opening date, list allowed currencies, and optionally set a reconciliation interval (in days).
     *   **❌ Close Account**: Launches a modal where you select an active account and the closing date.
 3.  The plugin appends the appropriate directive to `accounts.beancount` in your structured layout folder.
 4.  The dashboard refreshes automatically, updating your account lists.

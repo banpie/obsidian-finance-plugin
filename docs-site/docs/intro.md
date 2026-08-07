@@ -42,4 +42,5 @@ This plugin bridges the gap between powerful plain-text accounting and the conve
 *   **🔍 Live BQL Queries**: Run Beancount Query Language (BQL) statements directly in your markdown notes using custom code blocks or inline queries.
 *   **🪙 Bean Price Integration**: Automated market value updates for stocks, mutual funds, ETFs, and cryptocurrencies.
 *   **📁 Structured Layout**: Automatically split large journals into clean, organized files (e.g., separating accounts, prices, and transactions by year).
+*   **✅ Reconciliation Tracking**: Monitor account reconciliation health in the Snapshot sidebar with custom per-account intervals and automated status checks.
 *   **📝 Pro-grade File Editor**: A complete `.beancount` editor view featuring live syntax highlighting, diagnostics/linting, smart auto-indentation, and autocompletion.
