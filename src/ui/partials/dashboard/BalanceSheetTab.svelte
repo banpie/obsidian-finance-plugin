@@ -8,6 +8,7 @@
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
+	import CustomSelect from '../../common/CustomSelect.svelte';
 
 	// Chart selector: which chart is shown in the chart area
 	let selectedChart: 'trend' | 'balances' = 'trend';
@@ -186,61 +187,47 @@
 		<!-- Chart Area -->
 		<div class="chart-area">
 			<div class="chart-area-header">
-				<div class="chart-selector" role="group" aria-label="Select chart">
-					<button
-						class="chart-selector-btn"
-						class:active={selectedChart === 'trend'}
-						on:click={() => (selectedChart = 'trend')}
-						aria-pressed={selectedChart === 'trend'}
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-						</svg>
-						Net Worth Trend
-					</button>
-					<button
-						class="chart-selector-btn"
-						class:active={selectedChart === 'balances'}
-						on:click={() => (selectedChart = 'balances')}
-						aria-pressed={selectedChart === 'balances'}
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<circle cx="12" cy="12" r="3"/>
-							<circle cx="12" cy="12" r="7"/>
-							<circle cx="12" cy="12" r="11"/>
-						</svg>
-						Balances
-					</button>
+				<div class="pill-dropdown-group">
+					<CustomSelect
+						variant="primary"
+						position="left"
+						options={[
+							{ value: 'trend', label: 'Net Worth Trend', icon: 'line-chart' },
+							{ value: 'balances', label: 'Balances', icon: 'pie-chart' }
+						]}
+						bind:value={selectedChart}
+						on:change={(e) => selectedChart = e.detail}
+						ariaLabel="Select chart view"
+					/>
+
+					{#if selectedChart === 'trend'}
+						<CustomSelect
+							variant="secondary"
+							position="right"
+							options={[
+								{ value: 'month', label: 'Monthly', icon: 'calendar' },
+								{ value: 'week', label: 'Weekly', icon: 'clock' }
+							]}
+							value={state.chartInterval}
+							on:change={(e) => handleIntervalChange(e.detail === 'week' ? 'week' : 'month')}
+							disabled={state.chartLoading}
+							ariaLabel="Select chart interval"
+						/>
+					{:else if selectedChart === 'balances'}
+						<CustomSelect
+							variant="secondary"
+							position="right"
+							options={[
+								{ value: 'assets', label: 'Assets', icon: 'briefcase' },
+								{ value: 'liabilities', label: 'Liabilities', icon: 'credit-card' },
+								{ value: 'equity', label: 'Equity', icon: 'scale' }
+							]}
+							bind:value={selectedBalanceSection}
+							on:change={(e) => selectedBalanceSection = e.detail}
+							ariaLabel="Select balance section"
+						/>
+					{/if}
 				</div>
-				{#if selectedChart === 'trend'}
-					<div class="interval-toggle">
-						<button
-							class:active={state.chartInterval === 'month'}
-							on:click={() => handleIntervalChange('month')}
-							disabled={state.chartLoading}
-						>Monthly</button>
-						<button
-							class:active={state.chartInterval === 'week'}
-							on:click={() => handleIntervalChange('week')}
-							disabled={state.chartLoading}
-						>Weekly</button>
-					</div>
-				{:else if selectedChart === 'balances'}
-					<div class="balance-section-toggle">
-						<button
-							class:active={selectedBalanceSection === 'assets'}
-							on:click={() => (selectedBalanceSection = 'assets')}
-						>Assets</button>
-						<button
-							class:active={selectedBalanceSection === 'liabilities'}
-							on:click={() => (selectedBalanceSection = 'liabilities')}
-						>Liabilities</button>
-						<button
-							class:active={selectedBalanceSection === 'equity'}
-							on:click={() => (selectedBalanceSection = 'equity')}
-						>Equity</button>
-					</div>
-				{/if}
 			</div>
 
 			{#if selectedChart === 'trend'}
@@ -492,6 +479,7 @@
 		border-radius: var(--radius-m);
 		padding: var(--size-4-4);
 		background: var(--background-secondary);
+		position: relative;
 	}
 
 	.chart-area-header {
@@ -501,79 +489,39 @@
 		margin-bottom: var(--size-4-4);
 		flex-wrap: wrap;
 		gap: var(--size-4-2);
+		position: relative;
+		z-index: 20;
 	}
 
-	.chart-selector {
-		display: flex;
-		border: 1px solid var(--background-modifier-border);
-		border-radius: var(--radius-s);
-		overflow: hidden;
-	}
-
-	.chart-selector-btn {
-		display: flex;
+	.pill-dropdown-group {
+		display: inline-flex;
 		align-items: center;
-		gap: 5px;
-		padding: 4px 12px;
-		border: none;
-		background: var(--interactive-normal);
-		color: var(--text-muted);
-		cursor: pointer;
-		font-size: var(--font-ui-small);
-		transition: background 0.15s, color 0.15s;
+		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
 	}
 
-	.chart-selector-btn:not(:last-child) {
-		border-right: 1px solid var(--background-modifier-border);
-	}
-
-	.chart-selector-btn:hover {
-		background: var(--interactive-hover);
-		color: var(--text-normal);
-	}
-
-	.chart-selector-btn.active {
-		background: var(--interactive-accent);
-		color: var(--text-on-accent);
-	}
-
-	.interval-toggle,
-	.balance-section-toggle {
-		display: flex;
+	.chart-select-dropdown {
+		background: var(--background-primary);
 		border: 1px solid var(--background-modifier-border);
 		border-radius: var(--radius-s);
-		overflow: hidden;
-	}
-
-	.interval-toggle button,
-	.balance-section-toggle button {
 		padding: var(--size-4-1) var(--size-4-3);
-		background: var(--interactive-normal);
-		border: none;
-		color: var(--text-muted);
-		cursor: pointer;
-		font-size: var(--font-ui-small);
-		transition: background-color 0.15s, color 0.15s;
-	}
-
-	.interval-toggle button:not(:last-child),
-	.balance-section-toggle button:not(:last-child) {
-		border-right: 1px solid var(--background-modifier-border);
-	}
-
-	.interval-toggle button.active,
-	.balance-section-toggle button.active {
-		background: var(--interactive-accent);
-		color: var(--text-on-accent);
-	}
-
-	.interval-toggle button:hover:not(.active):not(:disabled),
-	.balance-section-toggle button:hover:not(.active) {
-		background: var(--interactive-hover);
 		color: var(--text-normal);
+		font-size: var(--font-ui-small);
+		font-weight: 500;
+		cursor: pointer;
+		transition: border-color 0.15s ease, background-color 0.15s ease;
 	}
 
-	.interval-toggle button:disabled {
+	.chart-select-dropdown:hover:not(:disabled) {
+		border-color: var(--interactive-accent);
+		background-color: var(--interactive-hover);
+	}
+
+	.chart-select-dropdown:focus {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 1px;
+	}
+
+	.chart-select-dropdown:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}

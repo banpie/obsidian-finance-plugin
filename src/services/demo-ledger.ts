@@ -49,8 +49,10 @@ option "operating_currency" "USD"
 
 2020-01-01 open Assets:Checking                                 USD
   description: "Primary checking account"
+  reconcile: 7
 2020-01-01 open Assets:Savings                                  USD
   description: "High-yield savings account"
+  reconcile: 30
 2020-01-01 open Assets:Savings:CAD                              USD, CAD
   description: "CAD Savings account"
 2020-01-01 open Assets:Investments                              USD, MSFT, GOOGL, AAPL
@@ -59,6 +61,7 @@ option "operating_currency" "USD"
   description: "Crypto portfolio account"
 2020-01-01 open Liabilities:CreditCard                          USD
   description: "Credit card account"
+  reconcile: 14
 2020-01-01 open Income:Salary                                   USD
   description: "Employment income"
 2020-01-01 open Income:Interest                                 USD

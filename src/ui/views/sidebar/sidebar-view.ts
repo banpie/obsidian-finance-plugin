@@ -6,6 +6,8 @@ import { runQuery, execSafe } from '../../../utils/index';
 import { getMainLedgerPath } from '../../../utils/structuredLayout';
 import * as queries from '../../../queries/index';
 import { Logger } from '../../../utils/logger';
+import { getReconciliationStatus } from '../../../services/reconciliation.service';
+import type { ReconciliationAccountStatus } from '../../../services/reconciliation.service';
 // ----------------------------------------
 
 export const BEANCOUNT_VIEW_TYPE = "beancount-view"; // This identifies the Sidebar/Snapshot view
@@ -24,7 +26,12 @@ export class BeancountView extends ItemView {
 		fileStatus: "checking" as "checking" | "ok" | "error",
 		fileStatusMessage: "" as string | null,
 		errorCount: 0,
-		errorList: [] as string[]
+		errorList: [] as string[],
+		// Reconciliation state
+		reconciliationOverdue: 0,
+		reconciliationUpToDate: 0,
+		reconciliationAccounts: [] as ReconciliationAccountStatus[],
+		activeTab: 'errors' as 'errors' | 'reconciliation'
 	};
 
 	constructor(leaf: WorkspaceLeaf, plugin: BeancountPlugin) {
@@ -47,6 +54,9 @@ export class BeancountView extends ItemView {
 
 		// Listen for events
 		this.component.$on('refresh', () => { void this.updateView(); });
+		this.component.$on('tabChange', (e: CustomEvent<string>) => {
+			this.updateProps({ activeTab: e.detail as 'errors' | 'reconciliation' });
+		});
 
 		window.setTimeout(() => { void this.updateView(); }, 0);
 	}
@@ -79,17 +89,22 @@ export class BeancountView extends ItemView {
 			return;
 		}
 		try {
-			// Run KPI queries and bean check concurrently
+			// Run KPI queries, bean check, and reconciliation concurrently
 			const [
 				kpiResults,
-				checkResult
+				checkResult,
+				reconciliationResult
 			] = await Promise.all([
 				Promise.all([
 					runQuery(this.plugin, queries.getTotalAssetsQuery(reportingCurrency, 2)),
 					runQuery(this.plugin, queries.getTotalLiabilitiesQuery(reportingCurrency, 2)),
 					runQuery(this.plugin, queries.getTotalWorthQuery(reportingCurrency, 2)),
 				]),
-				this.runBeanCheck()
+				this.runBeanCheck(),
+				getReconciliationStatus(this.plugin).catch(err => {
+					Logger.error('[refreshData] Reconciliation fetch failed:', err);
+					return { overdueCount: 0, upToDateCount: 0, accounts: [] as ReconciliationAccountStatus[] };
+				})
 			]);
 
 			const [assetsResult, liabilitiesResult, netWorthResult] = kpiResults;
@@ -116,7 +131,10 @@ export class BeancountView extends ItemView {
 				fileStatus: checkResult.status, 
 				fileStatusMessage: checkResult.message,
 				errorCount: checkResult.errorCount,
-				errorList: checkResult.errorList
+				errorList: checkResult.errorList,
+				reconciliationOverdue: reconciliationResult.overdueCount,
+				reconciliationUpToDate: reconciliationResult.upToDateCount,
+				reconciliationAccounts: reconciliationResult.accounts
 			});
 
 		} catch (error) {

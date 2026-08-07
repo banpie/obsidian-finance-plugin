@@ -13,6 +13,7 @@ export class AccountManagementModal extends Modal {
     private accountName = '';
     private date = '';
     private currencies = '';
+    private reconcileDays = '';
     private onSuccess?: () => Promise<void>;
     private openAccounts: string[] = [];
 
@@ -101,6 +102,16 @@ export class AccountManagementModal extends Modal {
                     .onChange(value => {
                         this.currencies = value;
                     }));
+
+            new Setting(contentEl)
+                .setName('Reconciliation interval (days)')
+                .setDesc('Optional: Number of days between reconciliations (e.g. 30)')
+                .addText(text => text
+                    .setPlaceholder('30')
+                    .setValue(this.reconcileDays)
+                    .onChange(value => {
+                        this.reconcileDays = value;
+                    }));
         }
 
         // Buttons
@@ -151,11 +162,24 @@ export class AccountManagementModal extends Modal {
                     ? this.currencies.split(',').map(c => c.trim()).filter(c => c)
                     : undefined;
 
+                // Parse reconcile metadata
+                let metadata: Record<string, string> | undefined;
+                if (this.reconcileDays.trim()) {
+                    const days = parseInt(this.reconcileDays.trim(), 10);
+                    if (isNaN(days) || days <= 0) {
+                        new Notice('Reconciliation interval must be a positive number of days');
+                        return;
+                    }
+                    metadata = { reconcile: days.toString() };
+                }
+
                 const result = await saveOpenDirective(
                     this.plugin,
                     this.date,
                     this.accountName,
-                    currenciesArray
+                    currenciesArray,
+                    undefined,
+                    metadata
                 );
                 
                 if (!result.success) {

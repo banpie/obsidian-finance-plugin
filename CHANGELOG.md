@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added 🚀
 
+- **Account Reconciliation Tracking** — Never lose track of which accounts are overdue for reconciliation. Assign a `reconcile: <days>` interval to any account's `open` directive and the plugin will continuously monitor how long ago each account last had a `balance` assertion — flagging any that exceed their interval or have never been reconciled at all. A new **Reconciliation tab** in the Snapshot sidebar shows an at-a-glance summary (overdue count vs. up-to-date count) and a per-account status list with clear ✅ / ⚠️ indicators. Setting up intervals is just as easy: the **Open Account** modal in the Accounts tab now includes an optional **"Reconciliation interval (days)"** field, so you can configure the schedule directly from the UI without touching your `.beancount` files.
+
+### Improved 🔨
+
+- **Custom Pill Dropdown Controls** — Redesigned the chart area selectors and filter controls across the "Accounts and Balances", "Income Statement", and "Commodities" tabs with a polished custom dropdown component. Primary selectors ("Net Worth Trend" / "Trends" / "All Commodities") use a vibrant purple accent with custom SVG icons, paired with cascading sub-option menus ("Balances", "Monthly", "Weekly", "Assets", "Liabilities", etc.). Popovers are 100% opaque across all Obsidian themes and support full keyboard navigation (`Escape`, `Enter`, Arrow keys) and click-outside dismissal.
+
+## 2.3.1 - 2026-07-26
+
+### Added 🚀
+
 - **Onboarding Wizard: Full redesign with connection probing** — Replaced the previous onboarding trigger (keyed on `structuredFolderName`) with a dedicated `onboardingCompleted` settings flag and a companion runtime connection probe (`probeConnection`) that non-blockingly verifies `bean-query` reachability on startup. The wizard Svelte component was rewritten with new step-based UI including dependency detection cards, folder-structure tree preview, setup-card selection, a polished summary/next-steps screen, and refined CSS using Obsidian design tokens throughout.
 
 - **Settings: Structured metadata definitions and Editor tab** — Added a `getSettingDefinitions()` method that returns human-readable names and descriptions for all settings, enabling programmatic access for onboarding and documentation. Reorganised the settings tabs: the former "Backup" tab was merged into "Performance", the "Named queries" help block was removed from the BQL tab, and a new dedicated **📝 Editor** tab was created to house autocomplete, snippets, format-on-save, and lint-mode settings.
@@ -34,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI/CD: Release and deployment workflow fixes** — Restructured `release-finalize.yml` to prevent false failures, standardised the changelog-rewriting regex, fixed the docs directory path in `release-trigger.yml`, added `CHANGELOG.md` and workflow files to deploy triggers, and migrated the documentation deployment to direct GitHub Actions deployment.
 
 - **Licensing & Manifest** — Standardised `LICENSE` to MIT and converted `manifest.json` `fundingUrl` from a plain string to the multi-platform object format (`GitHub Sponsors` + `Buy Me a Coffee`).
+
 
 ## 2.3.0 - 2026-07-15
 

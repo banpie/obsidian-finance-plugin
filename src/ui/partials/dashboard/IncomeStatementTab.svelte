@@ -7,6 +7,7 @@
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
+	import CustomSelect from '../../common/CustomSelect.svelte';
 
 	// Chart selector
 	let selectedChart: 'trend' | 'total' = 'trend';
@@ -130,77 +131,60 @@
 		<!-- Chart Area -->
 		<div class="chart-area">
 			<div class="chart-area-header">
-				<div class="chart-selector" role="group" aria-label="Select chart">
-					<button
-						class="chart-selector-btn"
-						class:active={selectedChart === 'trend'}
-						on:click={() => (selectedChart = 'trend')}
-						aria-pressed={selectedChart === 'trend'}
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/>
-						</svg>
-						Trends
-					</button>
-					<button
-						class="chart-selector-btn"
-						class:active={selectedChart === 'total'}
-						on:click={() => (selectedChart = 'total')}
-						aria-pressed={selectedChart === 'total'}
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<circle cx="12" cy="12" r="3"/>
-							<circle cx="12" cy="12" r="7"/>
-							<circle cx="12" cy="12" r="11"/>
-						</svg>
-						Total
-					</button>
-				</div>
+				<div class="pill-dropdown-group">
+					<CustomSelect
+						variant="primary"
+						position="left"
+						options={[
+							{ value: 'trend', label: 'Trends', icon: 'line-chart' },
+							{ value: 'total', label: 'Totals Breakdown', icon: 'pie-chart' }
+						]}
+						bind:value={selectedChart}
+						on:change={(e) => selectedChart = e.detail}
+						ariaLabel="Select chart view"
+					/>
 
-				{#if selectedChart === 'trend'}
-					<div class="trend-controls">
-						<div class="trend-type-toggle">
-							<button
-								class:active={state.chartTrendType === 'netprofit'}
-								on:click={() => handleTrendTypeChange('netprofit')}
-								disabled={state.chartLoading}
-							>Net Profit</button>
-							<button
-								class:active={state.chartTrendType === 'income'}
-								on:click={() => handleTrendTypeChange('income')}
-								disabled={state.chartLoading}
-							>Income</button>
-							<button
-								class:active={state.chartTrendType === 'expense'}
-								on:click={() => handleTrendTypeChange('expense')}
-								disabled={state.chartLoading}
-							>Expense</button>
-						</div>
-						<div class="interval-toggle">
-							<button
-								class:active={state.chartInterval === 'month'}
-								on:click={() => handleIntervalChange('month')}
-								disabled={state.chartLoading}
-							>Monthly</button>
-							<button
-								class:active={state.chartInterval === 'week'}
-								on:click={() => handleIntervalChange('week')}
-								disabled={state.chartLoading}
-							>Weekly</button>
-						</div>
-					</div>
-				{:else if selectedChart === 'total'}
-					<div class="section-toggle">
-						<button
-							class:active={selectedTotalSection === 'income'}
-							on:click={() => (selectedTotalSection = 'income')}
-						>Income</button>
-						<button
-							class:active={selectedTotalSection === 'expenses'}
-							on:click={() => (selectedTotalSection = 'expenses')}
-						>Expenses</button>
-					</div>
-				{/if}
+					{#if selectedChart === 'trend'}
+						<CustomSelect
+							variant="secondary"
+							position="middle"
+							options={[
+								{ value: 'netprofit', label: 'Net Profit', icon: 'dollar-sign' },
+								{ value: 'income', label: 'Income', icon: 'plus-circle' },
+								{ value: 'expense', label: 'Expense', icon: 'minus-circle' }
+							]}
+							value={state.chartTrendType}
+							on:change={(e) => handleTrendTypeChange(e.detail)}
+							disabled={state.chartLoading}
+							ariaLabel="Select trend type"
+						/>
+
+						<CustomSelect
+							variant="secondary"
+							position="right"
+							options={[
+								{ value: 'month', label: 'Monthly', icon: 'calendar' },
+								{ value: 'week', label: 'Weekly', icon: 'clock' }
+							]}
+							value={state.chartInterval}
+							on:change={(e) => handleIntervalChange(e.detail === 'week' ? 'week' : 'month')}
+							disabled={state.chartLoading}
+							ariaLabel="Select chart interval"
+						/>
+					{:else if selectedChart === 'total'}
+						<CustomSelect
+							variant="secondary"
+							position="right"
+							options={[
+								{ value: 'income', label: 'Income', icon: 'plus-circle' },
+								{ value: 'expenses', label: 'Expenses', icon: 'minus-circle' }
+							]}
+							bind:value={selectedTotalSection}
+							on:change={(e) => selectedTotalSection = e.detail}
+							ariaLabel="Select totals section"
+						/>
+					{/if}
+				</div>
 			</div>
 
 			{#if selectedChart === 'trend'}
@@ -419,6 +403,7 @@
 		border-radius: var(--radius-m);
 		padding: var(--size-4-4);
 		background: var(--background-secondary);
+		position: relative;
 	}
 
 	.chart-area-header {
@@ -428,122 +413,39 @@
 		margin-bottom: var(--size-4-4);
 		flex-wrap: wrap;
 		gap: var(--size-4-2);
+		position: relative;
+		z-index: 20;
 	}
 
-	.chart-selector {
-		display: flex;
-		border: 1px solid var(--background-modifier-border);
-		border-radius: var(--radius-s);
-		overflow: hidden;
-	}
-
-	.chart-selector-btn {
-		display: flex;
+	.pill-dropdown-group {
+		display: inline-flex;
 		align-items: center;
-		gap: 5px;
-		padding: 4px 12px;
-		border: none;
-		background: var(--interactive-normal);
-		color: var(--text-muted);
-		cursor: pointer;
-		font-size: var(--font-ui-small);
-		transition: background 0.15s, color 0.15s;
+		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
 	}
 
-	.chart-selector-btn:not(:last-child) {
-		border-right: 1px solid var(--background-modifier-border);
-	}
-
-	.chart-selector-btn:hover {
-		background: var(--interactive-hover);
-		color: var(--text-normal);
-	}
-
-	.chart-selector-btn.active {
-		background: var(--interactive-accent);
-		color: var(--text-on-accent);
-	}
-
-	.trend-controls {
-		display: flex;
-		gap: var(--size-4-2);
-		align-items: center;
-		flex-wrap: wrap;
-	}
-
-	.trend-type-toggle {
-		display: flex;
+	.chart-select-dropdown {
+		background: var(--background-primary);
 		border: 1px solid var(--background-modifier-border);
 		border-radius: var(--radius-s);
-		overflow: hidden;
-	}
-
-	.trend-type-toggle button {
 		padding: var(--size-4-1) var(--size-4-3);
-		background: var(--interactive-normal);
-		border: none;
-		color: var(--text-muted);
-		cursor: pointer;
-		font-size: var(--font-ui-small);
-		transition: background-color 0.15s, color 0.15s;
-	}
-
-	.trend-type-toggle button:not(:last-child) {
-		border-right: 1px solid var(--background-modifier-border);
-	}
-
-	.trend-type-toggle button.active {
-		background: var(--interactive-accent);
-		color: var(--text-on-accent);
-	}
-
-	.trend-type-toggle button:hover:not(.active):not(:disabled) {
-		background: var(--interactive-hover);
 		color: var(--text-normal);
-	}
-
-	.trend-type-toggle button:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.interval-toggle,
-	.section-toggle {
-		display: flex;
-		border: 1px solid var(--background-modifier-border);
-		border-radius: var(--radius-s);
-		overflow: hidden;
-	}
-
-	.interval-toggle button,
-	.section-toggle button {
-		padding: var(--size-4-1) var(--size-4-3);
-		background: var(--interactive-normal);
-		border: none;
-		color: var(--text-muted);
-		cursor: pointer;
 		font-size: var(--font-ui-small);
-		transition: background-color 0.15s, color 0.15s;
+		font-weight: 500;
+		cursor: pointer;
+		transition: border-color 0.15s ease, background-color 0.15s ease;
 	}
 
-	.interval-toggle button:not(:last-child),
-	.section-toggle button:not(:last-child) {
-		border-right: 1px solid var(--background-modifier-border);
+	.chart-select-dropdown:hover:not(:disabled) {
+		border-color: var(--interactive-accent);
+		background-color: var(--interactive-hover);
 	}
 
-	.interval-toggle button.active,
-	.section-toggle button.active {
-		background: var(--interactive-accent);
-		color: var(--text-on-accent);
+	.chart-select-dropdown:focus {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 1px;
 	}
 
-	.interval-toggle button:hover:not(.active):not(:disabled),
-	.section-toggle button:hover:not(.active) {
-		background: var(--interactive-hover);
-		color: var(--text-normal);
-	}
-
-	.interval-toggle button:disabled {
+	.chart-select-dropdown:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
