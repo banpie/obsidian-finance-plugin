@@ -9,6 +9,7 @@
 	import SkeletonLoader from "../../common/SkeletonLoader.svelte";
 	import ErrorBanner from "../../common/ErrorBanner.svelte";
 	import EmptyState from "../../common/EmptyState.svelte";
+	import CustomSelect from "../../common/CustomSelect.svelte";
 
 	export let controller: CommoditiesController;
 
@@ -144,27 +145,20 @@
 
 	<!-- Filter toggle -->
 	<div class="filter-bar">
-		<div class="filter-toggle" role="group" aria-label="Filter commodities">
-			<button
-				class="filter-btn"
-				class:active={filterMode === 'all'}
-				on:click={() => filterMode = 'all'}
-			>All</button>
-			<button
-				class="filter-btn"
-				class:active={filterMode === 'has_holding'}
-				on:click={() => filterMode = 'has_holding'}
-			>Has Holding</button>
-			<button
-				class="filter-btn"
-				class:active={filterMode === 'has_price'}
-				on:click={() => filterMode = 'has_price'}
-			>Has Price</button>
-			<button
-				class="filter-btn"
-				class:active={filterMode === 'has_both'}
-				on:click={() => filterMode = 'has_both'}
-			>Has Both</button>
+		<div class="pill-dropdown-group">
+			<CustomSelect
+				variant="primary"
+				position="single"
+				options={[
+					{ value: 'all', label: 'All Commodities', icon: 'layers' },
+					{ value: 'has_holding', label: 'Has Holding', icon: 'wallet' },
+					{ value: 'has_price', label: 'Has Price', icon: 'tag' },
+					{ value: 'has_both', label: 'Has Both', icon: 'sparkles' }
+				]}
+				bind:value={filterMode}
+				on:change={(e) => filterMode = e.detail}
+				ariaLabel="Filter commodities"
+			/>
 		</div>
 		<span class="filter-count">{displayCommodities.length} shown</span>
 	</div>
@@ -317,40 +311,14 @@
 		align-items: center;
 		justify-content: space-between;
 		margin-bottom: 16px;
+		position: relative;
+		z-index: 20;
 	}
 
-	.filter-toggle {
-		display: flex;
-		background: var(--background-secondary);
-		border: 1px solid var(--background-modifier-border);
-		border-radius: 8px;
-		padding: 3px;
-		gap: 2px;
-	}
-
-	.filter-btn {
-		padding: 5px 14px;
-		border: none;
-		border-radius: 6px;
-		background: transparent;
-		color: var(--text-muted);
-		font-size: 13px;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all 0.15s ease;
-		white-space: nowrap;
-	}
-
-	.filter-btn:hover {
-		color: var(--text-normal);
-		background: var(--background-modifier-hover);
-	}
-
-	.filter-btn.active {
-		background: var(--background-primary);
-		color: var(--text-normal);
-		font-weight: 600;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+	.pill-dropdown-group {
+		display: inline-flex;
+		align-items: center;
+		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
 	}
 
 	.filter-count {

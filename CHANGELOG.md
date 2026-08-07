@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved 🔨
 
-- **Dashboard Charts: Dropdown controls for view & interval selection** — Converted side-by-side button toggles in the chart headers ("Net Worth Trend" vs "Balances" and "Monthly" vs "Weekly") into clean select dropdowns (`<select>`). This streamlines chart area controls in both the "Accounts and Balances" tab and the "Income & Expenses" tab while saving horizontal header space.
+- **Dashboard & Commodities Controls: Custom Pill Dropdown Controls (`CustomSelect.svelte`)** — Redesigned chart area selectors and filter controls in the "Accounts and Balances", "Income Statement", and "Commodities" tabs with a custom Svelte dropdown component (`CustomSelect.svelte`). Combines full cascading dropdown menu functionality with the vibrant visual styling of pill buttons. The primary selectors ("Net Worth Trend" / "Trends" / "All Commodities") feature a vibrant purple accent background (`#8b5cf6`), white typography, and custom SVG icons, paired with secondary sub-option dropdowns ("Balances", "Monthly", "Weekly", "Assets", "Liabilities", "Equity", "Has Holding", "Has Price", "Has Both"). Popover menus are 100% opaque across all Obsidian themes, with keyboard navigation (`Escape`, `Enter`, Arrow keys), click-outside dismissal, and isolated pointer events for reliable option selection.
 
 ## 2.3.1 - 2026-07-26
 

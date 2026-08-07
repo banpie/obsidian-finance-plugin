@@ -8,6 +8,7 @@
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
+	import CustomSelect from '../../common/CustomSelect.svelte';
 
 	// Chart selector: which chart is shown in the chart area
 	let selectedChart: 'trend' | 'balances' = 'trend';
@@ -186,42 +187,47 @@
 		<!-- Chart Area -->
 		<div class="chart-area">
 			<div class="chart-area-header">
-				<div class="chart-dropdown-container">
-					<select
-						class="chart-select-dropdown"
+				<div class="pill-dropdown-group">
+					<CustomSelect
+						variant="primary"
+						position="left"
+						options={[
+							{ value: 'trend', label: 'Net Worth Trend', icon: 'line-chart' },
+							{ value: 'balances', label: 'Balances', icon: 'pie-chart' }
+						]}
 						bind:value={selectedChart}
-						aria-label="Select chart view"
-					>
-						<option value="trend">Net Worth Trend</option>
-						<option value="balances">Balances</option>
-					</select>
-				</div>
-				{#if selectedChart === 'trend'}
-					<div class="interval-dropdown-container">
-						<select
-							class="chart-select-dropdown"
+						on:change={(e) => selectedChart = e.detail}
+						ariaLabel="Select chart view"
+					/>
+
+					{#if selectedChart === 'trend'}
+						<CustomSelect
+							variant="secondary"
+							position="right"
+							options={[
+								{ value: 'month', label: 'Monthly', icon: 'calendar' },
+								{ value: 'week', label: 'Weekly', icon: 'clock' }
+							]}
 							value={state.chartInterval}
-							on:change={(e) => handleIntervalChange(e.currentTarget.value === 'week' ? 'week' : 'month')}
+							on:change={(e) => handleIntervalChange(e.detail === 'week' ? 'week' : 'month')}
 							disabled={state.chartLoading}
-							aria-label="Select chart interval"
-						>
-							<option value="month">Monthly</option>
-							<option value="week">Weekly</option>
-						</select>
-					</div>
-				{:else if selectedChart === 'balances'}
-					<div class="balance-section-dropdown-container">
-						<select
-							class="chart-select-dropdown"
+							ariaLabel="Select chart interval"
+						/>
+					{:else if selectedChart === 'balances'}
+						<CustomSelect
+							variant="secondary"
+							position="right"
+							options={[
+								{ value: 'assets', label: 'Assets', icon: 'briefcase' },
+								{ value: 'liabilities', label: 'Liabilities', icon: 'credit-card' },
+								{ value: 'equity', label: 'Equity', icon: 'scale' }
+							]}
 							bind:value={selectedBalanceSection}
-							aria-label="Select balance section"
-						>
-							<option value="assets">Assets</option>
-							<option value="liabilities">Liabilities</option>
-							<option value="equity">Equity</option>
-						</select>
-					</div>
-				{/if}
+							on:change={(e) => selectedBalanceSection = e.detail}
+							ariaLabel="Select balance section"
+						/>
+					{/if}
+				</div>
 			</div>
 
 			{#if selectedChart === 'trend'}
@@ -473,6 +479,7 @@
 		border-radius: var(--radius-m);
 		padding: var(--size-4-4);
 		background: var(--background-secondary);
+		position: relative;
 	}
 
 	.chart-area-header {
@@ -482,6 +489,14 @@
 		margin-bottom: var(--size-4-4);
 		flex-wrap: wrap;
 		gap: var(--size-4-2);
+		position: relative;
+		z-index: 20;
+	}
+
+	.pill-dropdown-group {
+		display: inline-flex;
+		align-items: center;
+		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
 	}
 
 	.chart-select-dropdown {

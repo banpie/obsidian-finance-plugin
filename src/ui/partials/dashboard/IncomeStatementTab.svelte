@@ -7,6 +7,7 @@
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
+	import CustomSelect from '../../common/CustomSelect.svelte';
 
 	// Chart selector
 	let selectedChart: 'trend' | 'total' = 'trend';
@@ -130,54 +131,60 @@
 		<!-- Chart Area -->
 		<div class="chart-area">
 			<div class="chart-area-header">
-				<div class="chart-dropdown-container">
-					<select
-						class="chart-select-dropdown"
+				<div class="pill-dropdown-group">
+					<CustomSelect
+						variant="primary"
+						position="left"
+						options={[
+							{ value: 'trend', label: 'Trends', icon: 'line-chart' },
+							{ value: 'total', label: 'Totals Breakdown', icon: 'pie-chart' }
+						]}
 						bind:value={selectedChart}
-						aria-label="Select chart view"
-					>
-						<option value="trend">Trends</option>
-						<option value="total">Totals Breakdown</option>
-					</select>
-				</div>
+						on:change={(e) => selectedChart = e.detail}
+						ariaLabel="Select chart view"
+					/>
 
-				{#if selectedChart === 'trend'}
-					<div class="trend-controls">
-						<select
-							class="chart-select-dropdown"
+					{#if selectedChart === 'trend'}
+						<CustomSelect
+							variant="secondary"
+							position="middle"
+							options={[
+								{ value: 'netprofit', label: 'Net Profit', icon: 'dollar-sign' },
+								{ value: 'income', label: 'Income', icon: 'plus-circle' },
+								{ value: 'expense', label: 'Expense', icon: 'minus-circle' }
+							]}
 							value={state.chartTrendType}
-							on:change={(e) => handleTrendTypeChange(e.currentTarget.value)}
+							on:change={(e) => handleTrendTypeChange(e.detail)}
 							disabled={state.chartLoading}
-							aria-label="Select trend type"
-						>
-							<option value="netprofit">Net Profit</option>
-							<option value="income">Income</option>
-							<option value="expense">Expense</option>
-						</select>
+							ariaLabel="Select trend type"
+						/>
 
-						<select
-							class="chart-select-dropdown"
+						<CustomSelect
+							variant="secondary"
+							position="right"
+							options={[
+								{ value: 'month', label: 'Monthly', icon: 'calendar' },
+								{ value: 'week', label: 'Weekly', icon: 'clock' }
+							]}
 							value={state.chartInterval}
-							on:change={(e) => handleIntervalChange(e.currentTarget.value === 'week' ? 'week' : 'month')}
+							on:change={(e) => handleIntervalChange(e.detail === 'week' ? 'week' : 'month')}
 							disabled={state.chartLoading}
-							aria-label="Select chart interval"
-						>
-							<option value="month">Monthly</option>
-							<option value="week">Weekly</option>
-						</select>
-					</div>
-				{:else if selectedChart === 'total'}
-					<div class="section-dropdown-container">
-						<select
-							class="chart-select-dropdown"
+							ariaLabel="Select chart interval"
+						/>
+					{:else if selectedChart === 'total'}
+						<CustomSelect
+							variant="secondary"
+							position="right"
+							options={[
+								{ value: 'income', label: 'Income', icon: 'plus-circle' },
+								{ value: 'expenses', label: 'Expenses', icon: 'minus-circle' }
+							]}
 							bind:value={selectedTotalSection}
-							aria-label="Select totals section"
-						>
-							<option value="income">Income</option>
-							<option value="expenses">Expenses</option>
-						</select>
-					</div>
-				{/if}
+							on:change={(e) => selectedTotalSection = e.detail}
+							ariaLabel="Select totals section"
+						/>
+					{/if}
+				</div>
 			</div>
 
 			{#if selectedChart === 'trend'}
@@ -396,6 +403,7 @@
 		border-radius: var(--radius-m);
 		padding: var(--size-4-4);
 		background: var(--background-secondary);
+		position: relative;
 	}
 
 	.chart-area-header {
@@ -405,6 +413,14 @@
 		margin-bottom: var(--size-4-4);
 		flex-wrap: wrap;
 		gap: var(--size-4-2);
+		position: relative;
+		z-index: 20;
+	}
+
+	.pill-dropdown-group {
+		display: inline-flex;
+		align-items: center;
+		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
 	}
 
 	.chart-select-dropdown {
