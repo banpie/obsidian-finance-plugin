@@ -19,6 +19,7 @@ export { convertWindowsPathToWsl, convertWslPathToWindows, atomicFileWrite, crea
 export {
 	parseMetadataString,
 	debounce,
+	parsePeriodLabel,
 } from './formatters';
 export { parseCommoditiesListCSV, parseCommoditiesPriceDataCSV, parseCommodityDetailsCSV, parseCombinedCommodityDataCSV, parseCommodityPriceHistoryCSV } from './csvParsers';
 export { buildAccountTree, getOpenAccounts, getPayees, getTags, getCommodities } from './accounts';

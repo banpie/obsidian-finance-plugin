@@ -1,13 +1,18 @@
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte';
 	import { writable, type Writable } from 'svelte/store';
 	import type { IncomeStatementController, IncomeStatementState } from '../../../controllers/IncomeStatementController';
 	import type { AccountItem } from '../../../controllers/BalanceSheetController';
 	import { Logger } from '../../../utils/logger';
+	import { parsePeriodLabel } from '../../../utils/index';
+	import type { NavRequest } from '../../../types/navigation';
 	import SunburstChart from '../../common/SunburstChart.svelte';
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
 	import CustomSelect from '../../common/CustomSelect.svelte';
+
+	const dispatch = createEventDispatcher();
 
 	// Chart selector
 	let selectedChart: 'trend' | 'total' = 'trend';
@@ -16,6 +21,7 @@
 
 	// --- Receive the controller ---
 	export let controller: IncomeStatementController;
+	export let navigate: ((req: NavRequest) => void) | null = null;
 
 	// --- Placeholder state & store subscription ---
 	const placeholderState: Writable<IncomeStatementState> = writable({
@@ -27,6 +33,49 @@
 	});
 	$: stateStore = controller ? controller.state : placeholderState;
 	$: state = $stateStore;
+
+	$: if (controller) {
+		controller.onChartClick = (periodKey: string, interval: 'month' | 'week') => {
+			const { startDate, endDate } = parsePeriodLabel(periodKey, interval);
+			if (startDate && endDate) {
+				const req: NavRequest = { tab: 'transactions', filters: { startDate, endDate } };
+				if (navigate) {
+					navigate(req);
+				} else {
+					dispatch('navigate', req);
+				}
+			}
+		};
+	}
+
+	function handleAccountRowClick(item: AccountItem, event: MouseEvent) {
+		if (item.isCategory) {
+			if (event && (event.ctrlKey || event.metaKey)) {
+				handleAccountNavigate(item.account);
+			} else {
+				toggleCollapse(item.account, event);
+			}
+		} else {
+			handleAccountNavigate(item.account);
+		}
+	}
+
+	function handleAccountNavigate(account: string) {
+		if (!account) return;
+		const req: NavRequest = { tab: 'transactions', filters: { account } };
+		if (navigate) {
+			navigate(req);
+		} else {
+			dispatch('navigate', req);
+		}
+	}
+
+	function handleSegmentClick(e: CustomEvent<{ account: string }>) {
+		const account = e.detail?.account;
+		if (account) {
+			handleAccountNavigate(account);
+		}
+	}
 
 	// Indentation helper
 	function getIndentation(level: number): string {
@@ -268,17 +317,17 @@
 							{#each visibleIncome as item}
 								<tr class={getAccountClass(item)}>
 									<td class="account-name"
-										on:click={(e) => item.isCategory && toggleCollapse(item.account, e)}>
+										on:click={(e) => handleAccountRowClick(item, e)}>
 										{#if item.isCategory}
 											<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 										{/if}
 										{getIndentation(item.level)}{item.displayName}
 									</td>
-									<td class="align-right amount-cell" class:category-amount={item.isCategory}>
+									<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account)}>
 										{item.amount}
 									</td>
 									{#if showOtherCurrenciesColumn}
-										<td class="align-right other-currencies-cell">
+										<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account)}>
 											{item.otherCurrencies || ''}
 										</td>
 									{/if}
@@ -309,17 +358,17 @@
 							{#each visibleExpenses as item}
 								<tr class={getAccountClass(item)}>
 									<td class="account-name"
-										on:click={(e) => item.isCategory && toggleCollapse(item.account, e)}>
+										on:click={(e) => handleAccountRowClick(item, e)}>
 										{#if item.isCategory}
 											<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 										{/if}
 										{getIndentation(item.level)}{item.displayName}
 									</td>
-									<td class="align-right amount-cell" class:category-amount={item.isCategory}>
+									<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account)}>
 										{item.amount}
 									</td>
 									{#if showOtherCurrenciesColumn}
-										<td class="align-right other-currencies-cell">
+										<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account)}>
 											{item.otherCurrencies || ''}
 										</td>
 									{/if}
@@ -617,11 +666,25 @@
 		text-overflow: ellipsis;
 		max-width: 180px;
 		width: 50%;
-		cursor: default;
+		cursor: pointer;
 	}
 
 	:global(.account-row.category) .account-name {
 		cursor: pointer;
+	}
+
+	:global(.account-row.leaf) {
+		cursor: pointer;
+		transition: background-color 0.15s ease;
+	}
+
+	:global(.account-row.leaf):hover {
+		background-color: var(--background-modifier-hover);
+	}
+
+	:global(.account-row.leaf):hover .account-name {
+		color: var(--text-accent);
+		text-decoration: underline;
 	}
 
 	.collapse-icon {

@@ -2,7 +2,8 @@
 <script lang="ts">
 	import { onMount, createEventDispatcher } from 'svelte';
 	import { parse as parseCsv } from 'csv-parse/sync';
-	import { runQuery, deleteIndicatorDirective } from '../../../utils';
+	import { runQuery, deleteIndicatorDirective, parsePeriodLabel } from '../../../utils';
+	import type { NavRequest } from '../../../types/navigation';
 	// `getIndicatorStatusQuery`  → current-cycle expense (single aggregated row).
 	// `getIndicatorBalanceQuery` → cumulative balance since the indicator's startDate.
 	// Both are needed for rollover indicators so we can recompute `remaining`
@@ -13,8 +14,25 @@
 	import { Notice } from 'obsidian';
 
 	export let plugin: any = null;
+	export let navigate: ((req: NavRequest) => void) | null = null;
 
 	const dispatch = createEventDispatcher();
+
+	function handleViewTransactions(item: IndicatorItem) {
+		if (!item.accountString) return;
+		const req: NavRequest = {
+			tab: 'transactions',
+			filters: {
+				account: item.accountString,
+				...(item.startDate ? { startDate: item.startDate } : {})
+			}
+		};
+		if (navigate) {
+			navigate(req);
+		} else {
+			dispatch('navigate', req);
+		}
+	}
 
 	interface IndicatorItem {
 		name: string;
@@ -466,15 +484,16 @@
 								<div class="card-title-row">
 									<span class="card-name">{item.name}</span>
 									<div class="card-actions">
+										<button class="btn-icon view-btn" on:click={() => handleViewTransactions(item)} title="View Transactions">→ View</button>
 										<button class="btn-icon edit-btn" on:click={() => handleEdit(item)} title="Edit">✏️</button>
 										<button class="btn-icon delete-btn" on:click={() => handleDelete(item)} title="Delete">❌</button>
 									</div>
 								</div>
 								<div class="card-meta">
-									<span class="meta-chip">
+									<button type="button" class="meta-chip account-chip" on:click={() => handleViewTransactions(item)} title="Click to view transactions">
 										<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
 										{item.accountString}
-									</span>
+									</button>
 									<span class="meta-chip">
 										<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
 										{item.period}
@@ -793,6 +812,39 @@
 		gap: 4px;
 		font-size: 11px;
 		color: var(--text-muted);
+	}
+
+	.meta-chip.account-chip {
+		background: none;
+		border: none;
+		padding: 0;
+		font-family: inherit;
+		cursor: pointer;
+		transition: color 0.15s ease;
+	}
+
+	.meta-chip.account-chip:hover {
+		color: var(--interactive-accent);
+		text-decoration: underline;
+	}
+
+	.view-btn {
+		background: none;
+		border: none;
+		padding: 0;
+		font-family: inherit;
+		font-size: 11px;
+		color: var(--text-muted);
+		cursor: pointer;
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+		transition: color 0.15s ease;
+	}
+
+	.view-btn:hover {
+		color: var(--interactive-accent);
+		text-decoration: underline;
 	}
 
 	.meta-chip svg { flex-shrink: 0; opacity: 0.7; }

@@ -40,7 +40,10 @@
     // The `UnifiedDashboardView.svelte` passes `store={journalStore}`.
     // I should check `UnifiedDashboardView.svelte` to see if I can pass `plugin`.
 
+    import type { NavRequest } from '../../../types/navigation';
+
     export let plugin: any = null; // We will need to update the parent to pass this.
+    export let navigate: ((req: NavRequest) => void) | null = null;
 
     // Destructure store for easier access
     const {
@@ -315,6 +318,26 @@
         ).open();
     }
 
+    function handleAccountClick(accountName: string) {
+        if (!accountName) return;
+        const req: NavRequest = { tab: 'transactions', filters: { account: accountName } };
+        if (navigate) {
+            navigate(req);
+        } else {
+            dispatch('navigate', req);
+        }
+    }
+
+    function handlePayeeClick(payeeName: string) {
+        if (!payeeName) return;
+        const req: NavRequest = { tab: 'transactions', filters: { payee: payeeName } };
+        if (navigate) {
+            navigate(req);
+        } else {
+            dispatch('navigate', req);
+        }
+    }
+
     onMount(() => {
         Logger.log('JournalTab mounted');
         // Sync local state with store filters
@@ -512,12 +535,16 @@
                         on:edit={() => handleEdit(entry)}
                         on:delete={() => handleDelete(entry)}
                         on:create-snippet={(e) => handleCreateSnippet(e.detail)}
+                        on:account-click={(e) => handleAccountClick(typeof e.detail === 'string' ? e.detail : e.detail?.account)}
+                        on:payee-click={(e) => handlePayeeClick(typeof e.detail === 'string' ? e.detail : e.detail?.payee)}
+                        on:view-transactions={(e) => handlePayeeClick(typeof e.detail === 'string' ? e.detail : e.detail?.payee)}
                     />
                 {:else if entry.type === 'balance'}
                     <BalanceCard
                         {entry}
                         on:edit={() => handleEdit(entry)}
                         on:delete={() => handleDelete(entry)}
+                        on:account-click={(e) => handleAccountClick(typeof e.detail === 'string' ? e.detail : e.detail?.account)}
                     />
                 {:else if entry.type === 'note'}
                     <NoteCard

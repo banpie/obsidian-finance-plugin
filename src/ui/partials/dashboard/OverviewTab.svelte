@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte';
 	import CardComponent from '../../common/CardComponent.svelte';
 	import IndicatorsSection from './IndicatorsSection.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
@@ -8,10 +9,30 @@
 	import type { OverviewPeriodPreset, OverviewState } from '../../../controllers/OverviewController'; // Import the State type
 	import { AddBudgetModal } from '../../modals/AddBudgetModal';
 	import { AddTargetModal } from '../../modals/AddTargetModal';
+	import { parsePeriodLabel } from '../../../utils/index';
+	import type { NavRequest, TransactionFilters } from '../../../types/navigation';
 
 	// --- Receive the controller ---
 	export let controller: OverviewController;
 	export let plugin: any = null;
+	export let navigate: ((req: NavRequest) => void) | null = null;
+
+	const dispatch = createEventDispatcher();
+
+	function handleKpiClick(accountPrefix?: string) {
+		const { startDate, endDate } = parsePeriodLabel(state.periodLabel || '', 'month');
+		const filters: TransactionFilters = {};
+		if (accountPrefix) filters.account = accountPrefix;
+		if (startDate) filters.startDate = startDate;
+		if (endDate) filters.endDate = endDate;
+
+		const req: NavRequest = { tab: 'transactions', filters };
+		if (navigate) {
+			navigate(req);
+		} else {
+			dispatch('navigate', req);
+		}
+	}
 
 	// --- THIS IS THE FIX ---
 	// 1. Create a local, placeholder store with default values.
@@ -156,14 +177,16 @@
 		</div>
 		
 		<div class="kpi-grid">
-			<CardComponent label="Total Balance" value={state.netWorth} comparison="Assets minus liabilities" />
-			<CardComponent label="Income" value={state.periodIncome} comparison={state.periodLabel} />
-			<CardComponent label="Expenses" value={state.periodExpenses} comparison={state.periodLabel} />
-			<CardComponent label="Savings Rate" value={state.periodSavingsRate} comparison={`Net income: ${state.periodNetIncome}`} />
+			<CardComponent label="Total Balance" value={state.netWorth} comparison="Assets minus liabilities" clickable on:click={() => handleKpiClick()} />
+			<CardComponent label="Income" value={state.periodIncome} comparison={state.periodLabel} clickable on:click={() => handleKpiClick('Income')} />
+			<CardComponent label="Expenses" value={state.periodExpenses} comparison={state.periodLabel} clickable on:click={() => handleKpiClick('Expenses')} />
+			<CardComponent label="Savings Rate" value={state.periodSavingsRate} comparison={`Net income: ${state.periodNetIncome}`} clickable on:click={() => handleKpiClick()} />
 		</div>
 
 		<IndicatorsSection
 			{plugin}
+			{navigate}
+			on:navigate
 			on:add-budget={handleAddBudget}
 			on:add-target={handleAddTarget}
 		/>

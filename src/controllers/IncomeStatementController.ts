@@ -75,6 +75,7 @@ export interface IncomeStatementState {
 export class IncomeStatementController {
 	public plugin: BeancountPlugin;
 	public state: Writable<IncomeStatementState>;
+	public onChartClick?: (periodKey: string, interval: 'month' | 'week') => void;
 
 	constructor(plugin: BeancountPlugin) {
 		this.plugin = plugin;
@@ -279,6 +280,7 @@ export class IncomeStatementController {
 
 			const dataMap = new Map<string, number>();
 			const labels: string[] = [];
+			const periodKeys: string[] = [];
 			const dataPoints: (number | null)[] = [];
 
 			if (interval === 'month') {
@@ -296,6 +298,7 @@ export class IncomeStatementController {
 				let cy = minYear, cm = minMonth;
 				while (cy < maxYear || (cy === maxYear && cm <= maxMonth)) {
 					const key = `${cy}-${cm.toString().padStart(2, '0')}`;
+					periodKeys.push(key);
 					labels.push(new Date(cy, cm - 1).toLocaleDateString('en-US', { year: 'numeric', month: 'short' }).toUpperCase());
 					dataPoints.push(dataMap.get(key) ?? null);
 					if (++cm > 12) { cm = 1; cy++; }
@@ -318,6 +321,7 @@ export class IncomeStatementController {
 				const cur = new Date(minDate);
 				while (cur <= maxDate) {
 					const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+					periodKeys.push(key);
 					labels.push(cur.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }));
 					dataPoints.push(dataMap.get(key) ?? null);
 					cur.setDate(cur.getDate() + 7);
@@ -327,7 +331,7 @@ export class IncomeStatementController {
 			const xAxisTitle = interval === 'month' ? 'Month' : 'Week ending (Sunday)';
 			this.state.update(s => ({
 				...s,
-				chartConfig: this._buildBarChartConfig(labels, dataPoints, reportingCurrency, xAxisTitle, trendType),
+				chartConfig: this._buildBarChartConfig(labels, dataPoints, reportingCurrency, xAxisTitle, trendType, periodKeys, interval),
 				chartError: null,
 				chartLoading: false,
 			}));
@@ -341,7 +345,15 @@ export class IncomeStatementController {
 	/**
 	 * Builds a Chart.js bar chart configuration for the Trends chart.
 	 */
-	private _buildBarChartConfig(labels: string[], dataPoints: (number | null)[], currency: string, xAxisTitle: string, trendType: 'netprofit' | 'income' | 'expense' = 'netprofit'): ChartConfiguration {
+	private _buildBarChartConfig(
+		labels: string[],
+		dataPoints: (number | null)[],
+		currency: string,
+		xAxisTitle: string,
+		trendType: 'netprofit' | 'income' | 'expense' = 'netprofit',
+		periodKeys: string[] = [],
+		interval: 'month' | 'week' = 'month'
+	): ChartConfiguration {
 		const labelMap = { netprofit: 'Net Profit', income: 'Income', expense: 'Expense' };
 		const displayLabel = labelMap[trendType];
 		const bgColor = trendType === 'income'
@@ -369,6 +381,22 @@ export class IncomeStatementController {
 			options: {
 				responsive: true,
 				maintainAspectRatio: false,
+				onHover: (event, chartElement) => {
+					const target = (event?.native?.target || (event as { target?: HTMLElement })?.target) as HTMLElement | undefined;
+					if (target) {
+						target.style.cursor = chartElement.length > 0 ? 'pointer' : 'default';
+					}
+				},
+				onClick: (event, elements, chart) => {
+					if (elements.length > 0) {
+						const index = elements[0].index;
+						const rawKey = periodKeys[index] || chart.data.labels?.[index];
+						const keyStr = typeof rawKey === 'string' ? rawKey : Array.isArray(rawKey) ? String(rawKey[0]) : '';
+						if (keyStr && this.onChartClick) {
+							this.onChartClick(keyStr, interval);
+						}
+					}
+				},
 				plugins: {
 					title: {
 						display: true,

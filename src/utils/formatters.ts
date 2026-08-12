@@ -44,3 +44,103 @@ export function debounce<T extends (...args: Parameters<T>) => ReturnType<T>>(
         timeout = window.setTimeout(later, wait);
     };
 }
+
+// --- PERIOD LABEL PARSER ---
+
+/**
+ * Parses a chart period label or date key into a startDate and endDate string range (YYYY-MM-DD).
+ * @param label The period label or date key (e.g. "2025-10", "OCT 2025", "2025-10-12", "Oct 12, 25").
+ * @param interval The chart granularity ('month' | 'week').
+ */
+export function parsePeriodLabel(label: string, interval: 'month' | 'week'): { startDate: string; endDate: string } {
+    if (!label || typeof label !== 'string') {
+        return { startDate: '', endDate: '' };
+    }
+
+    const trimmed = label.trim();
+
+    if (interval === 'month') {
+        let year: number | null = null;
+        let month: number | null = null;
+
+        const yearOnlyMatch = /^(\d{4})$/.exec(trimmed);
+        if (yearOnlyMatch) {
+            const y = parseInt(yearOnlyMatch[1], 10);
+            return {
+                startDate: `${y}-01-01`,
+                endDate: `${y}-12-31`
+            };
+        }
+
+        const isoMatch = /^(\d{4})-(\d{1,2})(?:-\d{1,2})?$/.exec(trimmed);
+        if (isoMatch) {
+            year = parseInt(isoMatch[1], 10);
+            month = parseInt(isoMatch[2], 10);
+        } else {
+            const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+            const textMatch = /([a-zA-Z]+)\s+(\d{4})/.exec(trimmed) || /(\d{4})\s+([a-zA-Z]+)/.exec(trimmed);
+            if (textMatch) {
+                const monthStr = (textMatch[1].length === 4 ? textMatch[2] : textMatch[1]).toLowerCase();
+                const yearStr = textMatch[1].length === 4 ? textMatch[1] : textMatch[2];
+                const monthIdx = months.findIndex(m => monthStr.startsWith(m));
+                if (monthIdx !== -1) {
+                    month = monthIdx + 1;
+                    year = parseInt(yearStr, 10);
+                }
+            }
+            if (!year || !month) {
+                const d = new Date(trimmed);
+                if (!isNaN(d.getTime())) {
+                    year = d.getFullYear();
+                    month = d.getMonth() + 1;
+                }
+            }
+        }
+
+        if (year && month && month >= 1 && month <= 12) {
+            const padMonth = month.toString().padStart(2, '0');
+            const lastDay = new Date(year, month, 0).getDate();
+            const padLastDay = lastDay.toString().padStart(2, '0');
+            return {
+                startDate: `${year}-${padMonth}-01`,
+                endDate: `${year}-${padMonth}-${padLastDay}`
+            };
+        }
+    } else {
+        let endD: Date | null = null;
+        const isoMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(trimmed);
+        if (isoMatch) {
+            const y = parseInt(isoMatch[1], 10);
+            const m = parseInt(isoMatch[2], 10) - 1;
+            const d = parseInt(isoMatch[3], 10);
+            endD = new Date(y, m, d);
+        } else {
+            const d = new Date(trimmed);
+            if (!isNaN(d.getTime())) {
+                endD = d;
+                if (endD.getFullYear() < 100) {
+                    endD.setFullYear(endD.getFullYear() + 2000);
+                }
+            }
+        }
+
+        if (endD && !isNaN(endD.getTime())) {
+            const startD = new Date(endD.getTime());
+            startD.setDate(startD.getDate() - 6);
+
+            const formatISO = (date: Date) => {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            };
+
+            return {
+                startDate: formatISO(startD),
+                endDate: formatISO(endD)
+            };
+        }
+    }
+
+    return { startDate: '', endDate: '' };
+}

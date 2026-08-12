@@ -7,7 +7,10 @@
   Supports hover tooltips and click-to-drill-down navigation.
 -->
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte';
 	import type { AccountItem } from '../../controllers/BalanceSheetController';
+
+	const dispatch = createEventDispatcher();
 
 	// ── Props ────────────────────────────────────────────────────────────────
 	export let assets: AccountItem[]      = [];
@@ -272,12 +275,17 @@
 
 	function onArcClick(node: SunburstNode) {
 		const children = node.sourceItem?.children ?? [];
-		if (children.length === 0) return; // leaf — nothing to drill into
-		drillStack = [...drillStack, {
-			crumb:   node.path,
-			items:   children,
-			section: node.section,
-		}];
+		if (children.length > 0) {
+			drillStack = [...drillStack, {
+				crumb:   node.path,
+				items:   children,
+				section: node.section,
+			}];
+		}
+		const account = node.sourceItem?.account || (node.id.startsWith('__') ? '' : node.id);
+		if (account) {
+			dispatch('segment-click', { account, node });
+		}
 	}
 
 	function drillBack(targetDepth: number) {
@@ -585,7 +593,7 @@
 	}
 
 	.sunburst-arc {
-		cursor: default;
+		cursor: pointer;
 		transition: fill 0.12s ease;
 	}
 

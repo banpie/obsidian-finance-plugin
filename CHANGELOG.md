@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+- **Unified Inter-Tab Dashboard Connections & Navigation API** — Built a centralized navigation contract (`NavRequest`, `NavigationFilters`) allowing cross-tab linking and filter synchronization across the entire dashboard:
+  - **Journal Tab**: Click any posting account name on a `TransactionCard` or `BalanceCard` to open the Transactions tab pre-filtered to that account (#263).
+  - **Income Statement Chart**: Click any month/week column in the Income Statement trend chart to jump to the Transactions tab pre-filtered to that date range, with a `pointer` cursor on hover (#264).
+  - **Income Statement Table**: Click any leaf account row (or `Ctrl`/`Cmd` click category headers) in the Income/Expenses table to view transactions for that account (#265).
+  - **Balance Sheet Table**: Click any leaf account row (or `Ctrl`/`Cmd` click category headers) in Assets/Liabilities/Equity tables to jump to the Transactions tab pre-filtered to that account (#266).
+  - **Overview Tab**: Click KPI summary cards (Income, Expenses, Total Balance, Savings Rate) to open Transactions tab pre-filtered to that period & account type. Added a `"→ View"` button and clickable account chips on Budget and Target indicator cards (#267).
+  - **Sunburst Charts**: Click any arc segment on Sunburst charts across Income Statement and Balance Sheet tabs to navigate to Transactions for that account, featuring cursor pointer styling and enhanced tooltip hints (#268).
+  - **Transactions ↔ Journal**: Click any payee name in the Transactions tab table to jump to the Journal tab pre-filtered to that payee, and click the `"↗"` link or payee name on Journal `TransactionCard` headers to jump back to the Transactions tab (#269).
+
 ## 2.3.2 - 2026-08-07
 
 ### Added 🚀
