@@ -814,24 +814,36 @@
 		color: var(--text-muted);
 	}
 
-	.meta-chip.account-chip {
-		background: none;
-		border: none;
-		padding: 0;
+	button.meta-chip.account-chip {
+		background: transparent !important;
+		border: none !important;
+		box-shadow: none !important;
+		outline: none !important;
+		padding: 0 !important;
+		margin: 0 !important;
+		height: auto !important;
 		font-family: inherit;
+		font-size: 11px;
+		color: var(--text-muted);
 		cursor: pointer;
 		transition: color 0.15s ease;
 	}
 
-	.meta-chip.account-chip:hover {
+	button.meta-chip.account-chip:hover {
 		color: var(--interactive-accent);
 		text-decoration: underline;
+		background: transparent !important;
+		box-shadow: none !important;
 	}
 
-	.view-btn {
-		background: none;
-		border: none;
-		padding: 0;
+	button.view-btn {
+		background: transparent !important;
+		border: none !important;
+		box-shadow: none !important;
+		outline: none !important;
+		padding: 0 !important;
+		margin: 0 !important;
+		height: auto !important;
 		font-family: inherit;
 		font-size: 11px;
 		color: var(--text-muted);
@@ -842,9 +854,11 @@
 		transition: color 0.15s ease;
 	}
 
-	.view-btn:hover {
+	button.view-btn:hover {
 		color: var(--interactive-accent);
 		text-decoration: underline;
+		background: transparent !important;
+		box-shadow: none !important;
 	}
 
 	.meta-chip svg { flex-shrink: 0; opacity: 0.7; }
