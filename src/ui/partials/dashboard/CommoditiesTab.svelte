@@ -18,10 +18,16 @@
 	// Extract the stores from the controller
 	$: filteredCommoditiesStore = controller.filteredCommodities;
 	$: operatingCurrency = controller.getOperatingCurrency();
+	$: lastUpdatedStore = controller.lastUpdated;
+	// Re-derive after every loadData() (tracked via lastUpdatedStore) so this reflects
+	// the currency precision map once it's finished loading, not just its value at mount.
+	let operatingCurrencyDecimals = 2;
+	$: if ($lastUpdatedStore || operatingCurrency) {
+		operatingCurrencyDecimals = controller.getCurrencyDecimals(operatingCurrency);
+	}
 	$: searchTermStore = controller.searchTerm;
 	$: loadingStore = controller.loading;
 	$: errorStore = controller.error;
-	$: lastUpdatedStore = controller.lastUpdated;
 	$: hasCommodityDataStore = controller.hasCommodityData;
 	$: fetchingPricesStore = controller.fetchingPrices;
 	$: lastPriceFetchStore = controller.lastPriceFetch;
@@ -191,6 +197,7 @@
 					{commodity}
 					{index}
 					{operatingCurrency}
+					{operatingCurrencyDecimals}
 					on:click={handleCommodityClick}
 				/>
 			{/each}

@@ -20,7 +20,11 @@ export {
 	parseMetadataString,
 	debounce,
 	parsePeriodLabel,
+	formatAmount,
+	formatCurrency,
+	formatSignificantAmount,
 } from './formatters';
+export { countDecimals, parseCurrencyNumberCSV, buildPrecisionMap } from './currencyPrecision';
 export { parseCommoditiesListCSV, parseCommoditiesPriceDataCSV, parseCommodityDetailsCSV, parseCombinedCommodityDataCSV, parseCommodityPriceHistoryCSV } from './csvParsers';
 export { buildAccountTree, getOpenAccounts, getPayees, getTags, getCommodities } from './accounts';
 export { getTransactionEntries, getBalanceEntries, getNoteEntries } from './journal';

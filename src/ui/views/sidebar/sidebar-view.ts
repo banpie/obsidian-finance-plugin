@@ -110,6 +110,9 @@ export class BeancountView extends ItemView {
 			return;
 		}
 		try {
+			await this.plugin.currencyPrecisionService.ensureLoaded();
+			const decimals = this.plugin.currencyPrecisionService.getDecimals(reportingCurrency);
+
 			// Run KPI queries, bean check, and reconciliation concurrently
 			const [
 				kpiResults,
@@ -117,9 +120,9 @@ export class BeancountView extends ItemView {
 				reconciliationResult
 			] = await Promise.all([
 				Promise.all([
-					runQuery(this.plugin, queries.getTotalAssetsQuery(reportingCurrency, 2)),
-					runQuery(this.plugin, queries.getTotalLiabilitiesQuery(reportingCurrency, 2)),
-					runQuery(this.plugin, queries.getTotalWorthQuery(reportingCurrency, 2)),
+					runQuery(this.plugin, queries.getTotalAssetsQuery(reportingCurrency, decimals)),
+					runQuery(this.plugin, queries.getTotalLiabilitiesQuery(reportingCurrency, decimals)),
+					runQuery(this.plugin, queries.getTotalWorthQuery(reportingCurrency, decimals)),
 				]),
 				this.runBeanCheck(),
 				getReconciliationStatus(this.plugin).catch(err => {
@@ -145,9 +148,9 @@ export class BeancountView extends ItemView {
 			Logger.log('[refreshData] Error list:', checkResult.errorList);
 
 			this.updateProps({
-				assets: `${assetsNum.toFixed(2)} ${reportingCurrency}`,
-				liabilities: `${liabilitiesNum.toFixed(2)} ${reportingCurrency}`,
-				netWorth: `${netWorthNum.toFixed(2)} ${reportingCurrency}`,
+				assets: `${assetsNum.toFixed(decimals)} ${reportingCurrency}`,
+				liabilities: `${liabilitiesNum.toFixed(decimals)} ${reportingCurrency}`,
+				netWorth: `${netWorthNum.toFixed(decimals)} ${reportingCurrency}`,
 				kpiError: null, 
 				fileStatus: checkResult.status, 
 				fileStatusMessage: checkResult.message,

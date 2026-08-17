@@ -17,6 +17,7 @@
 	export let liabilities: AccountItem[] = [];
 	export let equity: AccountItem[]      = [];
 	export let currency: string           = 'USD';
+	export let decimals: number            = 2;
 	export let totalAssets: number        = 0;
 	export let totalLiabilities: number   = 0;
 	export let totalEquity: number        = 0;
@@ -180,7 +181,7 @@
 
 			return {
 				id, label, path: label,
-				amount:     `${value.toFixed(2)} ${currency}`,
+				amount:     `${value.toFixed(decimals)} ${currency}`,
 				value:      Math.abs(value),
 				color:      getColor(section, 0, value < 0),
 				startAngle: sa,
@@ -317,7 +318,7 @@
 	$: centreAmount = hoveredNode
 		? hoveredNode.amount
 		: drillStack.length === 0
-			? `${centreSectionTotal.toFixed(2)} ${currency}`
+			? `${centreSectionTotal.toFixed(decimals)} ${currency}`
 			: '';
 </script>
 

@@ -108,6 +108,7 @@ export class IncomeStatementController {
 		accountType: 'Income' | 'Expenses'
 	): AccountItem[] {
 		const reportingCurrency = this.plugin.settings.operatingCurrency;
+		const decimals = this.plugin.currencyPrecisionService.getDecimals(reportingCurrency);
 		const accountMap = new Map<string, AccountItem>();
 		const rootAccounts: AccountItem[] = [];
 
@@ -125,8 +126,8 @@ export class IncomeStatementController {
 				if (!accountMap.has(currentPath)) {
 					const displayAmountNumber = i === parts.length - 1 ? amountNumber : 0;
 					const displayAmount = i === parts.length - 1
-						? `${amountNumber.toFixed(2)} ${reportingCurrency}`
-						: `0.00 ${reportingCurrency}`;
+						? `${amountNumber.toFixed(decimals)} ${reportingCurrency}`
+						: `${(0).toFixed(decimals)} ${reportingCurrency}`;
 
 					const item: AccountItem = {
 						account: currentPath,
@@ -148,7 +149,7 @@ export class IncomeStatementController {
 					}
 				} else if (i === parts.length - 1) {
 					const existing = accountMap.get(currentPath)!;
-					existing.amount = `${amountNumber.toFixed(2)} ${reportingCurrency}`;
+					existing.amount = `${amountNumber.toFixed(decimals)} ${reportingCurrency}`;
 					existing.amountNumber = amountNumber;
 					existing.otherCurrencies = otherCurrencies;
 				}
@@ -164,11 +165,12 @@ export class IncomeStatementController {
 	 */
 	private calculateCategoryTotals(accounts: AccountItem[], currency: string): number {
 		let total = 0;
+		const decimals = this.plugin.currencyPrecisionService.getDecimals(currency);
 		for (const account of accounts) {
 			if (account.children && account.children.length > 0) {
 				const childTotal = this.calculateCategoryTotals(account.children, currency);
 				account.amountNumber = childTotal;
-				account.amount = `${childTotal.toFixed(2)} ${currency}`;
+				account.amount = `${childTotal.toFixed(decimals)} ${currency}`;
 
 				const childOtherCurrencies = account.children
 					.map(child => child.otherCurrencies)
@@ -463,7 +465,10 @@ export class IncomeStatementController {
 					break;
 			}
 
-			const result = await this.plugin.runQuery(query);
+			const [result] = await Promise.all([
+				this.plugin.runQuery(query),
+				this.plugin.currencyPrecisionService.ensureLoaded()
+			]);
 			const cleanStdout = result.replace(/\r/g, '').trim();
 			const records: string[][] = parseCsv(cleanStdout, { columns: false, skip_empty_lines: true });
 

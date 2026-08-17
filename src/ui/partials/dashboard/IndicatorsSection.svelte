@@ -177,14 +177,16 @@
 	}
 
 	function formatAmount(amount: number, currency: string): string {
+		const decimals = plugin?.currencyPrecisionService?.getDecimals(currency) ?? 2;
 		const abs = Math.abs(amount);
-		return `${abs.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+		return `${abs.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} ${currency}`;
 	}
 
 	function formatSignedAmount(amount: number, currency: string): string {
+		const decimals = plugin?.currencyPrecisionService?.getDecimals(currency) ?? 2;
 		const sign = amount < 0 ? '−' : ' ';
 		const abs = Math.abs(amount);
-		return `${sign}${abs.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+		return `${sign}${abs.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} ${currency}`;
 	}
 
 	// For rollover budgets, available budget = spent + remaining (base + accumulated rollover).

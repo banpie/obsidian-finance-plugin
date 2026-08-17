@@ -65,6 +65,7 @@
 	});
 	$: stateStore = controller ? controller.state : placeholderState;
 	$: state = $stateStore;
+	$: currencyDecimals = controller ? controller.plugin.currencyPrecisionService.getDecimals(state.currency) : 2;
 	// ------------------------------------------------------
 
 	// Helper function to generate indentation based on account level
@@ -288,6 +289,7 @@
 						liabilities={[]}
 						equity={[]}
 						currency={state.currency}
+						decimals={currencyDecimals}
 						totalAssets={state.totalAssets}
 						totalLiabilities={0}
 						totalEquity={0}
@@ -300,6 +302,7 @@
 						liabilities={state.liabilities}
 						equity={[]}
 						currency={state.currency}
+						decimals={currencyDecimals}
 						totalAssets={0}
 						totalLiabilities={state.totalLiabilities}
 						totalEquity={0}
@@ -312,6 +315,7 @@
 						liabilities={[]}
 						equity={state.equity}
 						currency={state.currency}
+						decimals={currencyDecimals}
 						totalAssets={0}
 						totalLiabilities={0}
 						totalEquity={state.totalEquity}

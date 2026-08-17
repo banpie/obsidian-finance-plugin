@@ -33,6 +33,7 @@
 	});
 	$: stateStore = controller ? controller.state : placeholderState;
 	$: state = $stateStore;
+	$: currencyDecimals = controller ? controller.plugin.currencyPrecisionService.getDecimals(state.currency) : 2;
 
 	$: if (controller) {
 		controller.onChartClick = (periodKey: string, interval: 'month' | 'week', ctrlKey?: boolean) => {
@@ -261,6 +262,7 @@
 						liabilities={[]}
 						equity={[]}
 						currency={state.currency}
+						decimals={currencyDecimals}
 						totalAssets={state.totalIncome}
 						totalLiabilities={0}
 						totalEquity={0}
@@ -276,6 +278,7 @@
 						liabilities={state.expenses}
 						equity={[]}
 						currency={state.currency}
+						decimals={currencyDecimals}
 						totalAssets={0}
 						totalLiabilities={state.totalExpenses}
 						totalEquity={0}
@@ -344,7 +347,7 @@
 					</table>
 					<div class="section-total">
 						<span>Total Income</span>
-						<span class="total-amount">{state.totalIncome.toFixed(2)} {state.currency}</span>
+						<span class="total-amount">{state.totalIncome.toFixed(currencyDecimals)} {state.currency}</span>
 					</div>
 				</div>
 
@@ -386,7 +389,7 @@
 					</table>
 					<div class="section-total">
 						<span>Total Expenses</span>
-						<span class="total-amount">{state.totalExpenses.toFixed(2)} {state.currency}</span>
+						<span class="total-amount">{state.totalExpenses.toFixed(currencyDecimals)} {state.currency}</span>
 					</div>
 				</div>
 			</div>
@@ -395,7 +398,7 @@
 			<div class="net-profit-row">
 				<span class="net-profit-label">Net Profit</span>
 				<span class="net-profit-value {netProfitClass(state.netProfit)}">
-					{state.netProfit.toFixed(2)} {state.currency}
+					{state.netProfit.toFixed(currencyDecimals)} {state.currency}
 				</span>
 			</div>
 		</div>

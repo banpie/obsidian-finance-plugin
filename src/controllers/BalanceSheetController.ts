@@ -128,12 +128,13 @@ export class BalanceSheetController {
 	 */
 	private buildAccountHierarchy(accounts: [string, number, string][]): AccountItem[] {
 		const reportingCurrency = this.plugin.settings.operatingCurrency;
+		const decimals = this.plugin.currencyPrecisionService.getDecimals(reportingCurrency);
 		const accountMap = new Map<string, AccountItem>();
 		const rootAccounts: AccountItem[] = [];
 
 		// Group accounts by their hierarchy levels
 		for (const [fullAccount, amountNumber, otherCurrencies] of accounts) {
-			const convertedAmount = `${amountNumber.toFixed(2)} ${reportingCurrency}`;
+			const convertedAmount = `${amountNumber.toFixed(decimals)} ${reportingCurrency}`;
 
 			const parts = fullAccount.split(':');
 			let currentPath = '';
@@ -190,13 +191,14 @@ export class BalanceSheetController {
 	 */
 	private calculateCategoryTotals(accounts: AccountItem[], currency: string): number {
 		let total = 0;
+		const decimals = this.plugin.currencyPrecisionService.getDecimals(currency);
 		for (const account of accounts) {
 			if (account.children && account.children.length > 0) {
 				const childTotal = this.calculateCategoryTotals(account.children, currency);
 				account.amountNumber = childTotal;
-				
+
 				// Always show amount with reporting currency
-				account.amount = `${childTotal.toFixed(2)} ${currency}`;
+				account.amount = `${childTotal.toFixed(decimals)} ${currency}`;
 				
 				// Aggregate other currencies from children - collect unique currencies
 				const childOtherCurrencies = account.children
@@ -410,7 +412,10 @@ export class BalanceSheetController {
 					break;
 			}
 
-			const result = await this.plugin.runQuery(query);
+			const [result] = await Promise.all([
+				this.plugin.runQuery(query),
+				this.plugin.currencyPrecisionService.ensureLoaded()
+			]);
 			const cleanStdout = result.replace(/\r/g, "").trim();
 			const records: string[][] = parseCsv(cleanStdout, { columns: false, skip_empty_lines: true });
 

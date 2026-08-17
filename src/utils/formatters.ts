@@ -5,6 +5,36 @@ import { Logger } from './logger';
 
 
 
+// --- CURRENCY / AMOUNT FORMATTING ---
+
+/**
+ * Formats a numeric amount to a fixed decimal count, with optional thousands separators.
+ * `decimals` should come from a per-currency precision lookup (see CurrencyPrecisionService)
+ * rather than being hardcoded, so e.g. crypto and zero-decimal currencies render correctly.
+ */
+export function formatAmount(amount: number, decimals = 2, grouped = false): string {
+    if (grouped) {
+        return amount.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    }
+    return amount.toFixed(decimals);
+}
+
+/** Formats a numeric amount with a trailing currency code, e.g. "1234.50 USD". */
+export function formatCurrency(amount: number, currency: string, decimals = 2, grouped = false): string {
+    return `${formatAmount(amount, decimals, grouped)} ${currency}`;
+}
+
+/**
+ * Formats a rate/price value with as many decimals as needed to stay meaningful
+ * (up to `maxDecimals`), without padding "clean" values with trailing zeros.
+ * Unlike formatCurrency's fixed decimal count, this suits unit prices, where a
+ * single currency-typical precision (e.g. 2 for USD) would round low-value
+ * commodities (e.g. a token priced at 0.00003421 USD) down to "0.00".
+ */
+export function formatSignificantAmount(amount: number, minDecimals = 2, maxDecimals = 8): string {
+    return amount.toLocaleString(undefined, { minimumFractionDigits: minDecimals, maximumFractionDigits: maxDecimals });
+}
+
 // --- METADATA PARSER ---
 
 /**

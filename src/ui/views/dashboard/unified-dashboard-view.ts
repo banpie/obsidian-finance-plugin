@@ -70,7 +70,8 @@ export class UnifiedDashboardView extends ItemView {
 				this.balanceSheetController.loadData(),
 				this.incomeStatementController.loadData(),
 				this.commoditiesController.loadData(),
-				this.plugin.journalStore.refresh() // Use new store
+				this.plugin.journalStore.refresh(), // Use new store
+				this.plugin.currencyPrecisionService.refresh()
 			]);
 		} catch (error) {
 			console.error('Error refreshing dashboard data:', error);
