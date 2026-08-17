@@ -3,7 +3,7 @@
 	import { onMount, createEventDispatcher } from 'svelte';
 	import { parse as parseCsv } from 'csv-parse/sync';
 	import { runQuery, deleteIndicatorDirective, parsePeriodLabel } from '../../../utils';
-	import type { NavRequest } from '../../../types/navigation';
+	import { resolveNavTab, type NavRequest } from '../../../types/navigation';
 	// `getIndicatorStatusQuery`  → current-cycle expense (single aggregated row).
 	// `getIndicatorBalanceQuery` → cumulative balance since the indicator's startDate.
 	// Both are needed for rollover indicators so we can recompute `remaining`
@@ -18,14 +18,15 @@
 
 	const dispatch = createEventDispatcher();
 
-	function handleViewTransactions(item: IndicatorItem) {
+	function handleViewTransactions(item: IndicatorItem, event?: MouseEvent) {
 		if (!item.accountString) return;
+		// Filter to the *current cycle* (e.g. this month, for a monthly budget that
+		// started tracking back in January), matching what the status bar actually
+		// shows — not the indicator's overall tracking start date.
+		const { startDate, endDate } = getCurrentCycleRange(normalizePeriod(item.period));
 		const req: NavRequest = {
-			tab: 'transactions',
-			filters: {
-				account: item.accountString,
-				...(item.startDate ? { startDate: item.startDate } : {})
-			}
+			tab: resolveNavTab(event),
+			filters: { account: item.accountString, startDate, endDate }
 		};
 		if (navigate) {
 			navigate(req);
@@ -104,6 +105,46 @@
 	 * Returns at least 1 — if `startDate` is in the future or unparseable we treat
 	 * the indicator as "current cycle only" so rendering never produces NaN.
 	 */
+	// Maps the user-facing period name (Monthly/Weekly/...) to bean-query's
+	// date_trunc token. Shared by the status queries and the cycle-range helper below.
+	const PERIOD_TOKENS: Record<string, string> = { weekly: 'week', quarterly: 'quarter', yearly: 'year', monthly: 'month' };
+	function normalizePeriod(period: string): string {
+		return PERIOD_TOKENS[(period || '').toLowerCase()] ?? 'month';
+	}
+
+	/**
+	 * Computes the [startDate, endDate] bounds (inclusive, YYYY-MM-DD) of the
+	 * *current* cycle bucket for a normalized period, mirroring the
+	 * `date_trunc(period, date) = date_trunc(period, today())` bucketing that
+	 * `getIndicatorStatusQuery` uses server-side. Used to filter Transactions/
+	 * Journal navigation to the cycle currently shown on the card, rather than
+	 * the indicator's overall tracking start date.
+	 */
+	function getCurrentCycleRange(period: string): { startDate: string; endDate: string } {
+		const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+		const today = new Date();
+		const y = today.getFullYear();
+		const m = today.getMonth();
+
+		if (period === 'year') {
+			return { startDate: toISO(new Date(y, 0, 1)), endDate: toISO(new Date(y, 11, 31)) };
+		}
+		if (period === 'quarter') {
+			const qStartMonth = Math.floor(m / 3) * 3;
+			return { startDate: toISO(new Date(y, qStartMonth, 1)), endDate: toISO(new Date(y, qStartMonth + 3, 0)) };
+		}
+		if (period === 'week') {
+			// Monday-start week, matching the common date_trunc('week', ...) convention.
+			const dow = today.getDay(); // 0=Sun..6=Sat
+			const diffToMonday = (dow + 6) % 7;
+			const monday = new Date(y, m, today.getDate() - diffToMonday);
+			const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+			return { startDate: toISO(monday), endDate: toISO(sunday) };
+		}
+		// Default: month.
+		return { startDate: toISO(new Date(y, m, 1)), endDate: toISO(new Date(y, m + 1, 0)) };
+	}
+
 	function getElapsedCycles(startDate: string, period: string): number {
 		if (!startDate) return 1; // Guard: missing startDate → degenerate to a single cycle.
 		const start = new Date(startDate);
@@ -233,9 +274,7 @@
 			return;
 		}
 		try {
-			// Map user-facing period names (Monthly/Weekly/...) to bean-query's date_trunc tokens.
-			const periodMap: Record<string, string> = { weekly: 'week', quarterly: 'quarter', yearly: 'year', monthly: 'month' };
-			const period = periodMap[item.period.toLowerCase()] ?? 'month';
+			const period = normalizePeriod(item.period);
 
 			// Query A — current-cycle expense. Always run for every indicator.
 			const expensePromise = runQuery(
@@ -328,9 +367,7 @@
 			return;
 		}
 		try {
-			// Period token mapping, identical to budgets — the same set of cycle granularities applies.
-			const periodMap: Record<string, string> = { weekly: 'week', quarterly: 'quarter', yearly: 'year', monthly: 'month' };
-			const period = periodMap[item.period.toLowerCase()] ?? 'month';
+			const period = normalizePeriod(item.period);
 
 			// Query A — this cycle's net contribution (e.g. amount saved this month for an Assets target).
 			const expensePromise = runQuery(
@@ -484,13 +521,13 @@
 								<div class="card-title-row">
 									<span class="card-name">{item.name}</span>
 									<div class="card-actions">
-										<button class="btn-icon view-btn" on:click={() => handleViewTransactions(item)} title="View Transactions">→ View</button>
+										<button class="btn-icon view-btn" on:click={(e) => handleViewTransactions(item, e)} title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal">→ View</button>
 										<button class="btn-icon edit-btn" on:click={() => handleEdit(item)} title="Edit">✏️</button>
 										<button class="btn-icon delete-btn" on:click={() => handleDelete(item)} title="Delete">❌</button>
 									</div>
 								</div>
 								<div class="card-meta">
-									<button type="button" class="meta-chip account-chip" on:click={() => handleViewTransactions(item)} title="Click to view transactions">
+									<button type="button" class="meta-chip account-chip" on:click={(e) => handleViewTransactions(item, e)} title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal">
 										<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
 										{item.accountString}
 									</button>

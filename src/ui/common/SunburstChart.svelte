@@ -273,7 +273,18 @@
 		tooltipY = e.clientY - rect.top  - 14;
 	}
 
-	function onArcClick(node: SunburstNode) {
+	function onArcClick(node: SunburstNode, event?: MouseEvent | KeyboardEvent) {
+		// Ctrl/Cmd+click always navigates to Transactions, regardless of whether
+		// the arc has children — it's the deliberate escape hatch out of drilling.
+		if (event?.ctrlKey || event?.metaKey) {
+			const account = node.sourceItem?.account || (node.id.startsWith('__') ? '' : node.id);
+			if (account) {
+				dispatch('segment-click', { account, node });
+			}
+			return;
+		}
+		// Plain click only drills in (when there's something to drill into) — it
+		// no longer also navigates away, so drilling stays a self-contained gesture.
 		const children = node.sourceItem?.children ?? [];
 		if (children.length > 0) {
 			drillStack = [...drillStack, {
@@ -281,10 +292,6 @@
 				items:   children,
 				section: node.section,
 			}];
-		}
-		const account = node.sourceItem?.account || (node.id.startsWith('__') ? '' : node.id);
-		if (account) {
-			dispatch('segment-click', { account, node });
 		}
 	}
 
@@ -365,11 +372,12 @@
 					class="sunburst-arc"
 					class:drillable={node.sourceItem?.children?.length}
 					on:mousemove={(e) => onArcMouseMove(e, node)}
-					on:click={() => onArcClick(node)}
+					on:click={(e) => onArcClick(node, e)}
 					role="button"
 					tabindex="0"
 					aria-label="{node.path}: {node.amount}"
-					on:keydown={(e) => e.key === 'Enter' && onArcClick(node)}
+					title={node.sourceItem?.children?.length ? 'Click to drill in · Ctrl/Cmd+click: view in Transactions' : 'Ctrl/Cmd+click: view in Transactions'}
+					on:keydown={(e) => e.key === 'Enter' && onArcClick(node, e)}
 				/>
 				<!-- Stripe overlay for anomalous-sign accounts -->
 				{#if isAnomalous(node.section, node.negative)}

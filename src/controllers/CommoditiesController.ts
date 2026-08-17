@@ -126,6 +126,8 @@ export class CommoditiesController {
     public fetchingPrices: Writable<boolean> = writable(false);
     /** Store for last price fetch information. */
     public lastPriceFetch: Writable<{ date: Date, summary: string } | null> = writable(null);
+    /** Whether a bean-price command is configured in settings (required for price fetching). */
+    public beanPriceAvailable: Writable<boolean>;
 
     /**
      * Creates an instance of CommoditiesController.
@@ -134,8 +136,14 @@ export class CommoditiesController {
     constructor(plugin: BeancountPlugin) {
         this.plugin = plugin;
         this.priceService = new PriceService(plugin);
+        this.beanPriceAvailable = writable(this.priceService.hasBeanPriceCommand());
         this.setupReactivity();
         Logger.log('[CommoditiesController] initialized');
+    }
+
+    /** Re-checks bean-price availability against current settings and updates the store. */
+    public refreshBeanPriceAvailability(): void {
+        this.beanPriceAvailable.set(this.priceService.hasBeanPriceCommand());
     }
 
     /**

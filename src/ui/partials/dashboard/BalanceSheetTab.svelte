@@ -5,7 +5,7 @@
 	import type { BalanceSheetController, BalanceSheetState, AccountItem } from '../../../controllers/BalanceSheetController';
 	import { Logger } from '../../../utils/logger';
 	import { AccountManagementModal } from '../../modals/AccountManagementModal';
-	import type { NavRequest } from '../../../types/navigation';
+	import { resolveNavTab, type NavRequest } from '../../../types/navigation';
 	import SunburstChart from '../../common/SunburstChart.svelte';
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
@@ -26,18 +26,20 @@
 	function handleAccountRowClick(item: AccountItem, event: MouseEvent) {
 		if (item.isCategory) {
 			if (event && (event.ctrlKey || event.metaKey)) {
+				// Ctrl/Cmd+click on a category header is the existing escape hatch
+				// straight to Transactions — deliberately not repurposed for Journal.
 				handleAccountNavigate(item.account);
 			} else {
 				toggleCollapse(item.account, event);
 			}
 		} else {
-			handleAccountNavigate(item.account);
+			handleAccountNavigate(item.account, event);
 		}
 	}
 
-	function handleAccountNavigate(account: string) {
+	function handleAccountNavigate(account: string, event?: { ctrlKey?: boolean; metaKey?: boolean }) {
 		if (!account) return;
-		const req: NavRequest = { tab: 'transactions', filters: { account } };
+		const req: NavRequest = { tab: resolveNavTab(event), filters: { account } };
 		if (navigate) {
 			navigate(req);
 		} else {
@@ -46,6 +48,8 @@
 	}
 
 	function handleSegmentClick(e: CustomEvent<{ account: string }>) {
+		// Sunburst only ever emits this on Ctrl/Cmd+click (plain click drills in
+		// instead) — always send it to Transactions, per the sunburst's own contract.
 		const account = e.detail?.account;
 		if (account) {
 			handleAccountNavigate(account);
@@ -287,6 +291,7 @@
 						totalAssets={state.totalAssets}
 						totalLiabilities={0}
 						totalEquity={0}
+						on:segment-click={handleSegmentClick}
 					/>
 				{:else if selectedBalanceSection === 'liabilities'}
 					<SunburstChart
@@ -298,6 +303,7 @@
 						totalAssets={0}
 						totalLiabilities={state.totalLiabilities}
 						totalEquity={0}
+						on:segment-click={handleSegmentClick}
 					/>
 				{:else}
 					<SunburstChart
@@ -309,6 +315,7 @@
 						totalAssets={0}
 						totalLiabilities={0}
 						totalEquity={state.totalEquity}
+						on:segment-click={handleSegmentClick}
 					/>
 				{/if}
 			{/if}
@@ -348,18 +355,19 @@
 				<tbody>
 					{#each visibleAssets as item}
 						<tr class={getAccountClass(item)}>
-							<td class="account-name" 
-								on:click={(e) => handleAccountRowClick(item, e)}>
+							<td class="account-name"
+								on:click={(e) => handleAccountRowClick(item, e)}
+								title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal' : undefined}>
 								{#if item.isCategory}
 									<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 								{/if}
 								{getIndentation(item.level)}{item.displayName}
 							</td>
-								<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account)}>
+								<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 									{item.amount}
 								</td>
 								{#if showOtherCurrenciesColumn}
-									<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account)}>
+									<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 										{item.otherCurrencies || ''}
 									</td>
 								{/if}
@@ -384,18 +392,19 @@
 				<tbody>
 					{#each visibleLiabilities as item}
 						<tr class={getAccountClass(item)}>
-							<td class="account-name" 
-								on:click={(e) => handleAccountRowClick(item, e)}>
+							<td class="account-name"
+								on:click={(e) => handleAccountRowClick(item, e)}
+								title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal' : undefined}>
 								{#if item.isCategory}
 									<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 								{/if}
 								{getIndentation(item.level)}{item.displayName}
 							</td>
-								<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account)}>
+								<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 									{item.amount}
 								</td>
 								{#if showOtherCurrenciesColumn}
-									<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account)}>
+									<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 										{item.otherCurrencies || ''}
 									</td>
 								{/if}
@@ -420,18 +429,19 @@
 				<tbody>
 					{#each visibleEquity as item}
 						<tr class={getAccountClass(item)}>
-							<td class="account-name" 
-								on:click={(e) => handleAccountRowClick(item, e)}>
+							<td class="account-name"
+								on:click={(e) => handleAccountRowClick(item, e)}
+								title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal' : undefined}>
 								{#if item.isCategory}
 									<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 								{/if}
 								{getIndentation(item.level)}{item.displayName}
 							</td>
-								<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account)}>
+								<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 									{item.amount}
 								</td>
 								{#if showOtherCurrenciesColumn}
-									<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account)}>
+									<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 										{item.otherCurrencies || ''}
 									</td>
 								{/if}

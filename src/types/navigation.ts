@@ -21,3 +21,11 @@ export interface NavRequest {
 	tab: DashboardTabId;
 	filters?: NavigationFilters;
 }
+
+/**
+ * Picks the destination tab for a "view this filtered" click: Transactions by
+ * default, or Journal when the user Ctrl/Cmd-clicked.
+ */
+export function resolveNavTab(event?: { ctrlKey?: boolean; metaKey?: boolean } | null): 'transactions' | 'journal' {
+	return event && (event.ctrlKey || event.metaKey) ? 'journal' : 'transactions';
+}

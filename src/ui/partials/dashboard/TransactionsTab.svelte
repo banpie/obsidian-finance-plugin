@@ -8,7 +8,7 @@
 	import EmptyState from '../../common/EmptyState.svelte';
 	import { nativeDatePicker } from '../../actions/nativeDatePicker';
 
-	import type { NavRequest } from '../../../types/navigation';
+	import { resolveNavTab, type NavRequest } from '../../../types/navigation';
 
 	// --- PROPS ---
 	// Receive the controller
@@ -18,9 +18,9 @@
 
 	const dispatch = createEventDispatcher();
 
-	function handlePayeeClick(payee: string) {
+	function handlePayeeClick(payee: string, event?: MouseEvent) {
 		if (!payee) return;
-		const req: NavRequest = { tab: 'journal', filters: { payee } };
+		const req: NavRequest = { tab: resolveNavTab(event), filters: { payee } };
 		if (navigate) {
 			navigate(req);
 		} else {
@@ -72,6 +72,16 @@
 
 	function handleRefresh() {
 		controller.refresh();
+	}
+
+	function handleClear() {
+		selectedAccount = '';
+		startDate = null;
+		endDate = null;
+		payeeFilter = '';
+		debouncedPayeeFilter = '';
+		tagFilter = '';
+		debouncedTagFilter = '';
 	}
 
 	// --- REMOVED onMount data fetching ---
@@ -174,6 +184,7 @@
 				<input type="text" id="tag-filter" bind:value={tagFilter} placeholder="Filter by tag..." disabled={state.isLoading} list="beancount-tags" />
 			</div>
 			<div>
+				<button class="btn" on:click={handleClear} disabled={state.isLoading || state.isLoadingFilters}>Clear</button>
 				<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading || state.isLoadingFilters}>Refresh</button>
 			</div>
 		</div>
@@ -211,7 +222,7 @@
 							<td>{date}</td>
 							<td>
 								{#if payee}
-									<button class="payee-link" type="button" on:click={() => handlePayeeClick(payee)} title="Filter Journal by payee '{payee}'">
+									<button class="payee-link" type="button" on:click={(e) => handlePayeeClick(payee, e)} title="Click: filter Transactions by payee '{payee}' · Ctrl/Cmd+click: view in Journal">
 										{payee}
 									</button>
 								{:else}

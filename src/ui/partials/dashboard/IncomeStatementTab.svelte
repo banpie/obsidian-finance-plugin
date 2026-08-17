@@ -5,7 +5,7 @@
 	import type { AccountItem } from '../../../controllers/BalanceSheetController';
 	import { Logger } from '../../../utils/logger';
 	import { parsePeriodLabel } from '../../../utils/index';
-	import type { NavRequest } from '../../../types/navigation';
+	import { resolveNavTab, type NavRequest } from '../../../types/navigation';
 	import SunburstChart from '../../common/SunburstChart.svelte';
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
@@ -35,10 +35,10 @@
 	$: state = $stateStore;
 
 	$: if (controller) {
-		controller.onChartClick = (periodKey: string, interval: 'month' | 'week') => {
+		controller.onChartClick = (periodKey: string, interval: 'month' | 'week', ctrlKey?: boolean) => {
 			const { startDate, endDate } = parsePeriodLabel(periodKey, interval);
 			if (startDate && endDate) {
-				const req: NavRequest = { tab: 'transactions', filters: { startDate, endDate } };
+				const req: NavRequest = { tab: resolveNavTab({ ctrlKey }), filters: { startDate, endDate } };
 				if (navigate) {
 					navigate(req);
 				} else {
@@ -51,18 +51,20 @@
 	function handleAccountRowClick(item: AccountItem, event: MouseEvent) {
 		if (item.isCategory) {
 			if (event && (event.ctrlKey || event.metaKey)) {
+				// Ctrl/Cmd+click on a category header is the existing escape hatch
+				// straight to Transactions — deliberately not repurposed for Journal.
 				handleAccountNavigate(item.account);
 			} else {
 				toggleCollapse(item.account, event);
 			}
 		} else {
-			handleAccountNavigate(item.account);
+			handleAccountNavigate(item.account, event);
 		}
 	}
 
-	function handleAccountNavigate(account: string) {
+	function handleAccountNavigate(account: string, event?: { ctrlKey?: boolean; metaKey?: boolean }) {
 		if (!account) return;
-		const req: NavRequest = { tab: 'transactions', filters: { account } };
+		const req: NavRequest = { tab: resolveNavTab(event), filters: { account } };
 		if (navigate) {
 			navigate(req);
 		} else {
@@ -71,6 +73,8 @@
 	}
 
 	function handleSegmentClick(e: CustomEvent<{ account: string }>) {
+		// Sunburst only ever emits this on Ctrl/Cmd+click (plain click drills in
+		// instead) — always send it to Transactions, per the sunburst's own contract.
 		const account = e.detail?.account;
 		if (account) {
 			handleAccountNavigate(account);
@@ -262,6 +266,7 @@
 						totalEquity={0}
 						assetsLabel="Income"
 						assetsExpectNegative={false}
+						on:segment-click={handleSegmentClick}
 					/>
 				{:else}
 					<!-- Expenses: expect positive (debit accounts). Pass as liabilities→red, with liabilitiesExpectNegative=false -->
@@ -276,6 +281,7 @@
 						totalEquity={0}
 						liabilitiesLabel="Expenses"
 						liabilitiesExpectNegative={false}
+						on:segment-click={handleSegmentClick}
 					/>
 				{/if}
 			{/if}
@@ -317,17 +323,18 @@
 							{#each visibleIncome as item}
 								<tr class={getAccountClass(item)}>
 									<td class="account-name"
-										on:click={(e) => handleAccountRowClick(item, e)}>
+										on:click={(e) => handleAccountRowClick(item, e)}
+										title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal' : undefined}>
 										{#if item.isCategory}
 											<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 										{/if}
 										{getIndentation(item.level)}{item.displayName}
 									</td>
-									<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account)}>
+									<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 										{item.amount}
 									</td>
 									{#if showOtherCurrenciesColumn}
-										<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account)}>
+										<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 											{item.otherCurrencies || ''}
 										</td>
 									{/if}
@@ -358,17 +365,18 @@
 							{#each visibleExpenses as item}
 								<tr class={getAccountClass(item)}>
 									<td class="account-name"
-										on:click={(e) => handleAccountRowClick(item, e)}>
+										on:click={(e) => handleAccountRowClick(item, e)}
+										title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal' : undefined}>
 										{#if item.isCategory}
 											<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 										{/if}
 										{getIndentation(item.level)}{item.displayName}
 									</td>
-									<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account)}>
+									<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 										{item.amount}
 									</td>
 									{#if showOtherCurrenciesColumn}
-										<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account)}>
+										<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 											{item.otherCurrencies || ''}
 										</td>
 									{/if}

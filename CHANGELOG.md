@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Overview Tab**: Click KPI summary cards (Income, Expenses, Total Balance, Savings Rate) to open Transactions tab pre-filtered to that period & account type. Added a `"→ View"` button and clickable account chips on Budget and Target indicator cards (#267).
   - **Sunburst Charts**: Click any arc segment on Sunburst charts across Income Statement and Balance Sheet tabs to navigate to Transactions for that account, featuring cursor pointer styling and enhanced tooltip hints (#268).
   - **Transactions ↔ Journal**: Click any payee name in the Transactions tab table to jump to the Journal tab pre-filtered to that payee, and click the `"↗"` link or payee name on Journal `TransactionCard` headers to jump back to the Transactions tab (#269).
+  - **Journal Tab Tags**: Click any `#tag` chip on a `TransactionCard` header to jump to the Transactions tab pre-filtered to that tag.
+  - **Ctrl/Cmd+Click for Journal**: All account/tag/date-range/KPI clickables that navigate to Transactions now also support `Ctrl`/`Cmd`+click to open the Journal tab pre-filtered instead — Journal card account & tag chips, Overview KPI cards and Budget/Target indicators, Income Statement chart columns, and leaf account rows and Sunburst arcs on the Balance Sheet and Income Statement tabs. Category header rows on the Balance Sheet/Income Statement tables keep their existing `Ctrl`/`Cmd`+click behavior (jump to Transactions for that category) unchanged. Also fixed a bug where Sunburst arc clicks (#268) were never actually wired to navigation (`segment-click` had no listener), so that connection now works for the first time.
 
 ## 2.3.2 - 2026-08-07
 

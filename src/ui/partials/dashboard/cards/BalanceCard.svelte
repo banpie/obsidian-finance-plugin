@@ -27,7 +27,7 @@
 
     <div class="card-body">
         <div class="balance-row">
-            <button class="account account-link" type="button" on:click={() => dispatch('account-click', entry.account)}>
+            <button class="account account-link" type="button" on:click={(e) => dispatch('account-click', { account: entry.account, ctrlKey: e.ctrlKey || e.metaKey })} title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal">
                 {entry.account}
             </button>
             <div class="amount">

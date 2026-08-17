@@ -30,6 +30,7 @@
 	role="button"
 	tabindex={clickable ? 0 : -1}
 	on:keydown={handleKeyDown}
+	title={clickable ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal' : undefined}
 >
 	{#if icon}
 		<div class="kpi-icon">{icon}</div>

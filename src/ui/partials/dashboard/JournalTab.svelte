@@ -40,7 +40,7 @@
     // The `UnifiedDashboardView.svelte` passes `store={journalStore}`.
     // I should check `UnifiedDashboardView.svelte` to see if I can pass `plugin`.
 
-    import type { NavRequest } from '../../../types/navigation';
+    import { resolveNavTab, type NavRequest } from '../../../types/navigation';
 
     export let plugin: any = null; // We will need to update the parent to pass this.
     export let navigate: ((req: NavRequest) => void) | null = null;
@@ -318,9 +318,9 @@
         ).open();
     }
 
-    function handleAccountClick(accountName: string) {
+    function handleAccountClick(accountName: string, ctrlKey = false) {
         if (!accountName) return;
-        const req: NavRequest = { tab: 'transactions', filters: { account: accountName } };
+        const req: NavRequest = { tab: resolveNavTab({ ctrlKey }), filters: { account: accountName } };
         if (navigate) {
             navigate(req);
         } else {
@@ -338,10 +338,24 @@
         }
     }
 
-    onMount(() => {
-        Logger.log('JournalTab mounted');
-        // Sync local state with store filters
-        const currentFilters = $filters;
+    function handleTagClick(tagName: string, ctrlKey = false) {
+        if (!tagName) return;
+        const req: NavRequest = { tab: resolveNavTab({ ctrlKey }), filters: { tag: tagName } };
+        if (navigate) {
+            navigate(req);
+        } else {
+            dispatch('navigate', req);
+        }
+    }
+
+    // Keep the filter inputs in sync with the store, not just on mount — the
+    // tab stays mounted when a same-tab Ctrl/Cmd+click (e.g. from a Journal
+    // card) pushes new filters into the store via navigate(), so the inputs
+    // must reflect it live instead of only after a tab switch remounts us.
+    $: syncLocalFiltersFromStore($filters);
+
+    function syncLocalFiltersFromStore(currentFilters: any) {
+        if (!currentFilters) return;
         searchTerm = currentFilters.searchTerm || '';
         selectedAccount = currentFilters.account || '';
         startDate = currentFilters.startDate || '';
@@ -354,7 +368,10 @@
         } else {
             typeFilter = 'all';
         }
+    }
 
+    onMount(() => {
+        Logger.log('JournalTab mounted');
         fetchSuggestions();
         loadEntries().then(() => {
             // Set initialized flag after initial load completes
@@ -535,16 +552,17 @@
                         on:edit={() => handleEdit(entry)}
                         on:delete={() => handleDelete(entry)}
                         on:create-snippet={(e) => handleCreateSnippet(e.detail)}
-                        on:account-click={(e) => handleAccountClick(typeof e.detail === 'string' ? e.detail : e.detail?.account)}
+                        on:account-click={(e) => handleAccountClick(e.detail?.account, e.detail?.ctrlKey)}
                         on:payee-click={(e) => handlePayeeClick(typeof e.detail === 'string' ? e.detail : e.detail?.payee)}
-                        on:view-transactions={(e) => handlePayeeClick(typeof e.detail === 'string' ? e.detail : e.detail?.payee)}
+                        on:view-transactions={(e) => handlePayeeClick(e.detail?.payee)}
+                        on:tag-click={(e) => handleTagClick(e.detail?.tag, e.detail?.ctrlKey)}
                     />
                 {:else if entry.type === 'balance'}
                     <BalanceCard
                         {entry}
                         on:edit={() => handleEdit(entry)}
                         on:delete={() => handleDelete(entry)}
-                        on:account-click={(e) => handleAccountClick(typeof e.detail === 'string' ? e.detail : e.detail?.account)}
+                        on:account-click={(e) => handleAccountClick(e.detail?.account, e.detail?.ctrlKey)}
                     />
                 {:else if entry.type === 'note'}
                     <NoteCard

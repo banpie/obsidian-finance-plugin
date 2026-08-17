@@ -10,7 +10,7 @@
 	export let fileStatus: "checking" | "ok" | "error" = "checking";
 	export let fileStatusMessage: string | null = "";
 	export let errorCount = 0;
-	export let errorList: string[] = [];
+	export let errorList: Array<{ filePath: string; fileName: string; lineNum: number; message: string }> = [];
 	// Reconciliation props
 	export let reconciliationOverdue = 0;
 	export let reconciliationUpToDate = 0;
@@ -37,6 +37,19 @@
 
 	function switchTab(tab: 'errors' | 'reconciliation') {
 		dispatch('tabChange', tab);
+	}
+
+	function handleErrorClick(error: { filePath: string; lineNum: number }) {
+		if (!error.filePath) return;
+		dispatch('open-error', { filePath: error.filePath, lineNum: error.lineNum });
+	}
+
+	function handleReconcileClick(acct: { account: string; lastBalanceDate: string | null }, event: MouseEvent) {
+		dispatch('reconcile-click', {
+			account: acct.account,
+			lastBalanceDate: acct.lastBalanceDate,
+			ctrlKey: event.ctrlKey || event.metaKey
+		});
 	}
 
 	/** Shorten an account name for display: "Assets:Bank:Checking" → "Bank:Checking" */
@@ -142,14 +155,30 @@
 		<div class="error-section">
 			<div class="error-list">
 				{#each errorList as error}
-					<div class="error-item">
-						<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<circle cx="12" cy="12" r="10"/>
-							<path d="m15 9-6 6"/>
-							<path d="m9 9 6 6"/>
-						</svg>
-						<span class="error-text">{error}</span>
-					</div>
+					{#if error.filePath}
+						<button
+							type="button"
+							class="error-item error-item-clickable"
+							on:click={() => handleErrorClick(error)}
+							title="Click to open {error.fileName}:{error.lineNum}"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<circle cx="12" cy="12" r="10"/>
+								<path d="m15 9-6 6"/>
+								<path d="m9 9 6 6"/>
+							</svg>
+							<span class="error-text">{error.fileName}:{error.lineNum}: {error.message}</span>
+						</button>
+					{:else}
+						<div class="error-item">
+							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<circle cx="12" cy="12" r="10"/>
+								<path d="m15 9-6 6"/>
+								<path d="m9 9 6 6"/>
+							</svg>
+							<span class="error-text">{error.message}</span>
+						</div>
+					{/if}
 				{/each}
 			</div>
 		</div>
@@ -189,7 +218,13 @@
 			<!-- Per-account list -->
 			<div class="reconciliation-list">
 				{#each reconciliationAccounts as acct}
-					<div class="reconciliation-item" class:recon-overdue={acct.isOverdue}>
+					<button
+						type="button"
+						class="reconciliation-item reconciliation-item-clickable"
+						class:recon-overdue={acct.isOverdue}
+						on:click={(e) => handleReconcileClick(acct, e)}
+						title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal — filtered from {acct.lastBalanceDate ?? 'the beginning'}"
+					>
 						<div class="recon-account-row">
 							<span class="recon-indicator" class:indicator-overdue={acct.isOverdue} class:indicator-ok={!acct.isOverdue}></span>
 							<span class="recon-account-name" title={acct.account}>{shortAccount(acct.account)}</span>
@@ -205,7 +240,7 @@
 								<span class="recon-detail recon-never">Never reconciled</span>
 							{/if}
 						</div>
-					</div>
+					</button>
 				{/each}
 			</div>
 		</div>
@@ -414,7 +449,28 @@
 		border-radius: 4px;
 		border-left: 3px solid var(--text-error);
 	}
-	
+
+	.error-item-clickable {
+		width: 100%;
+		height: auto;
+		min-height: 0;
+		border-top: none;
+		border-right: none;
+		border-bottom: none;
+		box-shadow: none;
+		text-align: left;
+		font: inherit;
+		line-height: 1.4;
+		white-space: normal;
+		overflow: visible;
+		cursor: pointer;
+	}
+
+	.error-item-clickable:hover {
+		background-color: var(--background-modifier-hover);
+		box-shadow: none;
+	}
+
 	.error-item svg {
 		flex-shrink: 0;
 		color: var(--text-error);
@@ -494,6 +550,28 @@
 
 	.reconciliation-item.recon-overdue {
 		border-left-color: var(--color-orange);
+	}
+
+	.reconciliation-item-clickable {
+		display: block;
+		width: 100%;
+		height: auto;
+		min-height: 0;
+		border-top: none;
+		border-right: none;
+		border-bottom: none;
+		box-shadow: none;
+		text-align: left;
+		font: inherit;
+		line-height: normal;
+		white-space: normal;
+		overflow: visible;
+		cursor: pointer;
+	}
+
+	.reconciliation-item-clickable:hover {
+		background-color: var(--background-modifier-hover);
+		box-shadow: none;
 	}
 
 	.recon-account-row {

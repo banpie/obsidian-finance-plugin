@@ -26,7 +26,7 @@
             {/if}
             <span class="narration">"{entry.narration}"</span>
             {#each entry.tags as tag}
-                <span class="tag">#{tag}</span>
+                <button class="tag tag-link" type="button" on:click={(e) => dispatch('tag-click', { tag, ctrlKey: e.ctrlKey || e.metaKey })} title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal">#{tag}</button>
             {/each}
         </div>
         <div class="header-right">
@@ -50,7 +50,7 @@
     <div class="card-body">
         {#each entry.postings as posting}
             <div class="posting-row">
-                <button class="account account-link" type="button" on:click={() => dispatch('account-click', posting.account)}>
+                <button class="account account-link" type="button" on:click={(e) => dispatch('account-click', { account: posting.account, ctrlKey: e.ctrlKey || e.metaKey })} title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal">
                     {posting.account}
                 </button>
                 <div class="amount" class:negative={posting.amount && posting.amount.startsWith('-')}>
@@ -153,6 +153,25 @@
     .tag {
         color: var(--text-accent);
         font-size: 0.8rem;
+    }
+
+    button.tag-link {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        height: auto !important;
+        font-family: inherit;
+        cursor: pointer;
+        transition: color 0.15s ease, text-decoration 0.15s ease;
+    }
+
+    button.tag-link:hover {
+        text-decoration: underline;
+        background: transparent !important;
+        box-shadow: none !important;
     }
 
     .btn-edit {

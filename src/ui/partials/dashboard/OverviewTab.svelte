@@ -10,7 +10,8 @@
 	import { AddBudgetModal } from '../../modals/AddBudgetModal';
 	import { AddTargetModal } from '../../modals/AddTargetModal';
 	import { parsePeriodLabel } from '../../../utils/index';
-	import type { NavRequest, TransactionFilters } from '../../../types/navigation';
+	import { resolveNavTab, type NavRequest } from '../../../types/navigation';
+	import type { TransactionFilters } from '../../../queries';
 
 	// --- Receive the controller ---
 	export let controller: OverviewController;
@@ -19,14 +20,14 @@
 
 	const dispatch = createEventDispatcher();
 
-	function handleKpiClick(accountPrefix?: string) {
+	function handleKpiClick(accountPrefix?: string, event?: MouseEvent | KeyboardEvent) {
 		const { startDate, endDate } = parsePeriodLabel(state.periodLabel || '', 'month');
 		const filters: TransactionFilters = {};
 		if (accountPrefix) filters.account = accountPrefix;
 		if (startDate) filters.startDate = startDate;
 		if (endDate) filters.endDate = endDate;
 
-		const req: NavRequest = { tab: 'transactions', filters };
+		const req: NavRequest = { tab: resolveNavTab(event), filters };
 		if (navigate) {
 			navigate(req);
 		} else {
@@ -177,10 +178,10 @@
 		</div>
 		
 		<div class="kpi-grid">
-			<CardComponent label="Total Balance" value={state.netWorth} comparison="Assets minus liabilities" clickable on:click={() => handleKpiClick()} />
-			<CardComponent label="Income" value={state.periodIncome} comparison={state.periodLabel} clickable on:click={() => handleKpiClick('Income')} />
-			<CardComponent label="Expenses" value={state.periodExpenses} comparison={state.periodLabel} clickable on:click={() => handleKpiClick('Expenses')} />
-			<CardComponent label="Savings Rate" value={state.periodSavingsRate} comparison={`Net income: ${state.periodNetIncome}`} clickable on:click={() => handleKpiClick()} />
+			<CardComponent label="Total Balance" value={state.netWorth} comparison="Assets minus liabilities" clickable on:click={(e) => handleKpiClick(undefined, e.detail)} />
+			<CardComponent label="Income" value={state.periodIncome} comparison={state.periodLabel} clickable on:click={(e) => handleKpiClick('Income', e.detail)} />
+			<CardComponent label="Expenses" value={state.periodExpenses} comparison={state.periodLabel} clickable on:click={(e) => handleKpiClick('Expenses', e.detail)} />
+			<CardComponent label="Savings Rate" value={state.periodSavingsRate} comparison={`Net income: ${state.periodNetIncome}`} clickable on:click={(e) => handleKpiClick(undefined, e.detail)} />
 		</div>
 
 		<IndicatorsSection

@@ -75,7 +75,7 @@ export interface IncomeStatementState {
 export class IncomeStatementController {
 	public plugin: BeancountPlugin;
 	public state: Writable<IncomeStatementState>;
-	public onChartClick?: (periodKey: string, interval: 'month' | 'week') => void;
+	public onChartClick?: (periodKey: string, interval: 'month' | 'week', ctrlKey?: boolean) => void;
 
 	constructor(plugin: BeancountPlugin) {
 		this.plugin = plugin;
@@ -393,7 +393,9 @@ export class IncomeStatementController {
 						const rawKey = periodKeys[index] || chart.data.labels?.[index];
 						const keyStr = typeof rawKey === 'string' ? rawKey : Array.isArray(rawKey) ? String(rawKey[0]) : '';
 						if (keyStr && this.onChartClick) {
-							this.onChartClick(keyStr, interval);
+							const nativeEvent = event?.native as MouseEvent | undefined;
+							const ctrlKey = !!(nativeEvent?.ctrlKey || nativeEvent?.metaKey);
+							this.onChartClick(keyStr, interval, ctrlKey);
 						}
 					}
 				},

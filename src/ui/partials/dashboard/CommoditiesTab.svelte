@@ -25,6 +25,7 @@
 	$: hasCommodityDataStore = controller.hasCommodityData;
 	$: fetchingPricesStore = controller.fetchingPrices;
 	$: lastPriceFetchStore = controller.lastPriceFetch;
+	$: beanPriceAvailableStore = controller.beanPriceAvailable;
 
 	// UI state
 	type FilterMode = 'all' | 'has_holding' | 'has_price' | 'has_both';
@@ -41,6 +42,7 @@
 	// Load data on mount
 	onMount(async () => {
 		console.debug("[CommoditiesTab] onMount — loading commodities");
+		controller.refreshBeanPriceAvailability();
 		await controller.loadData();
 	});
 
@@ -120,8 +122,10 @@
 			<button
 				on:click={handleUpdatePrices}
 				class="update-prices-button"
-				disabled={$loadingStore || $fetchingPricesStore}
-				title="Fetch latest prices for commodities with configured price sources"
+				disabled={!$beanPriceAvailableStore || $loadingStore || $fetchingPricesStore}
+				title={$beanPriceAvailableStore
+					? "Fetch latest prices for commodities with configured price sources"
+					: "Set up a bean-price command in Settings → Connection to enable price fetching"}
 			>
 				{$fetchingPricesStore ? "⟳ Fetching..." : "💰 Update Prices"}
 			</button>
@@ -273,9 +277,13 @@
 	}
 
 	.update-prices-button:disabled {
-		opacity: 0.6;
+		opacity: 0.5;
 		cursor: not-allowed;
 		transform: none;
+		background: var(--background-secondary);
+		border-color: var(--background-modifier-border);
+		color: var(--text-faint);
+		filter: grayscale(1);
 	}
 
 	.add-commodity-button {

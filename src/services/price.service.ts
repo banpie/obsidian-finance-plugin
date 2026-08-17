@@ -5,7 +5,6 @@ import type { PriceFetchResult, PriceData } from '../types';
 import { getTargetFile, getMainLedgerPath } from '../utils/structuredLayout';
 import { execSafe } from '../utils';
 import { Logger } from '../utils/logger';
-import { SystemDetector } from '../utils/SystemDetector';
 
 /**
  * PriceService
@@ -42,9 +41,9 @@ export class PriceService {
 		Logger.log('[PriceService] fetchAndSavePrices — starting');
 
 		// 1. Resolve the bean-price executable
-		const beanPriceCommand = await this.resolveBeanPriceCommand();
+		const beanPriceCommand = this.resolveBeanPriceCommand();
 		if (!beanPriceCommand) {
-			return this.failResult('bean-price command not configured or not found. Please run auto-detect in settings.');
+			return this.failResult('bean-price command not configured. Please set it up in Settings → Connection.');
 		}
 
 		// 2. Resolve the main ledger path
@@ -176,17 +175,18 @@ export class PriceService {
 	}
 
 	/**
-	 * Returns the bean-price executable path from settings, or runs
-	 * auto-detection if not yet configured.
+	 * Returns the bean-price executable path from settings. Requires explicit
+	 * configuration (via Settings → Connection or onboarding auto-detect) —
+	 * mirrors bean-query's settings-only resolution in queryRunner.ts, so
+	 * what's saved in settings is always what actually runs.
 	 */
-	private async resolveBeanPriceCommand(): Promise<string | null> {
-		if (this.plugin.settings.beanPriceCommand) {
-			return this.plugin.settings.beanPriceCommand;
-		}
-		// Fall back to auto-detect
-		const detector = SystemDetector.getInstance();
-		const result = await detector.detectBeanPriceCommand();
-		return result.isValid && result.command ? result.command : null;
+	private resolveBeanPriceCommand(): string | null {
+		return this.plugin.settings.beanPriceCommand?.trim() || null;
+	}
+
+	/** Whether a usable bean-price command is configured in settings. */
+	public hasBeanPriceCommand(): boolean {
+		return !!this.resolveBeanPriceCommand();
 	}
 
 	/** Builds a zero-count failure result with a single error entry. */

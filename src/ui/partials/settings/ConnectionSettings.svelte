@@ -400,16 +400,16 @@
 			);
 			if (result.success) {
 				commandVerificationStatus = "success";
-				commandVerificationMessage = "✅ Command verified successfully";
+				commandVerificationMessage = "Command verified successfully";
 				new Notice("✅ Command verified successfully");
 			} else {
 				commandVerificationStatus = "error";
-				commandVerificationMessage = `❌ Verification failed: ${result.error || "Unknown error"}`;
+				commandVerificationMessage = `Verification failed: ${result.error || "Unknown error"}`;
 				new Notice("❌ Command verification failed");
 			}
 		} catch (error) {
 			commandVerificationStatus = "error";
-			commandVerificationMessage = `❌ Error: ${error.message}`;
+			commandVerificationMessage = `Error: ${error.message}`;
 		} finally {
 			isVerifyingCommand = false;
 		}
@@ -437,16 +437,16 @@
 			if (result.success) {
 				beanPriceVerificationStatus = "success";
 				beanPriceVerificationMessage =
-					"✅ bean-price found and responsive";
+					"bean-price found and responsive";
 				new Notice("✅ bean-price verified");
 			} else {
 				beanPriceVerificationStatus = "error";
-				beanPriceVerificationMessage = `❌ Not found: ${result.error || "Command failed"}`;
+				beanPriceVerificationMessage = `Not found: ${result.error || "Command failed"}`;
 				new Notice("❌ bean-price verification failed");
 			}
 		} catch (error) {
 			beanPriceVerificationStatus = "error";
-			beanPriceVerificationMessage = `❌ Error: ${error.message}`;
+			beanPriceVerificationMessage = `Error: ${error.message}`;
 		} finally {
 			isVerifyingBeanPriceCommand = false;
 		}
@@ -944,31 +944,41 @@
 	.verification-status {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 10px;
 		padding: 10px 12px;
 		border-radius: 4px;
+		border-left: 3px solid transparent;
 		margin-bottom: 12px;
 		font-size: 12px;
+		font-weight: 500;
+		animation: verification-pop 0.2s ease-out;
+	}
+
+	@keyframes verification-pop {
+		from { opacity: 0; transform: translateY(-2px); }
+		to { opacity: 1; transform: translateY(0); }
 	}
 
 	.verification-status.success {
-		background: var(--background-modifier-success);
-		border: 1px solid var(--text-success);
+		background: rgba(0, 180, 0, 0.1);
+		border-left-color: var(--text-success);
 		color: var(--text-success);
 	}
 
 	.verification-status.error {
-		background: var(--background-modifier-error);
-		border: 1px solid var(--text-error);
+		background: rgba(220, 50, 50, 0.1);
+		border-left-color: var(--text-error);
 		color: var(--text-error);
 	}
 
 	.verification-status .status-icon {
 		font-size: 16px;
+		line-height: 1;
 	}
 
 	.verification-status .status-message {
 		flex: 1;
+		color: var(--text-normal);
 	}
 
 	.command-help {
