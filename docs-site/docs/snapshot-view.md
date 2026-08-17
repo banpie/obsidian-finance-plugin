@@ -33,6 +33,14 @@ Reloads all KPI values, re-validates the Beancount file, and refreshes reconcili
 
 ---
 
+## 🐛 Error Diagnostics
+
+When the file status shows errors, an **Errors tab** below the KPI section lists each validation error individually, in `<file>:<line>: <message>` form.
+
+**Click any error** to jump straight to its source: the plugin opens the relevant `.beancount` file (in a new tab) and scrolls the editor to the exact line, so you can fix it immediately without hunting for it manually.
+
+---
+
 ## ✅ Reconciliation Tracking
 
 Below the KPI section, a **Reconciliation tab** shows the health of all accounts configured with a reconciliation interval.
@@ -48,6 +56,8 @@ For any account where you have set a `reconcile: <days>` metadata key on its `op
     *   ✅ **Up to date** — Last reconciled within the configured interval.
     *   ⚠️ **Overdue** — Last reconciliation was more than `<days>` ago, with the overdue duration shown.
     *   ⚠️ **Never reconciled** — No `balance` assertion has ever been recorded for this account.
+
+**Click any account row** to open the dashboard's Transactions tab, filtered to that account and to the date range since its last successful `balance` directive (so you see exactly what's changed since you last reconciled). `Ctrl`/`Cmd`+click opens the Journal tab with the same filters instead. If the account has never been reconciled, the filter is left open-ended. See [Inter-Tab Navigation](./advanced/inter-tab-navigation.md) for the full picture of how these connections work across the plugin.
 
 ### Setting Up Reconciliation Intervals
 

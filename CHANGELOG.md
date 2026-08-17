@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Journal Tab Tags**: Click any `#tag` chip on a `TransactionCard` header to jump to the Transactions tab pre-filtered to that tag.
   - **Ctrl/Cmd+Click for Journal**: All account/tag/date-range/KPI clickables that navigate to Transactions now also support `Ctrl`/`Cmd`+click to open the Journal tab pre-filtered instead — Journal card account & tag chips, Overview KPI cards and Budget/Target indicators, Income Statement chart columns, and leaf account rows and Sunburst arcs on the Balance Sheet and Income Statement tabs. Category header rows on the Balance Sheet/Income Statement tables keep their existing `Ctrl`/`Cmd`+click behavior (jump to Transactions for that category) unchanged. Also fixed a bug where Sunburst arc clicks (#268) were never actually wired to navigation (`segment-click` had no listener), so that connection now works for the first time.
 
+- **Transactions Tab: Clear filters button** — Added a "Clear" button next to Refresh, matching the Journal tab.
+
+- **Commodities: "Update Prices" reflects real availability** — The button is now disabled (with an explanatory tooltip) when no `bean-price` command is configured, instead of failing silently on click. Also removed `bean-price`'s live auto-detect fallback so it always runs the exact command shown in Settings → Connection, matching `bean-query`'s existing behavior.
+
+- **Settings: Clearer command verification feedback** — Fixed the Verify button's success/error box, which was rendering a duplicate checkmark/✕ with low-contrast text; redesigned with a tinted background and left border accent.
+
+- **Currency-aware decimal precision** — Amounts across the dashboard now use each currency's actual precision (inferred from how it's written in the ledger), instead of a hardcoded 2 decimals everywhere. Fixes crypto/low-value commodity prices that were being rounded to `0.00`, and zero-decimal currencies (e.g. JPY) that were getting a padded `.00`.
+
 ## 2.3.2 - 2026-08-07
 
 ### Added 🚀
