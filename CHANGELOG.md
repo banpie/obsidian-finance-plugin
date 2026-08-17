@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+## 2.4.0 - 2026-08-17
+
 - **Unified Inter-Tab Dashboard Connections & Navigation API** — Built a centralized navigation contract (`NavRequest`, `NavigationFilters`) allowing cross-tab linking and filter synchronization across the entire dashboard:
   - **Journal Tab**: Click any posting account name on a `TransactionCard` or `BalanceCard` to open the Transactions tab pre-filtered to that account (#263).
   - **Income Statement Chart**: Click any month/week column in the Income Statement trend chart to jump to the Transactions tab pre-filtered to that date range, with a `pointer` cursor on hover (#264).
@@ -25,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Settings: Clearer command verification feedback** — Fixed the Verify button's success/error box, which was rendering a duplicate checkmark/✕ with low-contrast text; redesigned with a tinted background and left border accent.
 
 - **Currency-aware decimal precision** — Amounts across the dashboard now use each currency's actual precision (inferred from how it's written in the ledger), instead of a hardcoded 2 decimals everywhere. Fixes crypto/low-value commodity prices that were being rounded to `0.00`, and zero-decimal currencies (e.g. JPY) that were getting a padded `.00`.
+
 
 ## 2.3.2 - 2026-08-07
 
