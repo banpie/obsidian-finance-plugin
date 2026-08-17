@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+- **Unified Inter-Tab Dashboard Connections & Navigation API** — Built a centralized navigation contract (`NavRequest`, `NavigationFilters`) allowing cross-tab linking and filter synchronization across the entire dashboard:
+  - **Journal Tab**: Click any posting account name on a `TransactionCard` or `BalanceCard` to open the Transactions tab pre-filtered to that account (#263).
+  - **Income Statement Chart**: Click any month/week column in the Income Statement trend chart to jump to the Transactions tab pre-filtered to that date range, with a `pointer` cursor on hover (#264).
+  - **Income Statement Table**: Click any leaf account row (or `Ctrl`/`Cmd` click category headers) in the Income/Expenses table to view transactions for that account (#265).
+  - **Balance Sheet Table**: Click any leaf account row (or `Ctrl`/`Cmd` click category headers) in Assets/Liabilities/Equity tables to jump to the Transactions tab pre-filtered to that account (#266).
+  - **Overview Tab**: Click KPI summary cards (Income, Expenses, Total Balance, Savings Rate) to open Transactions tab pre-filtered to that period & account type. Added a `"→ View"` button and clickable account chips on Budget and Target indicator cards (#267).
+  - **Sunburst Charts**: Click any arc segment on Sunburst charts across Income Statement and Balance Sheet tabs to navigate to Transactions for that account, featuring cursor pointer styling and enhanced tooltip hints (#268).
+  - **Transactions ↔ Journal**: Click any payee name in the Transactions tab table to jump to the Journal tab pre-filtered to that payee, and click the `"↗"` link or payee name on Journal `TransactionCard` headers to jump back to the Transactions tab (#269).
+  - **Journal Tab Tags**: Click any `#tag` chip on a `TransactionCard` header to jump to the Transactions tab pre-filtered to that tag.
+  - **Ctrl/Cmd+Click for Journal**: All account/tag/date-range/KPI clickables that navigate to Transactions now also support `Ctrl`/`Cmd`+click to open the Journal tab pre-filtered instead — Journal card account & tag chips, Overview KPI cards and Budget/Target indicators, Income Statement chart columns, and leaf account rows and Sunburst arcs on the Balance Sheet and Income Statement tabs. Category header rows on the Balance Sheet/Income Statement tables keep their existing `Ctrl`/`Cmd`+click behavior (jump to Transactions for that category) unchanged. Also fixed a bug where Sunburst arc clicks (#268) were never actually wired to navigation (`segment-click` had no listener), so that connection now works for the first time.
+
+- **Transactions Tab: Clear filters button** — Added a "Clear" button next to Refresh, matching the Journal tab.
+
+- **Commodities: "Update Prices" reflects real availability** — The button is now disabled (with an explanatory tooltip) when no `bean-price` command is configured, instead of failing silently on click. Also removed `bean-price`'s live auto-detect fallback so it always runs the exact command shown in Settings → Connection, matching `bean-query`'s existing behavior.
+
+- **Settings: Clearer command verification feedback** — Fixed the Verify button's success/error box, which was rendering a duplicate checkmark/✕ with low-contrast text; redesigned with a tinted background and left border accent.
+
+- **Currency-aware decimal precision** — Amounts across the dashboard now use each currency's actual precision (inferred from how it's written in the ledger), instead of a hardcoded 2 decimals everywhere. Fixes crypto/low-value commodity prices that were being rounded to `0.00`, and zero-decimal currencies (e.g. JPY) that were getting a padded `.00`.
+
+## 2.3.2 - 2026-08-07
+
 ### Added 🚀
 
 - **Account Reconciliation Tracking** — Never lose track of which accounts are overdue for reconciliation. Assign a `reconcile: <days>` interval to any account's `open` directive and the plugin will continuously monitor how long ago each account last had a `balance` assertion — flagging any that exceed their interval or have never been reconciled at all. A new **Reconciliation tab** in the Snapshot sidebar shows an at-a-glance summary (overdue count vs. up-to-date count) and a per-account status list with clear ✅ / ⚠️ indicators. Setting up intervals is just as easy: the **Open Account** modal in the Accounts tab now includes an optional **"Reconciliation interval (days)"** field, so you can configure the schedule directly from the UI without touching your `.beancount` files.
@@ -14,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improved 🔨
 
 - **Custom Pill Dropdown Controls** — Redesigned the chart area selectors and filter controls across the "Accounts and Balances", "Income Statement", and "Commodities" tabs with a polished custom dropdown component. Primary selectors ("Net Worth Trend" / "Trends" / "All Commodities") use a vibrant purple accent with custom SVG icons, paired with cascading sub-option menus ("Balances", "Monthly", "Weekly", "Assets", "Liabilities", etc.). Popovers are 100% opaque across all Obsidian themes and support full keyboard navigation (`Escape`, `Enter`, Arrow keys) and click-outside dismissal.
+
 
 ## 2.3.1 - 2026-07-26
 

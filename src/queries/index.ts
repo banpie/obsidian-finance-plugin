@@ -248,7 +248,10 @@ export function getAllCommoditiesQuery(): string {
 
 export function getCommoditiesPriceDataQuery(currency: string): string {
 	const safeCurrency = escapeBqlString(currency);
-	return `SELECT last(date) AS date_, last(currency) AS currency_, currency_meta(last(currency), 'name') AS displayname_, round(getprice(last(currency), '${safeCurrency}'),2) AS price_, currency_meta(last(currency), 'logo') AS logo_, bool(today()-1<last(date)) AS islatest_ FROM #prices GROUP BY currency`;
+	// Rounded to a generous 10 decimals (not hardcoded to 2) so low-value/crypto
+	// commodity prices aren't truncated before the client applies per-currency
+	// display precision — see CurrencyPrecisionService.
+	return `SELECT last(date) AS date_, last(currency) AS currency_, currency_meta(last(currency), 'name') AS displayname_, round(getprice(last(currency), '${safeCurrency}'),10) AS price_, currency_meta(last(currency), 'logo') AS logo_, bool(today()-1<last(date)) AS islatest_ FROM #prices GROUP BY currency`;
 }
 
 
@@ -265,7 +268,8 @@ export function getCommoditiesPriceDataQuery(currency: string): string {
  */
 export function getCombinedCommodityDataQuery(operatingCurrency: string): string {
 	const safeOperatingCurrency = escapeBqlString(operatingCurrency);
-	return `SELECT currency AS currency_, currency_meta(last(currency), 'name') AS displayname_, units(sum(position)) AS units_, convert(sum(position), '${safeOperatingCurrency}') AS valueOp_, round(getprice(last(currency), '${safeOperatingCurrency}'), 2) AS price_, currency_meta(last(currency), 'logo') AS logo_ WHERE account ~ '^Assets' GROUP BY currency`;
+	// See getCommoditiesPriceDataQuery — 10 decimals to avoid truncating price_ server-side.
+	return `SELECT currency AS currency_, currency_meta(last(currency), 'name') AS displayname_, units(sum(position)) AS units_, convert(sum(position), '${safeOperatingCurrency}') AS valueOp_, round(getprice(last(currency), '${safeOperatingCurrency}'), 10) AS price_, currency_meta(last(currency), 'logo') AS logo_ WHERE account ~ '^Assets' GROUP BY currency`;
 }
 
 
@@ -283,6 +287,19 @@ export function getCommodityPriceHistoryQuery(symbol: string): string {
 
 export function getAllCurrenciesQuery(): string {
 	return `SELECT distinct(currency) AS currency_`;
+}
+
+// --- Currency Precision Queries ---
+// Bootstrap data for CurrencyPrecisionService: infers each currency's typical
+// decimal precision from how it's actually written in the ledger (postings +
+// price directives), the same signal Beancount's own DisplayContext uses.
+
+export function getPostingsCurrencyNumberQuery(): string {
+	return `SELECT currency, number`;
+}
+
+export function getPriceDirectivesCurrencyAmountQuery(): string {
+	return `SELECT currency, amount FROM #prices`;
 }
 
 // --- Reconciliation Queries ---

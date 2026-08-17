@@ -15,6 +15,7 @@
     import type { BalanceSheetController } from '../../../controllers/BalanceSheetController';
     import type { CommoditiesController } from '../../../controllers/CommoditiesController';
     import type { IncomeStatementController } from '../../../controllers/IncomeStatementController';
+    import type { NavRequest } from '../../../types/navigation';
 
     // Props
     export let overviewController: OverviewController;
@@ -25,7 +26,27 @@
     export let journalStore: any;
     export let plugin: any = null; // Add plugin prop
 
-    let activeTab = 'overview';
+    export let activeTab = 'overview';
+
+    export function navigate(req: NavRequest) {
+        if (!req || !req.tab) return;
+        if (req.tab === 'transactions') {
+            const filters = req.filters || {};
+            transactionController.setPendingFilters(filters);
+            void transactionController.handleFilterChange(filters);
+        } else if (req.tab === 'journal') {
+            if (req.filters) {
+                void journalStore.setFilters(req.filters);
+            }
+        }
+        activeTab = req.tab;
+    }
+
+    function handleNavigateEvent(e: CustomEvent<NavRequest>) {
+        if (e && e.detail) {
+            navigate(e.detail);
+        }
+    }
 
     const tabs = [
         { id: 'overview', label: 'Overview' },
@@ -52,20 +73,22 @@
 
     <div class="tab-content">
         {#if activeTab === 'overview'}
-            <OverviewTab controller={overviewController} {plugin} />
+            <OverviewTab controller={overviewController} {plugin} {navigate} on:navigate={handleNavigateEvent} />
         {:else if activeTab === 'transactions'}
             <TransactionsTab 
                 controller={transactionController}
+                {navigate}
+                on:navigate={handleNavigateEvent}
                 on:filtersChange={e => transactionController.handleFilterChange(e.detail)}
             />
         {:else if activeTab === 'journal'}
-            <JournalTab store={journalStore} plugin={plugin} />
+            <JournalTab store={journalStore} {plugin} {navigate} on:navigate={handleNavigateEvent} />
         {:else if activeTab === 'balancesheet'}
-            <BalanceSheetTab controller={balanceSheetController} />
+            <BalanceSheetTab controller={balanceSheetController} {navigate} on:navigate={handleNavigateEvent} />
         {:else if activeTab === 'incomestatement'}
-            <IncomeStatementTab controller={incomeStatementController} />
+            <IncomeStatementTab controller={incomeStatementController} {navigate} on:navigate={handleNavigateEvent} />
         {:else if activeTab === 'commodities'}
-            <CommoditiesTab controller={commoditiesController} on:openCommodity on:addCommodity />
+            <CommoditiesTab controller={commoditiesController} on:navigate={handleNavigateEvent} on:openCommodity on:addCommodity />
         {/if}
     </div>
 </div>

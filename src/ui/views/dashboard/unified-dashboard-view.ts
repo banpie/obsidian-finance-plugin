@@ -6,6 +6,7 @@ import UnifiedDashboardComponent from './UnifiedDashboardView.svelte';
 import { CommodityDetailModal } from '../../modals/CommodityDetailModal';
 import { CommodityCreateModal } from '../../modals/CommodityCreateModal';
 import type { TransactionFilters } from '../../../queries/index';
+import type { NavRequest } from '../../../types/navigation';
 
 // --- Import ALL controllers ---
 import { OverviewController } from '../../../controllers/OverviewController';
@@ -16,11 +17,17 @@ import { IncomeStatementController } from '../../../controllers/IncomeStatementC
 // JournalController is replaced by plugin.journalStore
 // -----------------------------
 
+import type { SvelteComponent } from 'svelte';
+
 export const UNIFIED_DASHBOARD_VIEW_TYPE = "beancount-unified-dashboard";
+
+export interface NavigableDashboardComponent extends SvelteComponent {
+	navigate(req: NavRequest): void;
+}
 
 export class UnifiedDashboardView extends ItemView {
 	plugin: BeancountPlugin;
-	component: UnifiedDashboardComponent;
+	component: NavigableDashboardComponent;
 	
 	// --- View holds instances of controllers ---
 	overviewController: OverviewController;
@@ -44,6 +51,16 @@ export class UnifiedDashboardView extends ItemView {
 	getDisplayText(): string { return "Beancount dashboard"; }
 	getIcon(): string { return "layout-dashboard"; }
 
+	/**
+	 * Programmatically navigate to a tab with optional pre-set filters.
+	 * @param {NavRequest} req - The navigation request.
+	 */
+	navigate(req: NavRequest) {
+		if (this.component) {
+			this.component.navigate(req);
+		}
+	}
+
 	// Method to refresh all tabs when transactions are added
 	async refreshAllTabs() {
 		try {
@@ -53,7 +70,8 @@ export class UnifiedDashboardView extends ItemView {
 				this.balanceSheetController.loadData(),
 				this.incomeStatementController.loadData(),
 				this.commoditiesController.loadData(),
-				this.plugin.journalStore.refresh() // Use new store
+				this.plugin.journalStore.refresh(), // Use new store
+				this.plugin.currencyPrecisionService.refresh()
 			]);
 		} catch (error) {
 			console.error('Error refreshing dashboard data:', error);
@@ -76,10 +94,11 @@ export class UnifiedDashboardView extends ItemView {
 				journalStore: this.plugin.journalStore, // Pass store instead of controller
 				plugin: this.plugin // Pass plugin instance
 			}
-		});
+		}) as NavigableDashboardComponent;
 
 		// --- Listen for events dispatched from Svelte ---
 		this.component.$on('filtersChange', (e: CustomEvent<TransactionFilters>) => { void this.transactionController.handleFilterChange(e.detail); });
+		this.component.$on('navigate', (e: CustomEvent<NavRequest>) => { this.navigate(e.detail); });
 		// When CommoditiesTab requests a detail modal, open it using plugin/app context
 		this.component.$on('openCommodity', (e: CustomEvent<{ symbol: string } | string>) => {
 			const symbol = typeof e.detail === 'object' ? e.detail?.symbol : e.detail;
@@ -109,3 +128,4 @@ export class UnifiedDashboardView extends ItemView {
 		}
 	}
 }
+

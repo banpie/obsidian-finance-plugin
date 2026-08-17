@@ -18,13 +18,20 @@
 	// Extract the stores from the controller
 	$: filteredCommoditiesStore = controller.filteredCommodities;
 	$: operatingCurrency = controller.getOperatingCurrency();
+	$: lastUpdatedStore = controller.lastUpdated;
+	// Re-derive after every loadData() (tracked via lastUpdatedStore) so this reflects
+	// the currency precision map once it's finished loading, not just its value at mount.
+	let operatingCurrencyDecimals = 2;
+	$: if ($lastUpdatedStore || operatingCurrency) {
+		operatingCurrencyDecimals = controller.getCurrencyDecimals(operatingCurrency);
+	}
 	$: searchTermStore = controller.searchTerm;
 	$: loadingStore = controller.loading;
 	$: errorStore = controller.error;
-	$: lastUpdatedStore = controller.lastUpdated;
 	$: hasCommodityDataStore = controller.hasCommodityData;
 	$: fetchingPricesStore = controller.fetchingPrices;
 	$: lastPriceFetchStore = controller.lastPriceFetch;
+	$: beanPriceAvailableStore = controller.beanPriceAvailable;
 
 	// UI state
 	type FilterMode = 'all' | 'has_holding' | 'has_price' | 'has_both';
@@ -41,6 +48,7 @@
 	// Load data on mount
 	onMount(async () => {
 		console.debug("[CommoditiesTab] onMount — loading commodities");
+		controller.refreshBeanPriceAvailability();
 		await controller.loadData();
 	});
 
@@ -120,8 +128,10 @@
 			<button
 				on:click={handleUpdatePrices}
 				class="update-prices-button"
-				disabled={$loadingStore || $fetchingPricesStore}
-				title="Fetch latest prices for commodities with configured price sources"
+				disabled={!$beanPriceAvailableStore || $loadingStore || $fetchingPricesStore}
+				title={$beanPriceAvailableStore
+					? "Fetch latest prices for commodities with configured price sources"
+					: "Set up a bean-price command in Settings → Connection to enable price fetching"}
 			>
 				{$fetchingPricesStore ? "⟳ Fetching..." : "💰 Update Prices"}
 			</button>
@@ -187,6 +197,7 @@
 					{commodity}
 					{index}
 					{operatingCurrency}
+					{operatingCurrencyDecimals}
 					on:click={handleCommodityClick}
 				/>
 			{/each}
@@ -273,9 +284,13 @@
 	}
 
 	.update-prices-button:disabled {
-		opacity: 0.6;
+		opacity: 0.5;
 		cursor: not-allowed;
 		transform: none;
+		background: var(--background-secondary);
+		border-color: var(--background-modifier-border);
+		color: var(--text-faint);
+		filter: grayscale(1);
 	}
 
 	.add-commodity-button {

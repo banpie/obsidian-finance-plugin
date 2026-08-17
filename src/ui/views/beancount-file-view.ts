@@ -157,4 +157,17 @@ export class BeancountFileView extends TextFileView {
 			},
 		});
 	}
+
+	/** Moves the cursor to and scrolls to the given 1-based line number (e.g. from a validation error). */
+	revealLine(lineNumber: number): void {
+		if (!this.editorView) return;
+		const totalLines = this.editorView.state.doc.lines;
+		const line = Math.min(Math.max(1, lineNumber), totalLines);
+		const linePos = this.editorView.state.doc.line(line);
+		this.editorView.dispatch({
+			selection: { anchor: linePos.from, head: linePos.from },
+			effects: EditorView.scrollIntoView(linePos.from, { y: 'center' }),
+		});
+		this.editorView.focus();
+	}
 }

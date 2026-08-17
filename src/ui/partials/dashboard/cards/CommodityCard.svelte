@@ -2,15 +2,17 @@
 <script lang="ts">
 	import { createEventDispatcher } from "svelte";
 	import type { CommodityInfo } from "../../../../controllers/CommoditiesController";
+	import { formatAmount } from "../../../../utils/index";
 
 	export let commodity: CommodityInfo;
 	export let index: number = 0;
 	export let operatingCurrency: string = 'USD';
+	export let operatingCurrencyDecimals: number = 2;
 
 	function formatValue(n: number): string {
-		if (!n) return '0.00';
+		if (!n) return formatAmount(0, operatingCurrencyDecimals, true);
 		if (n >= 10_000_000) return (n / 1_000_000).toFixed(2) + 'M';
-		return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+		return formatAmount(n, operatingCurrencyDecimals, true);
 	}
 
 	const dispatch = createEventDispatcher();
@@ -140,7 +142,7 @@
 		<div class="card-body">
 			<!-- Value (primary) -->
 			{#if (commodity?.valueInOperatingCurrency ?? 0) !== 0}
-				<div class="value-container" title={`${(commodity.valueInOperatingCurrency ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${operatingCurrency}`}>
+				<div class="value-container" title={`${formatAmount(commodity.valueInOperatingCurrency ?? 0, operatingCurrencyDecimals, true)} ${operatingCurrency}`}>
 					<span class="value-main">{formatValue(commodity.valueInOperatingCurrency ?? 0)}</span>
 					<span class="value-currency">{operatingCurrency}</span>
 				</div>
@@ -152,7 +154,7 @@
 				</div>
 			{:else}
 				<div class="value-container">
-					<span class="value-main no-price">0.00</span>
+					<span class="value-main no-price">{formatAmount(0, operatingCurrencyDecimals)}</span>
 					<span class="value-currency">{operatingCurrency}</span>
 				</div>
 			{/if}

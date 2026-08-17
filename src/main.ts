@@ -19,6 +19,7 @@ import type { EditorView } from '@codemirror/view';
 
 import { JournalService } from './services/journal.service';
 import { PriceService } from './services/price.service';
+import { CurrencyPrecisionService } from './services/currency-precision.service';
 import { createJournalStore } from './stores/journal.store';
 import { Logger } from './utils/logger';
 import { SystemDetector } from './utils/SystemDetector';
@@ -43,6 +44,7 @@ export default class BeancountPlugin extends Plugin {
 	// Services
 	public journalService: JournalService;
 	public priceService: PriceService;
+	public currencyPrecisionService: CurrencyPrecisionService;
 	public journalStore: ReturnType<typeof createJournalStore>;
 
 	/** Whether bean-query is currently reachable (runtime state, NOT persisted). */
@@ -70,7 +72,13 @@ export default class BeancountPlugin extends Plugin {
 		// Initialize Core Services
 		this.journalService = new JournalService(this);
 		this.priceService = new PriceService(this);
+		this.currencyPrecisionService = new CurrencyPrecisionService(this);
 		this.journalStore = createJournalStore(this.journalService);
+
+		// Non-blocking: infer per-currency display precision from the ledger.
+		if (this.settings.beancountCommand) {
+			void this.currencyPrecisionService.ensureLoaded();
+		}
 
 		// Check for onboarding — use dedicated flag instead of structuredFolderName
 		if (!this.settings.onboardingCompleted) {

@@ -75,6 +75,7 @@ export interface IncomeStatementState {
 export class IncomeStatementController {
 	public plugin: BeancountPlugin;
 	public state: Writable<IncomeStatementState>;
+	public onChartClick?: (periodKey: string, interval: 'month' | 'week', ctrlKey?: boolean) => void;
 
 	constructor(plugin: BeancountPlugin) {
 		this.plugin = plugin;
@@ -107,6 +108,7 @@ export class IncomeStatementController {
 		accountType: 'Income' | 'Expenses'
 	): AccountItem[] {
 		const reportingCurrency = this.plugin.settings.operatingCurrency;
+		const decimals = this.plugin.currencyPrecisionService.getDecimals(reportingCurrency);
 		const accountMap = new Map<string, AccountItem>();
 		const rootAccounts: AccountItem[] = [];
 
@@ -124,8 +126,8 @@ export class IncomeStatementController {
 				if (!accountMap.has(currentPath)) {
 					const displayAmountNumber = i === parts.length - 1 ? amountNumber : 0;
 					const displayAmount = i === parts.length - 1
-						? `${amountNumber.toFixed(2)} ${reportingCurrency}`
-						: `0.00 ${reportingCurrency}`;
+						? `${amountNumber.toFixed(decimals)} ${reportingCurrency}`
+						: `${(0).toFixed(decimals)} ${reportingCurrency}`;
 
 					const item: AccountItem = {
 						account: currentPath,
@@ -147,7 +149,7 @@ export class IncomeStatementController {
 					}
 				} else if (i === parts.length - 1) {
 					const existing = accountMap.get(currentPath)!;
-					existing.amount = `${amountNumber.toFixed(2)} ${reportingCurrency}`;
+					existing.amount = `${amountNumber.toFixed(decimals)} ${reportingCurrency}`;
 					existing.amountNumber = amountNumber;
 					existing.otherCurrencies = otherCurrencies;
 				}
@@ -163,11 +165,12 @@ export class IncomeStatementController {
 	 */
 	private calculateCategoryTotals(accounts: AccountItem[], currency: string): number {
 		let total = 0;
+		const decimals = this.plugin.currencyPrecisionService.getDecimals(currency);
 		for (const account of accounts) {
 			if (account.children && account.children.length > 0) {
 				const childTotal = this.calculateCategoryTotals(account.children, currency);
 				account.amountNumber = childTotal;
-				account.amount = `${childTotal.toFixed(2)} ${currency}`;
+				account.amount = `${childTotal.toFixed(decimals)} ${currency}`;
 
 				const childOtherCurrencies = account.children
 					.map(child => child.otherCurrencies)
@@ -279,6 +282,7 @@ export class IncomeStatementController {
 
 			const dataMap = new Map<string, number>();
 			const labels: string[] = [];
+			const periodKeys: string[] = [];
 			const dataPoints: (number | null)[] = [];
 
 			if (interval === 'month') {
@@ -296,6 +300,7 @@ export class IncomeStatementController {
 				let cy = minYear, cm = minMonth;
 				while (cy < maxYear || (cy === maxYear && cm <= maxMonth)) {
 					const key = `${cy}-${cm.toString().padStart(2, '0')}`;
+					periodKeys.push(key);
 					labels.push(new Date(cy, cm - 1).toLocaleDateString('en-US', { year: 'numeric', month: 'short' }).toUpperCase());
 					dataPoints.push(dataMap.get(key) ?? null);
 					if (++cm > 12) { cm = 1; cy++; }
@@ -318,6 +323,7 @@ export class IncomeStatementController {
 				const cur = new Date(minDate);
 				while (cur <= maxDate) {
 					const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+					periodKeys.push(key);
 					labels.push(cur.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }));
 					dataPoints.push(dataMap.get(key) ?? null);
 					cur.setDate(cur.getDate() + 7);
@@ -327,7 +333,7 @@ export class IncomeStatementController {
 			const xAxisTitle = interval === 'month' ? 'Month' : 'Week ending (Sunday)';
 			this.state.update(s => ({
 				...s,
-				chartConfig: this._buildBarChartConfig(labels, dataPoints, reportingCurrency, xAxisTitle, trendType),
+				chartConfig: this._buildBarChartConfig(labels, dataPoints, reportingCurrency, xAxisTitle, trendType, periodKeys, interval),
 				chartError: null,
 				chartLoading: false,
 			}));
@@ -341,7 +347,15 @@ export class IncomeStatementController {
 	/**
 	 * Builds a Chart.js bar chart configuration for the Trends chart.
 	 */
-	private _buildBarChartConfig(labels: string[], dataPoints: (number | null)[], currency: string, xAxisTitle: string, trendType: 'netprofit' | 'income' | 'expense' = 'netprofit'): ChartConfiguration {
+	private _buildBarChartConfig(
+		labels: string[],
+		dataPoints: (number | null)[],
+		currency: string,
+		xAxisTitle: string,
+		trendType: 'netprofit' | 'income' | 'expense' = 'netprofit',
+		periodKeys: string[] = [],
+		interval: 'month' | 'week' = 'month'
+	): ChartConfiguration {
 		const labelMap = { netprofit: 'Net Profit', income: 'Income', expense: 'Expense' };
 		const displayLabel = labelMap[trendType];
 		const bgColor = trendType === 'income'
@@ -369,6 +383,24 @@ export class IncomeStatementController {
 			options: {
 				responsive: true,
 				maintainAspectRatio: false,
+				onHover: (event, chartElement) => {
+					const target = (event?.native?.target || (event as { target?: HTMLElement })?.target) as HTMLElement | undefined;
+					if (target) {
+						target.style.cursor = chartElement.length > 0 ? 'pointer' : 'default';
+					}
+				},
+				onClick: (event, elements, chart) => {
+					if (elements.length > 0) {
+						const index = elements[0].index;
+						const rawKey = periodKeys[index] || chart.data.labels?.[index];
+						const keyStr = typeof rawKey === 'string' ? rawKey : Array.isArray(rawKey) ? String(rawKey[0]) : '';
+						if (keyStr && this.onChartClick) {
+							const nativeEvent = event?.native as MouseEvent | undefined;
+							const ctrlKey = !!(nativeEvent?.ctrlKey || nativeEvent?.metaKey);
+							this.onChartClick(keyStr, interval, ctrlKey);
+						}
+					}
+				},
 				plugins: {
 					title: {
 						display: true,
@@ -433,7 +465,10 @@ export class IncomeStatementController {
 					break;
 			}
 
-			const result = await this.plugin.runQuery(query);
+			const [result] = await Promise.all([
+				this.plugin.runQuery(query),
+				this.plugin.currencyPrecisionService.ensureLoaded()
+			]);
 			const cleanStdout = result.replace(/\r/g, '').trim();
 			const records: string[][] = parseCsv(cleanStdout, { columns: false, skip_empty_lines: true });
 

@@ -28,6 +28,8 @@ export interface TransactionState {
 	allAccounts: string[];
 	/** List of all available tags. */
 	allTags: string[];
+	/** Pending pre-set filters to be synchronized into the view. */
+	pendingFilters?: queries.TransactionFilters | null;
 }
 
 /**
@@ -57,8 +59,32 @@ export class TransactionController {
 			accountTree: [],
 			allAccounts: [],
 			allTags: [],
+			pendingFilters: null,
 		});
 	}
+
+	/**
+	 * Sets pending filters to be consumed by the UI component on mount or update.
+	 * @param {queries.TransactionFilters} filters - Filters to apply.
+	 */
+	setPendingFilters(filters: queries.TransactionFilters) {
+		this.state.update(s => ({
+			...s,
+			pendingFilters: filters,
+			currentFilters: filters
+		}));
+	}
+
+	/**
+	 * Clears the pending filters after they have been consumed by the UI component.
+	 */
+	clearPendingFilters() {
+		this.state.update(s => ({
+			...s,
+			pendingFilters: null
+		}));
+	}
+
 
 	/**
 	 * Fetches metadata needed for filters (all accounts and tags).
