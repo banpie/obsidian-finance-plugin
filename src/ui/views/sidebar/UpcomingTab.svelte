@@ -191,11 +191,9 @@
 	{:else}
 		<div class="upcoming-list">
 			{#each activeItems as item (item.name + item.lineno)}
-				<button
-					type="button"
-					class="upcoming-item upcoming-item-clickable"
+				<div
+					class="upcoming-item"
 					class:item-due={item.isDue}
-					on:click={() => handleEdit(item)}
 				>
 					<div class="upcoming-main-row">
 						<span class="upcoming-indicator" class:indicator-due={item.isDue} class:indicator-ok={!item.isDue}></span>
@@ -204,11 +202,11 @@
 							{item.displayAmount !== undefined && item.displayCurrency ? formatAmount(item.displayAmount, item.displayCurrency) : '—'}
 						</span>
 						<div class="upcoming-actions">
-							<button type="button" class="btn-icon edit-btn" on:click={(e) => { e.stopPropagation(); handleEdit(item); }} title="Edit">✏️</button>
+							<button type="button" class="btn-icon edit-btn" on:click={() => handleEdit(item)} title="Edit">✏️</button>
 							<button type="button" class="btn-icon delete-btn" on:click={(e) => handleDelete(item, e)} title="Delete">❌</button>
 						</div>
 					</div>
-				</button>
+				</div>
 			{/each}
 		</div>
 	{/if}
@@ -283,28 +281,20 @@
 	}
 
 	.upcoming-item {
-		display: block;
 		width: 100%;
 		padding: var(--size-4-2);
 		background-color: var(--background-secondary);
 		border-radius: var(--radius-s);
 		border-left: 3px solid var(--color-green);
-		border-top: none;
-		border-right: none;
-		box-shadow: none;
-		text-align: left;
-		font: inherit;
-		cursor: pointer;
-		transition: box-shadow 0.15s ease, background-color 0.15s ease;
+		transition: background-color 0.15s ease;
 	}
 
 	.upcoming-item.item-due {
 		border-left-color: var(--color-orange);
 	}
 
-	.upcoming-item-clickable:hover {
+	.upcoming-item:hover {
 		background-color: var(--background-modifier-hover);
-		box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
 	}
 
 	.upcoming-main-row {

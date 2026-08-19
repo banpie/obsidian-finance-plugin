@@ -37,7 +37,7 @@ export class ConfirmDueSchedulesModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		this.modalEl.setCssStyles({ maxWidth: '640px', width: '90vw' });
-		this.setTitle('Transactions Due');
+		this.setTitle('Transactions due');
 
 		this.component = new (ConfirmDueSchedulesModalComponent)({
 			target: contentEl,
@@ -60,7 +60,7 @@ export class ConfirmDueSchedulesModal extends Modal {
 	private async occurrenceAlreadyExists(scheduleName: string, date: string): Promise<boolean> {
 		try {
 			const csv = await runQuery(this.plugin, getScheduledOccurrenceExistsQuery(scheduleName, date));
-			const rows = parseCsv(csv, { columns: true, skip_empty_lines: true, trim: true }) as unknown[];
+			const rows = parseCsv(csv, { columns: true, skip_empty_lines: true, trim: true });
 			return rows.length > 0;
 		} catch (error) {
 			Logger.error(`[ConfirmDueSchedulesModal] Dedupe check failed for "${scheduleName}" on ${date}:`, error);
@@ -108,7 +108,7 @@ export class ConfirmDueSchedulesModal extends Modal {
 								narration: schedule.narration,
 								tags: schedule.tags,
 								links: schedule.links,
-								metadata: { Scheduled: schedule.name },
+								metadata: { scheduled: schedule.name },
 								postings: schedule.postings.map((p) => ({ account: p.account, amount: p.amount, currency: p.currency })),
 							});
 							if (!txResult.success) {

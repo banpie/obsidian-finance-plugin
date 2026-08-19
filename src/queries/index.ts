@@ -188,14 +188,23 @@ export function getScheduleListQuery(): string {
 
 /**
  * Dedupe check used before materializing a due occurrence: does a
- * transaction already exist tagged `Scheduled: "<name>"` on this exact date?
+ * transaction already exist tagged `scheduled: "<name>"` on this exact date?
  * (e.g. the confirm modal was resubmitted, or nextDate drifted stale.)
  * Mirrors the `FROM postings WHERE id = ...` lookup shape already used by
  * updateTransaction()/deleteTransaction() in transactionDirectives.ts.
+ *
+ * NOTE: uses `entry_meta()`, not `meta()` — when querying `FROM postings`,
+ * `meta()` resolves *posting-level* metadata (empty here, since `scheduled`
+ * is set on the transaction), while `entry_meta()` resolves the parent
+ * transaction's metadata. Verified directly against bean-query: `meta()`
+ * returned blank for every row, `entry_meta()` returned the tag correctly.
+ *
+ * Also, the metadata key must start lowercase — beancount grammar requires
+ * `[a-z][a-zA-Z0-9\-_]*` for metadata keys.
  */
 export function getScheduledOccurrenceExistsQuery(name: string, date: string): string {
 	const sanitizedName = name.replace(/'/g, "''");
-	return `SELECT id FROM postings WHERE meta('Scheduled') = '${sanitizedName}' AND date = ${date} LIMIT 1`;
+	return `SELECT id FROM postings WHERE entry_meta('scheduled') = '${sanitizedName}' AND date = ${date} LIMIT 1`;
 }
 
 

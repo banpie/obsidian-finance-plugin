@@ -91,7 +91,7 @@
 </script>
 
 <div class="confirm-modal">
-	<h2>Transactions Due</h2>
+	<h2>Transactions due</h2>
 	<p class="subtitle">
 		Review each occurrence: <strong>Insert</strong> adds it to the ledger,
 		<strong>Skip</strong> dismisses it without adding, and leaving it
