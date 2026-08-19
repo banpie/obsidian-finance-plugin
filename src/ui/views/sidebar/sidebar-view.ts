@@ -64,7 +64,7 @@ export class BeancountView extends ItemView {
 
 		this.component = new BeancountViewComponent({
 			target: container,
-			props: this.state
+			props: { ...this.state, plugin: this.plugin }
 		});
 
 		// Listen for events
