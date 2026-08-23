@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import { App, Notice, TFile, Platform } from 'obsidian';
 	import type BeancountPlugin from '../../main';
-	import { DEMO_LEDGER_CONTENT } from '../../services/demo-ledger';
+	import { getDemoLedgerContent } from '../../services/demo-ledger';
 	import { Logger } from '../../utils/logger';
 	import { migrateToStructuredLayout } from '../../utils/structuredLayout';
 	import { SystemDetector } from '../../utils/SystemDetector';
@@ -261,7 +261,7 @@
 			}
 		}
 
-		await adapter.write(tempFilePath, DEMO_LEDGER_CONTENT);
+		await adapter.write(tempFilePath, getDemoLedgerContent());
 		await new Promise(r => setTimeout(r, 300));
 
 		const tempFile = app.vault.getAbstractFileByPath(tempFilePath) as TFile;

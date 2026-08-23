@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+- **Scheduled & Recurring Transactions** — Set up transactions that repeat automatically or fire once in the future, right from the Snapshot sidebar. A new **Upcoming** tab (toggled against Key Metrics) lets you define a schedule — name, frequency (`One-time`, `Weekly`, `Monthly`, `Quarterly`, `Yearly`), start date, payee/narration, and any number of postings, including a blank posting left to auto-balance — which is stored as a plain-text `event "Recurring"` directive in `events.beancount`. Nothing posts to your ledger automatically: click **Refresh** to check for due occurrences, and a schedule that's fallen behind surfaces *every* missed occurrence at once rather than just the next one. Each occurrence is resolved independently as **Insert** (materialize it and advance), **Skip** (dismiss it and still advance), or left on **Hold** (re-offered next refresh) — with a Hold on an earlier occurrence correctly blocking later ones in the same batch from being resolved out of order. Every materialized transaction is tagged with `scheduled: "<name>"` metadata, giving a built-in duplicate-insert safety check and a full audit trail back to its originating schedule. The bundled onboarding demo ledger now includes several example schedules covering every frequency.
+
 ## 2.4.0 - 2026-08-17
 
 - **Unified Inter-Tab Dashboard Connections & Navigation API** — Built a centralized navigation contract (`NavRequest`, `NavigationFilters`) allowing cross-tab linking and filter synchronization across the entire dashboard:

@@ -75,6 +75,43 @@ This tells the plugin to flag the account if it has not been reconciled within 3
 
 ---
 
+## 📅 Upcoming Transactions
+
+The **Upcoming** tab — toggled against **Key Metrics** at the top of the Snapshot view — lets you define transactions that repeat automatically or fire once in the future, without leaving the sidebar.
+
+### How It Works
+
+Each schedule is stored as an `event "Recurring"` directive in your `events.beancount` file — plain text, just like everything else in your ledger. Nothing is ever added to your ledger automatically: a schedule only produces a real transaction when you explicitly confirm it via the refresh flow below.
+
+### Adding a Schedule
+
+Click the **＋** button in the Upcoming tab to open the **Add Scheduled Transaction** modal:
+
+*   **Frequency** — `One-time`, `Weekly`, `Monthly`, `Quarterly`, or `Yearly`.
+*   **Start Date** — the first (or only, for `One-time`) occurrence.
+*   **Payee / Narration** — optional, same as a regular transaction.
+*   **Postings** — add as many as you need. Leave one posting's amount blank to have Beancount auto-balance it, exactly like a manually-entered transaction.
+
+Each row in the list shows the schedule's name, amount, frequency, and next due date, with an orange indicator when something is due.
+
+### Checking What's Due
+
+Click the refresh icon to check for due occurrences. If a schedule has fallen behind by more than one cycle, **every** missed occurrence is surfaced at once — not just the next one — grouped under that schedule in a confirmation dialog. For each occurrence you choose one of:
+
+*   ✅ **Insert** — materialize it into the ledger and advance to the next occurrence.
+*   ⏭ **Skip** — dismiss this occurrence without adding it, and still advance past it.
+*   ⏸ **Hold** — do nothing; it stays due and you'll be asked again next time you refresh.
+
+> **Note:** `nextDate` advances as a single cursor, so a Hold on an earlier occurrence blocks later occurrences of the *same* schedule from being resolved in that batch — they're simply re-offered on your next refresh instead of being processed out of order.
+
+Every transaction created this way is tagged with `scheduled: "<name>"` metadata, linking it back to the schedule that produced it. This also gives the plugin a way to detect and skip an accidental duplicate insert (e.g. if the confirmation dialog is submitted twice).
+
+### Editing & Deleting
+
+Hover a schedule row to reveal ✏️ (edit) and ❌ (delete) icons. Editing reopens the same form pre-filled with the schedule's current details; deleting removes the `event` directive from `events.beancount` after a confirmation prompt.
+
+---
+
 ## 💡 Usage Tips
 
 ### When to Use
@@ -82,6 +119,7 @@ This tells the plugin to flag the account if it has not been reconciled within 3
 *   **Quick checks** — Glance at net worth without opening the full dashboard.
 *   **Context switching** — Maintain financial awareness while working on other tasks.
 *   **Reconciliation reminders** — Use the Reconciliation tab as a checklist to know which accounts need a balance assertion before closing the month.
+*   **Bill tracking** — Set up recurring rent, subscriptions, and insurance payments once in the Upcoming tab, then just click Refresh whenever you're catching up on bookkeeping.
 
 ### Placement
 Access the Snapshot View via:

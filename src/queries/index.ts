@@ -355,11 +355,17 @@ export function getReconcileAccountsQuery(): string {
 }
 
 /**
- * Returns the most recent balance assertion date for each account that has
- * at least one balance directive. Uses the dedicated `#balances` table which
- * exposes `account` as a plain string (unlike `#entries.accounts` which is a
- * set and cannot be grouped).
+ * Returns the most recent PASSING balance assertion date for each account
+ * that has at least one balance directive. Uses the dedicated `#balances`
+ * table which exposes `account` as a plain string (unlike `#entries.accounts`
+ * which is a set and cannot be grouped).
+ *
+ * `WHERE discrepancy IS NULL` excludes failed assertions: bean-query still
+ * records a row for a `balance` directive that didn't check out, with the
+ * mismatch amount in `discrepancy`. Without this filter, an account with a
+ * failing assertion would be reported as "reconciled" on the assertion's
+ * date even though the ledger doesn't actually balance (issue #272).
  */
 export function getLastBalanceDateQuery(): string {
-	return `SELECT account, max(date) AS last_balance_date FROM #balances GROUP BY account`;
+	return `SELECT account, max(date) AS last_balance_date FROM #balances WHERE discrepancy IS NULL GROUP BY account`;
 }

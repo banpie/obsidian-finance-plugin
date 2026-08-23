@@ -60,6 +60,14 @@
 		return `${amount.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} ${currency}`;
 	}
 
+	const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+	/** "2026-09-01" -> "Sep 1" — compact, locale-independent (matches this file's own date formatting elsewhere). */
+	function formatShortDate(dateStr: string): string {
+		const [y, m, day] = dateStr.split('-').map(Number);
+		if (!y || !m || !day) return dateStr;
+		return `${MONTH_ABBR[m - 1]} ${day}`;
+	}
+
 	async function loadAll() {
 		if (!plugin) return;
 		isLoading = true;
@@ -206,6 +214,13 @@
 							<button type="button" class="btn-icon delete-btn" on:click={(e) => handleDelete(item, e)} title="Delete">❌</button>
 						</div>
 					</div>
+					<div class="upcoming-detail-row">
+						<span class="upcoming-frequency">{item.frequency}</span>
+						<span class="upcoming-sep">·</span>
+						<span class="upcoming-next-date" class:due-text={item.isDue}>
+							{item.isDue ? 'Due' : 'Next'} {formatShortDate(item.nextDate)}
+						</span>
+					</div>
 				</div>
 			{/each}
 		</div>
@@ -321,6 +336,25 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	.upcoming-detail-row {
+		display: flex;
+		align-items: center;
+		gap: 5px;
+		margin-top: 2px;
+		margin-left: 13px; /* align under the name, past the indicator dot + gap */
+		font-size: var(--font-ui-smaller);
+		color: var(--text-muted);
+	}
+
+	.upcoming-sep {
+		color: var(--text-faint);
+	}
+
+	.upcoming-next-date.due-text {
+		color: var(--color-orange);
+		font-weight: 500;
 	}
 
 	.upcoming-amount {

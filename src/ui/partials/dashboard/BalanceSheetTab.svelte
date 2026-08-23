@@ -5,6 +5,7 @@
 	import type { BalanceSheetController, BalanceSheetState, AccountItem } from '../../../controllers/BalanceSheetController';
 	import { Logger } from '../../../utils/logger';
 	import { AccountManagementModal } from '../../modals/AccountManagementModal';
+	import { BeancountView, BEANCOUNT_VIEW_TYPE } from '../../views/sidebar/sidebar-view';
 	import { resolveNavTab, type NavRequest } from '../../../types/navigation';
 	import SunburstChart from '../../common/SunburstChart.svelte';
 	import ChartComponent from '../../common/ChartComponent.svelte';
@@ -152,6 +153,21 @@
 	$: visibleEquity = state.equity ? state.equity.filter(item => shouldShowRow(item, collapsedAccounts)) : [];
 
 	// Account management functions
+
+	// Opening/closing an account here only refreshes this tab's own controller.
+	// The Snapshot sidebar view (reconciliation panel) caches its own account
+	// list independently and has no listener for changes made elsewhere, so it
+	// must be refreshed explicitly or it keeps showing stale (e.g. just-closed)
+	// accounts until the user manually hits its own refresh button (issue #271).
+	async function refreshSnapshotView() {
+		const leaves = controller.plugin.app.workspace.getLeavesOfType(BEANCOUNT_VIEW_TYPE);
+		for (const leaf of leaves) {
+			if (leaf.view instanceof BeancountView) {
+				await leaf.view.updateView();
+			}
+		}
+	}
+
 	function handleOpenAccount() {
 		const plugin = controller.plugin;
 		const modal = new AccountManagementModal(
@@ -161,6 +177,7 @@
 			async () => {
 				// Refresh callback
 				await controller.loadData();
+				await refreshSnapshotView();
 			}
 		);
 		modal.open();
@@ -175,6 +192,7 @@
 			async () => {
 				// Refresh callback
 				await controller.loadData();
+				await refreshSnapshotView();
 			}
 		);
 		modal.open();
