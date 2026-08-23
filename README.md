@@ -13,6 +13,21 @@ A comprehensive Beancount integration for [Obsidian](https://obsidian.md) that t
 
 ---
 
+## ✨ Features
+
+*   **📊 Unified Dashboard** — Overview, Transactions, Journal, Accounts & Balances, Income Statement, and Commodities tabs, all backed by live Beancount Query Language (BQL).
+*   **💸 Transaction Management** — Add transactions, balance assertions, and notes through a friendly modal instead of hand-writing plain text.
+*   **📅 Scheduled & Recurring Transactions** — Define one-time or repeating transactions (rent, subscriptions, insurance) from the Snapshot sidebar. Click Refresh to see what's due — including every occurrence a schedule has fallen behind on — and Insert, Skip, or Hold each one individually.
+*   **✅ Reconciliation Tracking** — Assign a reconciliation interval to any account and get an at-a-glance overdue/up-to-date summary in the Snapshot sidebar.
+*   **🪙 Bean Price Integration** — Automated market value updates for stocks, mutual funds, ETFs, and cryptocurrencies.
+*   **📁 Structured Layout** — Automatically split large journals into clean, organized files (accounts, prices, transactions by year, and more).
+*   **📝 Pro-grade File Editor** — A full `.beancount` editor view with live syntax highlighting, diagnostics, smart indentation, and autocompletion.
+*   **🔒 Privacy First** — Fully local; your financial data never leaves your device.
+
+See the [Documentation Portal](https://mkshp-dev.github.io/obsidian-finance-plugin/) for the complete feature list and usage guides.
+
+---
+
 ## 🔧 Requirements
 
 This plugin integrates with your existing Beancount setup:

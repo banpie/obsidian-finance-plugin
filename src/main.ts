@@ -385,7 +385,7 @@ export default class BeancountPlugin extends Plugin {
 	}
 
 	// Helper method to get dashboard refresh callback
-	private getDashboardRefreshCallback(): () => Promise<void> {
+	public getDashboardRefreshCallback(): () => Promise<void> {
 		return async () => {
 			// Find the unified dashboard view and call its refresh method
 			const leaves = this.app.workspace.getLeavesOfType(UNIFIED_DASHBOARD_VIEW_TYPE);

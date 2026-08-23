@@ -49,6 +49,7 @@
 				step="0.01"
 				bind:value={posting.amount}
 				placeholder="Optional amount"
+				on:wheel|preventDefault
 			/>
 		</div>
 
@@ -122,6 +123,7 @@
 						step="0.01"
 						bind:value={posting.cost.number}
 						placeholder="150.00"
+						on:wheel|preventDefault
 					/>
 				</div>
 
@@ -182,6 +184,7 @@
 						step="0.01"
 						bind:value={posting.price.amount}
 						placeholder="1.09"
+						on:wheel|preventDefault
 					/>
 				</div>
 

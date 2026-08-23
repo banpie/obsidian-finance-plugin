@@ -53,11 +53,19 @@ export {
 	createIndicatorDirective,
 	updateIndicatorDirective,
 	deleteIndicatorDirective,
+	createScheduleDirective,
+	updateScheduleDirective,
+	deleteScheduleDirective,
+	advanceScheduleDate,
+	computeScheduleDisplayAmount,
+	computeDueOccurrences,
 	type TransactionData,
 	type BalanceData,
 	type NoteData,
 	type CostData,
 	type PriceDataPayload,
+	type PostingStub,
+	type ScheduleDirectiveParams,
 } from './directives';
 
 // Re-export structuredLayout helpers that some callers pull from utils/index

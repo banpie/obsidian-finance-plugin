@@ -9,3 +9,4 @@ export * from './directives/commodityDirectives';
 export * from './directives/transactionDirectives';
 export * from './directives/queryDirectives';
 export * from './directives/indicatorDirectives';
+export * from './directives/scheduleDirectives';

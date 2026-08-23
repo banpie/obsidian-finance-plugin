@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { Notice } from 'obsidian'; // Ensure Notice is imported
+	import UpcomingTab from './UpcomingTab.svelte';
 
+	export let plugin: any = null;
 	export let isLoading = true;
 	export let assets = "0 USD";
 	export let liabilities = "0 USD";
@@ -23,6 +25,12 @@
 	}> = [];
 	export let activeTab: 'errors' | 'reconciliation' = 'errors';
 
+	// Upper-region toggle (Key Metrics / Upcoming) — pure local UI state, not
+	// dispatched to the view class, since UpcomingTab self-fetches its own
+	// data via the `plugin` prop rather than being driven by updateView().
+	let activeUpperTab: 'metrics' | 'upcoming' = 'metrics';
+	let upcomingDueCount = 0;
+
 	const dispatch = createEventDispatcher();
 
 	function handleRefresh() {
@@ -37,6 +45,14 @@
 
 	function switchTab(tab: 'errors' | 'reconciliation') {
 		dispatch('tabChange', tab);
+	}
+
+	function switchUpperTab(tab: 'metrics' | 'upcoming') {
+		activeUpperTab = tab;
+	}
+
+	function handleUpcomingDueCount(e: CustomEvent<number>) {
+		upcomingDueCount = e.detail;
 	}
 
 	function handleErrorClick(error: { filePath: string; lineNum: number }) {
@@ -67,15 +83,19 @@
 		<button
 			type="button" class="beancount-status-button" class:status-ok={fileStatus === 'ok'}
 			class:status-error={fileStatus === 'error'}
+			class:status-checking={fileStatus === 'checking'}
 			on:click={handleStatusClick}
 			title={fileStatus === 'error' ? 'Click to see error details' : 'File Status'}
 			disabled={fileStatus === 'checking'} >
 			{#if fileStatus === 'checking'}
-				<span>Checking...</span>
+				<span class="status-dot"></span>
+				<span>Checking…</span>
 			{:else if fileStatus === 'ok'}
-				<span>✅ OK</span>
+				<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+				<span>OK</span>
 			{:else if fileStatus === 'error'}
-				<span>❌ {errorCount} Error{errorCount !== 1 ? 's' : ''}</span>
+				<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+				<span>{errorCount} Error{errorCount !== 1 ? 's' : ''}</span>
 			{/if}
 		</button>
 
@@ -98,31 +118,59 @@
 	</div>
 </div>
 
-<h4>Key Metrics</h4>
-<div class="beancount-kpi-container">
-	{#if kpiError}
-		<div class="beancount-error-message">{kpiError}</div>
-	{:else}
-		<div class="kpi-metric">
-			<span class="kpi-label">Net Worth</span>
-			<span class="kpi-value net-worth">{netWorth}</span>
-		</div>
-		<div class="kpi-metric">
-			<span class="kpi-label">Assets</span>
-			<span class="kpi-value">{assets}</span>
-		</div>
-		<div class="kpi-metric">
-			<span class="kpi-label">Liabilities</span>
-			<span class="kpi-value">{liabilities}</span>
+<!-- Upper-region toggle: Key Metrics / Upcoming -->
+<div class="tab-strip upper-tab-strip">
+	<button
+		class="tab-button"
+		class:tab-active={activeUpperTab === 'metrics'}
+		on:click={() => switchUpperTab('metrics')}
+	>
+		Key Metrics
+	</button>
+	<button
+		class="tab-button"
+		class:tab-active={activeUpperTab === 'upcoming'}
+		on:click={() => switchUpperTab('upcoming')}
+	>
+		Upcoming
+		{#if upcomingDueCount > 0}
+			<span class="tab-badge tab-badge-warning">{upcomingDueCount}</span>
+		{/if}
+	</button>
+</div>
+
+<div class="upper-tab-content" class:hidden={activeUpperTab !== 'metrics'}>
+	<div class="beancount-kpi-container">
+		{#if kpiError}
+			<div class="beancount-error-message">{kpiError}</div>
+		{:else}
+			<div class="kpi-metric">
+				<span class="kpi-label">Net Worth</span>
+				<span class="kpi-value net-worth">{netWorth}</span>
+			</div>
+			<div class="kpi-metric">
+				<span class="kpi-label">Assets</span>
+				<span class="kpi-value">{assets}</span>
+			</div>
+			<div class="kpi-metric">
+				<span class="kpi-label">Liabilities</span>
+				<span class="kpi-value">{liabilities}</span>
+			</div>
+		{/if}
+	</div>
+
+	{#if !kpiError}
+		<div class="conversion-note">
+			<span>Commodities without price data are excluded from totals</span>
 		</div>
 	{/if}
 </div>
 
-{#if !kpiError}
-	<div class="conversion-note">
-		<span>Commodities without price data are excluded from totals</span>
-	</div>
-{/if}
+<!-- Always mounted (not #if-destroyed) so its due-count badge above stays
+     live even while Key Metrics is the visible upper tab. -->
+<div class="upper-tab-content" class:hidden={activeUpperTab !== 'upcoming'}>
+	<UpcomingTab {plugin} on:due-count={handleUpcomingDueCount} />
+</div>
 
 <!-- Tabbed bottom section -->
 <hr class="tab-separator">
@@ -248,46 +296,90 @@
 {/if}
 
 <style>
-	/* Styles adjusted slightly */
+	/* --- Header --- */
 	.beancount-header {
 		display: flex;
-		justify-content: space-between; /* Space title and controls */
+		justify-content: space-between;
 		align-items: center;
-		padding-bottom: 10px;
-		gap: 10px;
+		gap: var(--size-4-3);
+		padding-bottom: var(--size-4-3);
+		margin-bottom: var(--size-4-1);
+		border-bottom: 1px solid var(--background-modifier-border);
 	}
 	.beancount-header h2 {
-		margin-right: 0; /* Let controls push right */
+		margin: 0;
+		font-size: var(--font-ui-larger);
+		letter-spacing: -0.01em;
 	}
-	.header-controls { /* Wrapper for right-aligned controls */
+	.header-controls {
 		display: flex;
 		align-items: center;
-		gap: 8px; /* Consistent gap */
+		gap: var(--size-4-2);
 	}
 
+	/* Status pill */
 	.beancount-status-button {
-		font-size: inherit;
-		padding: var(--size-4-1) var(--size-4-3);
+		font-size: var(--font-ui-small);
+		padding: var(--size-4-1) var(--size-4-2);
 		line-height: var(--line-height-normal);
-		background-color: transparent;
-		border: none;
+		background-color: var(--background-modifier-hover);
+		border: 1px solid transparent;
+		border-radius: var(--radius-s);
 		color: var(--text-muted);
 		white-space: nowrap;
 		display: inline-flex;
 		align-items: center;
+		gap: 5px;
 		cursor: default;
+		transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 	}
 	.beancount-status-button.status-error { cursor: pointer; }
-	.beancount-status-button:not(.status-error):hover { background-color: transparent; }
-	.beancount-status-button span { font-weight: 500; }
-	.beancount-status-button.status-ok span { color: var(--text-success); }
-	.beancount-status-button.status-error span { color: var(--text-error); }
+	.beancount-status-button.status-error:hover {
+		background-color: rgba(var(--color-red-rgb, 224, 82, 82), 0.16);
+		transform: translateY(-1px);
+	}
+	.beancount-status-button span,
+	.beancount-status-button svg { font-weight: 500; }
+	.beancount-status-button.status-ok {
+		background-color: rgba(var(--color-green-rgb, 76, 175, 116), 0.14);
+		color: var(--color-green, #4caf74);
+	}
+	.beancount-status-button.status-error {
+		background-color: rgba(var(--color-red-rgb, 224, 82, 82), 0.12);
+		color: var(--color-red, #e05252);
+	}
+	.beancount-status-button.status-checking { color: var(--text-faint); }
 
-	/* Refresh button and loading spinner */
+	.status-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background-color: var(--text-faint);
+		animation: pulse 1.4s ease-in-out infinite;
+	}
+
+	/* Refresh button */
 	.refresh-button {
 		display: flex;
 		align-items: center;
 		gap: 6px;
+		padding: var(--size-4-1) var(--size-4-3);
+		border: 1px solid var(--background-modifier-border);
+		border-radius: var(--radius-s);
+		background-color: var(--background-primary);
+		color: var(--text-normal);
+		font-size: var(--font-ui-small);
+		font-weight: 500;
+		cursor: pointer;
+		transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+	}
+	.refresh-button:hover:not(:disabled) {
+		background-color: var(--interactive-hover);
+		border-color: var(--interactive-accent);
+	}
+	.refresh-button:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 	.loading-spinner {
 		animation: spin 1s linear infinite;
@@ -296,57 +388,74 @@
 		from { transform: rotate(0deg); }
 		to { transform: rotate(360deg); }
 	}
+	@keyframes pulse {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.35; }
+	}
 
 	/* --- KPI Styles --- */
-	.beancount-kpi-container { 
-		display: grid; 
-		grid-template-columns: 1fr 1fr; 
-		gap: 10px; 
-		margin-bottom: 15px; 
+	.beancount-kpi-container {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: var(--size-4-2);
+		margin-bottom: var(--size-4-3);
 	}
-	.kpi-metric { 
-		display: flex; 
-		flex-direction: column; 
-		padding: 10px 12px; 
-		background-color: var(--background-secondary); 
-		border-radius: 6px; 
-		border: 1px solid var(--background-modifier-border); 
+	.kpi-metric {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		padding: var(--size-4-3);
+		background-color: var(--background-secondary);
+		border-radius: var(--radius-m);
+		border: 1px solid var(--background-modifier-border);
+		transition: box-shadow 0.15s ease, border-color 0.15s ease;
 	}
-	.kpi-label { 
-		font-size: var(--font-ui-small); 
-		color: var(--text-muted); 
-		margin-bottom: 4px; 
+	.kpi-metric:hover {
+		box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+		border-color: var(--background-modifier-border-hover, var(--background-modifier-border));
 	}
-	.kpi-value { 
-		font-size: 1.25em; 
-		font-weight: 600; 
+	.kpi-label {
+		font-size: var(--font-ui-smaller);
+		font-weight: 500;
+		color: var(--text-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
 	}
-	.net-worth { 
-		font-size: 1.4em; 
-		color: var(--text-accent); 
+	.kpi-value {
+		font-size: 1.2em;
+		font-weight: 650;
+		color: var(--text-normal);
+		letter-spacing: -0.01em;
 	}
-	.kpi-metric:first-child { 
-		grid-column: 1 / -1; 
+	.kpi-metric:first-child {
+		grid-column: 1 / -1;
+		background: linear-gradient(135deg, rgba(var(--interactive-accent-rgb, 122, 106, 224), 0.1), var(--background-secondary));
+		border-color: rgba(var(--interactive-accent-rgb, 122, 106, 224), 0.25);
 	}
-	
+	.net-worth {
+		font-size: 1.65em;
+		font-weight: 700;
+		color: var(--text-accent);
+	}
+
 	/* --- Error Message Styles --- */
-	.beancount-error-message { 
-		color: var(--text-error); 
-		font-size: var(--font-ui-small); 
-		padding: 10px; 
-		background-color: var(--background-secondary-alt); 
-		border-radius: 6px; 
-		border: 1px solid var(--background-modifier-border); 
-		grid-column: 1 / -1; 
-		word-break: break-all; 
-		white-space: pre-wrap; 
+	.beancount-error-message {
+		color: var(--text-error);
+		font-size: var(--font-ui-small);
+		padding: var(--size-4-3);
+		background-color: var(--background-secondary-alt);
+		border-radius: var(--radius-m);
+		border: 1px solid var(--background-modifier-border);
+		grid-column: 1 / -1;
+		word-break: break-all;
+		white-space: pre-wrap;
 	}
 
 	/* --- Conversion Note Styles --- */
 	.conversion-note {
 		font-size: var(--font-ui-smaller);
 		color: var(--text-faint);
-		margin-top: 6px;
+		margin-top: var(--size-4-1);
 		text-align: center;
 	}
 
@@ -354,19 +463,27 @@
 	.tab-separator {
 		border: none;
 		border-top: 1px solid var(--background-modifier-border);
-		margin: 15px 0 0 0;
+		margin: var(--size-4-4) 0 0 0;
 	}
 
 	.tab-strip {
 		display: flex;
 		gap: 0;
-		margin-bottom: 10px;
+		margin-bottom: var(--size-4-2);
 		border-bottom: 1px solid var(--background-modifier-border);
+	}
+
+	.upper-tab-strip {
+		margin-bottom: var(--size-4-3);
+	}
+
+	.upper-tab-content.hidden {
+		display: none;
 	}
 
 	.tab-button {
 		flex: 1;
-		padding: 8px 12px;
+		padding: var(--size-4-2) var(--size-4-2);
 		background: none;
 		border: none;
 		border-bottom: 2px solid transparent;
@@ -378,12 +495,12 @@
 		align-items: center;
 		justify-content: center;
 		gap: 6px;
-		transition: color 0.15s ease, border-color 0.15s ease;
+		transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 	}
 
 	.tab-button:hover {
 		color: var(--text-normal);
-		background: none;
+		background: var(--background-modifier-hover);
 		box-shadow: none;
 	}
 
@@ -393,21 +510,23 @@
 	}
 
 	.tab-badge {
-		font-size: 0.75em;
+		font-size: 0.72em;
+		min-width: 16px;
 		padding: 1px 6px;
-		border-radius: 10px;
-		font-weight: 600;
-		line-height: 1.4;
+		border-radius: 20px;
+		font-weight: 700;
+		line-height: 1.5;
+		text-align: center;
 	}
 
 	.tab-badge-error {
-		background-color: var(--background-modifier-error);
-		color: var(--text-on-accent);
+		background-color: var(--color-red, #e05252);
+		color: white;
 	}
 
 	.tab-badge-warning {
-		background-color: var(--color-orange);
-		color: var(--text-on-accent);
+		background-color: var(--color-orange, #e8a027);
+		color: white;
 	}
 
 	/* --- Tab Empty State --- */
@@ -415,39 +534,41 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 8px;
-		padding: 20px 10px;
+		gap: var(--size-4-2);
+		padding: var(--size-4-6) var(--size-4-3);
 		color: var(--text-faint);
 		font-size: var(--font-ui-small);
 		text-align: center;
+		line-height: 1.5;
 	}
 
 	.tab-empty-state code {
 		font-size: 0.9em;
 		background-color: var(--background-secondary);
-		padding: 1px 4px;
-		border-radius: 3px;
+		padding: 1px 5px;
+		border-radius: var(--radius-s);
 	}
 
 	/* --- Error Section Styles --- */
 	.error-section {
 		margin-top: 0;
 	}
-	
+
 	.error-list {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
+		gap: var(--size-4-1);
 	}
-	
+
 	.error-item {
 		display: flex;
 		align-items: flex-start;
-		gap: 6px;
-		padding: 6px 8px;
+		gap: 7px;
+		padding: var(--size-4-2);
 		background-color: var(--background-secondary);
-		border-radius: 4px;
+		border-radius: var(--radius-s);
 		border-left: 3px solid var(--text-error);
+		transition: box-shadow 0.15s ease;
 	}
 
 	.error-item-clickable {
@@ -468,7 +589,7 @@
 
 	.error-item-clickable:hover {
 		background-color: var(--background-modifier-hover);
-		box-shadow: none;
+		box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
 	}
 
 	.error-item svg {
@@ -476,7 +597,7 @@
 		color: var(--text-error);
 		margin-top: 2px;
 	}
-	
+
 	.error-text {
 		font-size: var(--font-ui-small);
 		color: var(--text-normal);
@@ -489,23 +610,24 @@
 	.reconciliation-section {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: var(--size-4-3);
 	}
 
 	.reconciliation-summary {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 8px;
+		gap: var(--size-4-2);
 	}
 
 	.reconciliation-stat {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		padding: 10px 8px;
+		padding: var(--size-4-2) var(--size-4-1);
 		background-color: var(--background-secondary);
-		border-radius: 6px;
+		border-radius: var(--radius-m);
 		border: 1px solid var(--background-modifier-border);
+		transition: box-shadow 0.15s ease;
 	}
 
 	.reconciliation-stat.stat-warning {
@@ -517,7 +639,7 @@
 	}
 
 	.stat-value {
-		font-size: 1.4em;
+		font-size: 1.35em;
 		font-weight: 700;
 	}
 
@@ -538,14 +660,15 @@
 	.reconciliation-list {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: var(--size-4-1);
 	}
 
 	.reconciliation-item {
-		padding: 6px 8px;
+		padding: var(--size-4-2);
 		background-color: var(--background-secondary);
-		border-radius: 4px;
+		border-radius: var(--radius-s);
 		border-left: 3px solid var(--color-green);
+		transition: box-shadow 0.15s ease;
 	}
 
 	.reconciliation-item.recon-overdue {
@@ -571,7 +694,7 @@
 
 	.reconciliation-item-clickable:hover {
 		background-color: var(--background-modifier-hover);
-		box-shadow: none;
+		box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
 	}
 
 	.recon-account-row {

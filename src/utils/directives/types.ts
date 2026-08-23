@@ -69,3 +69,35 @@ export interface IndicatorDirectiveParams {
 	tag?: string;      // optional tag name (without #)
 	tagMode?: 'has' | 'not_has';
 }
+
+/**
+ * A single account/amount/currency leg of a scheduled transaction template.
+ * `amount`/`currency` are omitted for an elided posting — the beancount
+ * idiom of leaving (at most) one posting's amount blank so it's inferred to
+ * balance the rest of the transaction.
+ */
+export interface PostingStub {
+	account: string;
+	amount?: number;
+	currency?: string;
+}
+
+export interface ScheduleDirectiveParams {
+	name: string;
+	frequency: 'One-time' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Yearly' | (string & {});
+	startDate: string;   // ISO date string YYYY-MM-DD — first occurrence, never changes
+	nextDate: string;    // ISO date string YYYY-MM-DD — next occurrence due
+	lastGenerated?: string; // ISO date string YYYY-MM-DD of the most recent materialization
+	active: boolean;
+	payee?: string;
+	narration?: string;
+	flag?: string;
+	tags?: string[];
+	links?: string[];
+	postings: PostingStub[];
+	/** Sum of positive-amount postings (in the currency of the first positive
+	 * leg), computed and persisted at save time — a single representative
+	 * "amount" for compact display (e.g. the sidebar's Upcoming tab). */
+	displayAmount?: number;
+	displayCurrency?: string;
+}
