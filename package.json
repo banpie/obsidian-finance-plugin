@@ -17,7 +17,7 @@
 		"accounting",
 		"personal-finance"
 	],
-	"author": "Mukund Shelake",
+	"author": "mkshp",
 	"license": "MIT",
 	"devDependencies": {
 		"@codemirror/autocomplete": "^6.20.2",
