@@ -24,7 +24,7 @@ export interface AccountDetail {
 	/** ISO date of the most recent PASSING balance assertion, or null if never reconciled. */
 	lastBalanceDate: string | null;
 	daysSinceLastBalance: number | null;
-	/** True when the account is past its reconciliation window (only meaningful when reconcileDays is set). */
+	/** True when the account needs attention: past its reconciliation window, OR its latest balance assertion is currently failing (see #272). Only meaningful when reconcileDays is set. */
 	isOverdue: boolean;
 	/** True when the account's MOST RECENT balance assertion (pass or fail) is currently failing. */
 	isFailing: boolean;
@@ -84,7 +84,9 @@ export async function getAccountDetail(plugin: BeancountPlugin, account: string)
 		isClosed,
 		lastBalanceDate,
 		daysSinceLastBalance,
-		isOverdue,
+		// A currently-failing assertion always needs attention, even if an
+		// older passing balance is still within the interval window (#272).
+		isOverdue: isOverdue || isFailing,
 		isFailing,
 		failingDate: isFailing ? (latestStatus.last_date || null) : null,
 		failingDiscrepancy: isFailing ? latestStatus.last_discrepancy : null,

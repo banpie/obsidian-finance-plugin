@@ -18,7 +18,7 @@ export interface ReconciliationAccountStatus {
 	lastBalanceDate: string | null;
 	/** Number of days since the last balance assertion, or null if never reconciled. */
 	daysSinceLastBalance: number | null;
-	/** True when the account is past its reconciliation window. */
+	/** True when the account needs attention: past its reconciliation window, OR its latest balance assertion is currently failing (see #272). */
 	isOverdue: boolean;
 	/** True when the account's MOST RECENT balance assertion (pass or fail) is currently failing. */
 	isFailing: boolean;
@@ -127,17 +127,20 @@ export async function getReconciliationStatus(plugin: BeancountPlugin): Promise<
 		}
 
 		const lastBalanceDateStr = balanceDateMap.get(row.account) ?? null;
-		const { daysSinceLastBalance, isOverdue } = computeReconciliationStatus(reconcileDays, lastBalanceDateStr);
+		const { daysSinceLastBalance, isOverdue: isPastWindow } = computeReconciliationStatus(reconcileDays, lastBalanceDateStr);
 
 		const failingStatus = failingStatusMap.get(row.account) ?? null;
+		const isFailing = !!failingStatus;
 
 		accounts.push({
 			account: row.account,
 			reconcileDays,
 			lastBalanceDate: lastBalanceDateStr,
 			daysSinceLastBalance,
-			isOverdue,
-			isFailing: !!failingStatus,
+			// A currently-failing assertion always needs attention, even if an
+			// older passing balance is still within the interval window (#272).
+			isOverdue: isPastWindow || isFailing,
+			isFailing,
 			failingDate: failingStatus?.date ?? null,
 			failingDiscrepancy: failingStatus?.discrepancy ?? null,
 		});
