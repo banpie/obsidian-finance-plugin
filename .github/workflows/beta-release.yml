@@ -30,9 +30,12 @@ jobs:
 
       - name: Check commit message
         id: check
+        env:
+          # Passed via env, not interpolated into the script body, so an
+          # ordinary (non-release) commit message can never break this step's
+          # bash syntax — it's just inert data in $MSG, not part of the script.
+          MSG: ${{ github.event.head_commit.message }}
         run: |
-          MSG="${{ github.event.head_commit.message }}"
-
           if [[ "$MSG" =~ ^Beta-Release[[:space:]]v?([0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+)$ ]]; then
             VERSION="${BASH_REMATCH[1]}"
             echo "is_beta=true" >> $GITHUB_OUTPUT
