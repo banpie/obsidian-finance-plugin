@@ -22,6 +22,9 @@
 		lastBalanceDate: string | null;
 		daysSinceLastBalance: number | null;
 		isOverdue: boolean;
+		isFailing: boolean;
+		failingDate: string | null;
+		failingDiscrepancy: string | null;
 	}> = [];
 	export let activeTab: 'errors' | 'reconciliation' = 'errors';
 
@@ -30,6 +33,12 @@
 	// data via the `plugin` prop rather than being driven by updateView().
 	let activeUpperTab: 'metrics' | 'upcoming' = 'metrics';
 	let upcomingDueCount = 0;
+
+	// Reconciliation list filter — pure display-only local state.
+	let showOnlyOverdue = false;
+	$: visibleReconciliationAccounts = showOnlyOverdue
+		? reconciliationAccounts.filter(acct => acct.isOverdue)
+		: reconciliationAccounts;
 
 	const dispatch = createEventDispatcher();
 
@@ -65,6 +74,22 @@
 			account: acct.account,
 			lastBalanceDate: acct.lastBalanceDate,
 			ctrlKey: event.ctrlKey || event.metaKey
+		});
+	}
+
+	function handleEditAccount(acct: { account: string }) {
+		dispatch('edit-account', { account: acct.account });
+	}
+
+	function handleAddBalance(acct: { account: string }) {
+		dispatch('add-balance', { account: acct.account });
+	}
+
+	function handleForceReconcile(acct: { account: string; failingDate: string | null; failingDiscrepancy: string | null }) {
+		dispatch('force-reconcile', {
+			account: acct.account,
+			failingDate: acct.failingDate,
+			failingDiscrepancy: acct.failingDiscrepancy
 		});
 	}
 
@@ -253,44 +278,77 @@
 		<div class="reconciliation-section">
 			<!-- Summary row -->
 			<div class="reconciliation-summary">
-				<div class="reconciliation-stat" class:stat-warning={reconciliationOverdue > 0}>
-					<span class="stat-value">{reconciliationOverdue}</span>
-					<span class="stat-label">Overdue</span>
-				</div>
-				<div class="reconciliation-stat stat-ok">
-					<span class="stat-value">{reconciliationUpToDate}</span>
-					<span class="stat-label">Up to date</span>
-				</div>
+				<span class="reconciliation-summary-text">
+					<span class="recon-summary-count" class:recon-summary-warning={reconciliationOverdue > 0}>{reconciliationOverdue} overdue</span>
+					<span class="recon-sep">·</span>
+					<span class="recon-summary-count">{reconciliationUpToDate} up to date</span>
+				</span>
+				<label class="recon-toggle">
+					<input type="checkbox" bind:checked={showOnlyOverdue} />
+					<span class="recon-toggle-track"><span class="recon-toggle-thumb"></span></span>
+					<span class="recon-toggle-label">Only overdue</span>
+				</label>
 			</div>
 
 			<!-- Per-account list -->
+			{#if visibleReconciliationAccounts.length === 0}
+				<div class="tab-empty-state">
+					<span>No overdue accounts.</span>
+				</div>
+			{:else}
 			<div class="reconciliation-list">
-				{#each reconciliationAccounts as acct}
-					<button
-						type="button"
-						class="reconciliation-item reconciliation-item-clickable"
-						class:recon-overdue={acct.isOverdue}
-						on:click={(e) => handleReconcileClick(acct, e)}
-						title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal — filtered from {acct.lastBalanceDate ?? 'the beginning'}"
-					>
-						<div class="recon-account-row">
-							<span class="recon-indicator" class:indicator-overdue={acct.isOverdue} class:indicator-ok={!acct.isOverdue}></span>
-							<span class="recon-account-name" title={acct.account}>{shortAccount(acct.account)}</span>
+				{#each visibleReconciliationAccounts as acct}
+					<div class="reconciliation-item" class:recon-overdue={acct.isOverdue}>
+						<div class="recon-info">
+							<button
+								type="button"
+								class="recon-account-row recon-account-row-clickable"
+								on:click={(e) => handleReconcileClick(acct, e)}
+								title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal — filtered from {acct.lastBalanceDate ?? 'the beginning'}"
+							>
+								<span class="recon-indicator" class:indicator-overdue={acct.isOverdue} class:indicator-ok={!acct.isOverdue}></span>
+								<span class="recon-account-name" title={acct.account}>{shortAccount(acct.account)}</span>
+							</button>
+							<div class="recon-detail-row">
+								{#if acct.isFailing}
+									<span class="recon-detail recon-failing"
+										>Failing{#if acct.failingDiscrepancy} — off by {acct.failingDiscrepancy}{/if}</span
+									>
+								{:else if acct.lastBalanceDate}
+									<span class="recon-detail">
+										{acct.daysSinceLastBalance}d ago
+										<span class="recon-sep">·</span>
+										every {acct.reconcileDays}d
+									</span>
+								{:else}
+									<span class="recon-detail recon-never">Never reconciled</span>
+								{/if}
+							</div>
 						</div>
-						<div class="recon-detail-row">
-							{#if acct.lastBalanceDate}
-								<span class="recon-detail">
-									{acct.daysSinceLastBalance}d ago
-									<span class="recon-sep">·</span>
-									every {acct.reconcileDays}d
-								</span>
-							{:else}
-								<span class="recon-detail recon-never">Never reconciled</span>
-							{/if}
+						<div class="recon-actions">
+							<button type="button" class="recon-action-btn recon-action-edit" on:click={() => handleEditAccount(acct)}>
+								<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+								Edit
+							</button>
+							<button type="button" class="recon-action-btn recon-action-balance" on:click={() => handleAddBalance(acct)}>
+								<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+								Balance
+							</button>
+							<button
+								type="button"
+								class="recon-action-btn recon-action-force"
+								disabled={!acct.isFailing}
+								title={acct.isFailing ? '' : 'No failing balance assertion to fix'}
+								on:click={() => handleForceReconcile(acct)}
+							>
+								<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+								Force reconcile
+							</button>
 						</div>
-					</button>
+					</div>
 				{/each}
 			</div>
+			{/if}
 		</div>
 	{/if}
 {/if}
@@ -614,47 +672,76 @@
 	}
 
 	.reconciliation-summary {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: var(--size-4-2);
-	}
-
-	.reconciliation-stat {
 		display: flex;
-		flex-direction: column;
 		align-items: center;
-		padding: var(--size-4-2) var(--size-4-1);
-		background-color: var(--background-secondary);
-		border-radius: var(--radius-m);
-		border: 1px solid var(--background-modifier-border);
-		transition: box-shadow 0.15s ease;
+		justify-content: space-between;
+		gap: var(--size-4-2);
+		flex-wrap: wrap;
 	}
 
-	.reconciliation-stat.stat-warning {
-		border-color: var(--color-orange);
+	.reconciliation-summary-text {
+		font-size: var(--font-ui-small);
+		color: var(--text-muted);
 	}
 
-	.reconciliation-stat.stat-ok {
-		border-color: var(--color-green);
+	.recon-summary-count {
+		font-weight: 600;
+		color: var(--text-normal);
 	}
 
-	.stat-value {
-		font-size: 1.35em;
-		font-weight: 700;
-	}
-
-	.stat-warning .stat-value {
+	.recon-summary-warning {
 		color: var(--color-orange);
 	}
 
-	.stat-ok .stat-value {
-		color: var(--color-green);
+	/* --- "Only overdue" toggle --- */
+	.recon-toggle {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		cursor: pointer;
+		user-select: none;
 	}
 
-	.stat-label {
+	.recon-toggle input {
+		position: absolute;
+		opacity: 0;
+		width: 0;
+		height: 0;
+	}
+
+	.recon-toggle-track {
+		position: relative;
+		width: 28px;
+		height: 16px;
+		background-color: var(--background-modifier-border);
+		border-radius: 999px;
+		flex-shrink: 0;
+		transition: background-color 0.15s ease;
+	}
+
+	.recon-toggle-thumb {
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		width: 12px;
+		height: 12px;
+		background-color: var(--background-primary);
+		border-radius: 50%;
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+		transition: transform 0.15s ease;
+	}
+
+	.recon-toggle input:checked + .recon-toggle-track {
+		background-color: var(--interactive-accent);
+	}
+
+	.recon-toggle input:checked + .recon-toggle-track .recon-toggle-thumb {
+		transform: translateX(12px);
+	}
+
+	.recon-toggle-label {
 		font-size: var(--font-ui-smaller);
 		color: var(--text-muted);
-		margin-top: 2px;
 	}
 
 	.reconciliation-list {
@@ -664,25 +751,48 @@
 	}
 
 	.reconciliation-item {
-		padding: var(--size-4-2);
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: var(--size-4-2) var(--size-4-3);
+		padding: var(--size-4-3);
 		background-color: var(--background-secondary);
-		border-radius: var(--radius-s);
+		border-radius: var(--radius-m);
 		border-left: 3px solid var(--color-green);
 		transition: box-shadow 0.15s ease;
+	}
+
+	.reconciliation-item:hover {
+		box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
 	}
 
 	.reconciliation-item.recon-overdue {
 		border-left-color: var(--color-orange);
 	}
 
-	.reconciliation-item-clickable {
-		display: block;
+	.recon-info {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+		flex: 1 1 auto;
+	}
+
+	.recon-account-row {
+		display: flex;
+		align-items: center;
+		justify-content: flex-start;
+		gap: 8px;
+	}
+
+	.recon-account-row-clickable {
+		display: flex;
 		width: 100%;
-		height: auto;
-		min-height: 0;
-		border-top: none;
-		border-right: none;
-		border-bottom: none;
+		padding: 2px 4px;
+		margin: 0 0 0 -4px;
+		background: none;
+		border: none;
 		box-shadow: none;
 		text-align: left;
 		font: inherit;
@@ -690,22 +800,17 @@
 		white-space: normal;
 		overflow: visible;
 		cursor: pointer;
+		border-radius: var(--radius-s);
+		transition: background-color 0.15s ease;
 	}
 
-	.reconciliation-item-clickable:hover {
+	.recon-account-row-clickable:hover {
 		background-color: var(--background-modifier-hover);
-		box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
-	}
-
-	.recon-account-row {
-		display: flex;
-		align-items: center;
-		gap: 6px;
 	}
 
 	.recon-indicator {
-		width: 6px;
-		height: 6px;
+		width: 7px;
+		height: 7px;
 		border-radius: 50%;
 		flex-shrink: 0;
 	}
@@ -716,11 +821,12 @@
 
 	.recon-indicator.indicator-overdue {
 		background-color: var(--color-orange);
+		box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-orange) 20%, transparent);
 	}
 
 	.recon-account-name {
 		font-size: var(--font-ui-small);
-		font-weight: 500;
+		font-weight: 600;
 		color: var(--text-normal);
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -728,8 +834,7 @@
 	}
 
 	.recon-detail-row {
-		margin-left: 12px; /* align with text after indicator dot */
-		margin-top: 1px;
+		margin-left: 13px; /* align with text after indicator dot */
 	}
 
 	.recon-detail {
@@ -738,12 +843,77 @@
 	}
 
 	.recon-sep {
-		margin: 0 3px;
+		margin: 0 4px;
 		color: var(--text-faint);
 	}
 
 	.recon-never {
 		color: var(--color-orange);
 		font-style: italic;
+	}
+
+	.recon-failing {
+		color: var(--color-red);
+		font-weight: 500;
+	}
+
+	.recon-actions {
+		display: flex;
+		gap: 6px;
+		flex-shrink: 0;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+	}
+
+	.recon-action-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		font-size: var(--font-ui-smaller);
+		font-weight: 500;
+		padding: 4px 10px;
+		border-radius: 999px;
+		border: 1px solid var(--background-modifier-border);
+		background-color: var(--background-primary);
+		color: var(--text-muted);
+		cursor: pointer;
+		white-space: nowrap;
+		transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+	}
+
+	.recon-action-btn svg {
+		flex-shrink: 0;
+	}
+
+	.recon-action-btn:hover:not(:disabled) {
+		background-color: var(--background-modifier-hover);
+		color: var(--text-normal);
+	}
+
+	.recon-action-balance {
+		color: var(--interactive-accent);
+		border-color: color-mix(in srgb, var(--interactive-accent) 35%, transparent);
+		background-color: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-primary));
+	}
+
+	.recon-action-balance:hover:not(:disabled) {
+		background-color: color-mix(in srgb, var(--interactive-accent) 18%, var(--background-primary));
+		color: var(--interactive-accent);
+	}
+
+	.recon-action-force:not(:disabled) {
+		color: var(--color-orange);
+		border-color: color-mix(in srgb, var(--color-orange) 35%, transparent);
+		background-color: color-mix(in srgb, var(--color-orange) 10%, var(--background-primary));
+	}
+
+	.recon-action-force:hover:not(:disabled) {
+		background-color: color-mix(in srgb, var(--color-orange) 18%, var(--background-primary));
+		color: var(--color-orange);
+	}
+
+	.recon-action-btn:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
 	}
 </style>

@@ -4,6 +4,7 @@
 export * from './directives/types';
 export * from './directives/accountDirectives';
 export * from './directives/balanceDirectives';
+export * from './directives/padDirectives';
 export * from './directives/noteDirectives';
 export * from './directives/commodityDirectives';
 export * from './directives/transactionDirectives';

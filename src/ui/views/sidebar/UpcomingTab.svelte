@@ -175,13 +175,14 @@
 
 <div class="upcoming-tab">
 	<div class="upcoming-controls">
-		<button type="button" class="icon-btn" on:click={handleRefresh} disabled={isLoading} title="Check for due transactions">
+		<button type="button" class="icon-btn icon-btn-labeled" on:click={handleRefresh} disabled={isLoading} title="Check for due transactions">
 			<svg class:loading-spinner={isLoading} xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 				<path d="M3 12a9 9 0 013.5-7.1"/>
 				<path d="M20.5 5.5a9 9 0 01.5 6.5"/>
 				<path d="M3 12a9 9 0 016.5 8.1"/>
 				<path d="M20.5 18.5a9 9 0 01-6.5-5.5"/>
 			</svg>
+			<span>Process dues</span>
 		</button>
 		<button type="button" class="icon-btn" on:click={handleAdd} title="Add scheduled transaction">
 			<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -253,6 +254,14 @@
 		color: var(--text-muted);
 		cursor: pointer;
 		transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+	}
+
+	.icon-btn-labeled {
+		width: auto;
+		padding: 0 10px;
+		gap: 6px;
+		font-size: var(--font-ui-smaller);
+		font-weight: 500;
 	}
 
 	.icon-btn:hover:not(:disabled) {

@@ -48,7 +48,16 @@ const sidebars: SidebarsConfig = {
       ],
     },
     'queries/bql',
-    'snapshot-view',
+    {
+      type: 'category',
+      label: 'Snapshot View',
+      collapsed: false,
+      items: [
+        'snapshot-view',
+        'reconciliation',
+        'upcoming-transactions',
+      ],
+    },
     'plugin-api',
     'settings',
     {

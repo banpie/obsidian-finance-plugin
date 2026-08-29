@@ -43,6 +43,9 @@ Your accounts are structured hierarchically (e.g., `Assets:Checking:Main` is a c
 *   You can click on any parent account row to collapse or expand its subtree.
 *   The plugin remembers your expansion/collapse state so that you don't have to re-configure it every time you switch tabs or reload Obsidian.
 
+### Account Details
+*   **Right-click any leaf account row** to open the **Account details** modal — open/close dates, currencies, and reconciliation status, with the ability to set or change the account's `reconcile` interval on the spot. See [Reconciliation](../reconciliation.md) for what that status means and the Balance/Force reconcile actions available from the same modal.
+
 ---
 
 ## ➕ Managing Accounts from the UI

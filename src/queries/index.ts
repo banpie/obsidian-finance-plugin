@@ -369,3 +369,31 @@ export function getReconcileAccountsQuery(): string {
 export function getLastBalanceDateQuery(): string {
 	return `SELECT account, max(date) AS last_balance_date FROM #balances WHERE discrepancy IS NULL GROUP BY account`;
 }
+
+/**
+ * Returns each account's MOST RECENT balance assertion regardless of whether
+ * it passed, using the same `last(...)`-per-group idiom as
+ * getCommodityDetailsQuery/getCommoditiesPriceDataQuery. Unlike
+ * getLastBalanceDateQuery (which must stay filtered to passing assertions for
+ * the overdue calculation, see #272), this answers a different question:
+ * "is this account's latest balance check currently failing?" —
+ * `last_discrepancy IS NOT NULL` means yes. Used to gate the "Force
+ * reconcile" (pad directive) action, which only makes sense against an
+ * actually-failing assertion.
+ */
+export function getLatestBalanceStatusQuery(): string {
+	return `SELECT account, last(date) AS last_date, last(discrepancy) AS last_discrepancy FROM #balances GROUP BY account`;
+}
+
+/**
+ * Returns open/close dates, declared currencies, `reconcile` metadata, and
+ * the open directive's filename/lineno (for later in-place metadata edits)
+ * for a single account. `.date`/`.currencies`/`.meta['filename']`/
+ * `.meta['lineno']` extrapolate the proven `open.meta['reconcile']` idiom
+ * from getReconcileAccountsQuery — verify against a real bean-query before
+ * relying on this in production.
+ */
+export function getAccountDetailQuery(account: string): string {
+	const safeAccount = escapeBqlString(account);
+	return `SELECT account, open.date AS open_date, close.date AS close_date, open.currencies AS currencies, open.meta['reconcile'] AS reconcile_days, open.meta['filename'] AS filename, open.meta['lineno'] AS lineno FROM #accounts WHERE account = '${safeAccount}'`;
+}

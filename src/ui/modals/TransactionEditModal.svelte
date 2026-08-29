@@ -20,6 +20,10 @@
 	export let mode: "add" | "edit" = transaction || entry ? "edit" : "add"; // Auto-detect mode
 	export let operatingCurrency: string = "INR";
 	export let plugin: any = null;
+	// Preselect a tab/account in add mode (e.g. the Reconciliation panel's "Balance" quick-action).
+	// Ignored whenever an existing entry/transaction is being edited.
+	export let initialTab: "transaction" | "balance" | "note" | "query" | null = null;
+	export let initialAccount: string | null = null;
 
 	import { SnippetSuggestModal } from "./SnippetSuggestModal";
 	import { Notice } from "obsidian";
@@ -68,6 +72,8 @@
 				: (entry.type as "transaction" | "balance" | "note");
 	} else if (transaction) {
 		activeTab = "transaction";
+	} else if (initialTab) {
+		activeTab = initialTab;
 	}
 
 	// Query directive fields
@@ -260,7 +266,7 @@
 
 	// Balance-specific fields
 	let balanceAccount =
-		entry?.type === "balance" ? (entry as JournalBalance).account : "";
+		entry?.type === "balance" ? (entry as JournalBalance).account : (initialAccount ?? "");
 	let balanceAmount =
 		entry?.type === "balance" ? (entry as JournalBalance).amount : "";
 	let balanceCurrency =
