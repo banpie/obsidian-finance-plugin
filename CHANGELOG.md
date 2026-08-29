@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+- **Reconciliation Actions: Edit, Balance, and Force Reconcile** — The Snapshot sidebar's Reconciliation tab now does more than report status. Each account row gets three buttons: **Edit** opens a new **Account details** modal — view open/close dates, currencies, and reconciliation status, and set or clear the `reconcile` interval on an already-open account, previously only settable once at account creation — also reachable by right-clicking an account row in the Accounts & Balances tab. **Balance** jumps straight to the Add Transaction modal's Balance tab with the account pre-filled, for the everyday "check the real balance, record it" step. **Force reconcile** — enabled only when an account's latest balance assertion is actually failing — inserts a Beancount `pad` directive so Beancount auto-generates a transaction covering the difference, with a pad-account picker and a plain-language warning that this is a plug, not a fix for whatever caused the gap. The summary row was also simplified from two bordered stat boxes to a single text line ("N overdue · N up to date") with a new **Only overdue** toggle to filter the list down to what needs attention.
+
+- **Scheduled & Recurring Transactions** — Set up transactions that repeat automatically or fire once in the future, right from the Snapshot sidebar. A new **Upcoming** tab (toggled against Key Metrics) lets you define a schedule — name, frequency (`One-time`, `Weekly`, `Monthly`, `Quarterly`, `Yearly`), start date, payee/narration, and any number of postings, including a blank posting left to auto-balance — which is stored as a plain-text `event "Recurring"` directive in `events.beancount`. Nothing posts to your ledger automatically: click **Refresh** to check for due occurrences, and a schedule that's fallen behind surfaces *every* missed occurrence at once rather than just the next one. Each occurrence is resolved independently as **Insert** (materialize it and advance), **Skip** (dismiss it and still advance), or left on **Hold** (re-offered next refresh) — with a Hold on an earlier occurrence correctly blocking later ones in the same batch from being resolved out of order. Every materialized transaction is tagged with `scheduled: "<name>"` metadata, giving a built-in duplicate-insert safety check and a full audit trail back to its originating schedule. The bundled onboarding demo ledger now includes several example schedules covering every frequency.
+
+## 2.4.0 - 2026-08-17
+
 - **Unified Inter-Tab Dashboard Connections & Navigation API** — Built a centralized navigation contract (`NavRequest`, `NavigationFilters`) allowing cross-tab linking and filter synchronization across the entire dashboard:
   - **Journal Tab**: Click any posting account name on a `TransactionCard` or `BalanceCard` to open the Transactions tab pre-filtered to that account (#263).
   - **Income Statement Chart**: Click any month/week column in the Income Statement trend chart to jump to the Transactions tab pre-filtered to that date range, with a `pointer` cursor on hover (#264).
@@ -25,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Settings: Clearer command verification feedback** — Fixed the Verify button's success/error box, which was rendering a duplicate checkmark/✕ with low-contrast text; redesigned with a tinted background and left border accent.
 
 - **Currency-aware decimal precision** — Amounts across the dashboard now use each currency's actual precision (inferred from how it's written in the ledger), instead of a hardcoded 2 decimals everywhere. Fixes crypto/low-value commodity prices that were being rounded to `0.00`, and zero-decimal currencies (e.g. JPY) that were getting a padded `.00`.
+
 
 ## 2.3.2 - 2026-08-07
 

@@ -72,6 +72,76 @@ export async function saveCloseDirective(
 	}
 }
 
+/**
+ * Updates (adds, changes, or clears) just the `reconcile:` metadata line on
+ * an already-open account's `open` directive, without disturbing any other
+ * metadata keys that directive may carry.
+ *
+ * Unlike saveCommodityMetadata/updateScheduleDirective (which rebuild the
+ * whole metadata block from a full metadata object — safe there because the
+ * plugin owns that whole block), an `open` directive's metadata is not fully
+ * plugin-managed, so this only ever touches the single `reconcile:` line,
+ * leaving every other existing metadata line byte-for-byte untouched.
+ */
+export async function updateAccountReconcileMetadata(
+	plugin: BeancountPlugin,
+	account: string,
+	filename: string,
+	lineno: number,
+	reconcileDays: number | null, // null => clear the key
+	createBackup = true
+): Promise<{ success: boolean; error?: string }> {
+	try {
+		const normalizedPath = convertWslPathToWindows(filename);
+		const content = await readFileContent(plugin, normalizedPath);
+		const newline = getNewlineCharacter(content);
+		const lines = content.split(/\r?\n/);
+
+		const lineIndex = lineno - 1;
+		if (lineIndex < 0 || lineIndex >= lines.length) {
+			return { success: false, error: `Invalid line number ${lineno} for ${filename}` };
+		}
+
+		const openLine = lines[lineIndex];
+		if (!openLine.includes('open') || !openLine.includes(account)) {
+			return { success: false, error: `Open directive for ${account} not found at ${filename}:${lineno} (file may have changed)` };
+		}
+
+		// Capture the existing metadata block (indented, non-blank lines right below the open line) verbatim.
+		let endIndex = lineIndex + 1;
+		while (endIndex < lines.length && /^[ \t]+\S/.test(lines[endIndex])) {
+			endIndex++;
+		}
+		const metaLines = lines.slice(lineIndex + 1, endIndex);
+
+		const reconcileIdx = metaLines.findIndex(l => /^\s*reconcile\s*:/.test(l));
+		const indent = metaLines.length > 0 ? (metaLines[0].match(/^\s*/)?.[0] ?? '  ') : '  ';
+
+		if (reconcileDays === null) {
+			// Clear: nothing to do if there's no reconcile line already.
+			if (reconcileIdx === -1) {
+				Logger.log(`[updateAccountReconcileMetadata] No reconcile metadata to clear for ${account}`);
+				return { success: true };
+			}
+			metaLines.splice(reconcileIdx, 1);
+		} else if (reconcileIdx !== -1) {
+			metaLines[reconcileIdx] = `${indent}reconcile: ${reconcileDays}`;
+		} else {
+			metaLines.push(`${indent}reconcile: ${reconcileDays}`);
+		}
+
+		await createBackupFile(plugin, normalizedPath, createBackup, 'updateAccountReconcileMetadata');
+		lines.splice(lineIndex + 1, endIndex - (lineIndex + 1), ...metaLines);
+		await atomicFileWrite(plugin, normalizedPath, lines.join(newline));
+
+		Logger.log(`[updateAccountReconcileMetadata] Updated reconcile metadata for ${account}`);
+		return { success: true };
+	} catch (error) {
+		Logger.error('[updateAccountReconcileMetadata] Error:', error);
+		return { success: false, error: error instanceof Error ? error.message : String(error) };
+	}
+}
+
 export async function updateOperatingCurrency(
 	plugin: BeancountPlugin,
 	currency: string,

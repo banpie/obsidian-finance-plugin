@@ -2,9 +2,12 @@
 	import { createEventDispatcher } from 'svelte';
 	// --- REMOVED onMount, parseCsv, queries, plugin imports ---
 	import { writable, type Writable } from 'svelte/store';
+	import { Menu } from 'obsidian';
 	import type { BalanceSheetController, BalanceSheetState, AccountItem } from '../../../controllers/BalanceSheetController';
 	import { Logger } from '../../../utils/logger';
 	import { AccountManagementModal } from '../../modals/AccountManagementModal';
+	import { AccountDetailModal } from '../../modals/AccountDetailModal';
+	import { BeancountView, BEANCOUNT_VIEW_TYPE } from '../../views/sidebar/sidebar-view';
 	import { resolveNavTab, type NavRequest } from '../../../types/navigation';
 	import SunburstChart from '../../common/SunburstChart.svelte';
 	import ChartComponent from '../../common/ChartComponent.svelte';
@@ -152,6 +155,21 @@
 	$: visibleEquity = state.equity ? state.equity.filter(item => shouldShowRow(item, collapsedAccounts)) : [];
 
 	// Account management functions
+
+	// Opening/closing an account here only refreshes this tab's own controller.
+	// The Snapshot sidebar view (reconciliation panel) caches its own account
+	// list independently and has no listener for changes made elsewhere, so it
+	// must be refreshed explicitly or it keeps showing stale (e.g. just-closed)
+	// accounts until the user manually hits its own refresh button (issue #271).
+	async function refreshSnapshotView() {
+		const leaves = controller.plugin.app.workspace.getLeavesOfType(BEANCOUNT_VIEW_TYPE);
+		for (const leaf of leaves) {
+			if (leaf.view instanceof BeancountView) {
+				await leaf.view.updateView();
+			}
+		}
+	}
+
 	function handleOpenAccount() {
 		const plugin = controller.plugin;
 		const modal = new AccountManagementModal(
@@ -161,6 +179,7 @@
 			async () => {
 				// Refresh callback
 				await controller.loadData();
+				await refreshSnapshotView();
 			}
 		);
 		modal.open();
@@ -175,8 +194,34 @@
 			async () => {
 				// Refresh callback
 				await controller.loadData();
+				await refreshSnapshotView();
 			}
 		);
+		modal.open();
+	}
+
+	// Right-click on a leaf account row -> "Account details" (view/edit reconcile
+	// interval, Balance/Force reconcile quick actions). Categories have no
+	// open/close/reconcile state of their own, so the menu is leaf-only.
+	function handleAccountContextMenu(item: AccountItem, event: MouseEvent) {
+		if (item.isCategory) return;
+		event.preventDefault();
+		const menu = new Menu();
+		menu.addItem((menuItem) =>
+			menuItem
+				.setTitle('Account details')
+				.setIcon('info')
+				.onClick(() => openAccountDetail(item.account))
+		);
+		menu.showAtMouseEvent(event);
+	}
+
+	function openAccountDetail(account: string) {
+		const plugin = controller.plugin;
+		const modal = new AccountDetailModal(plugin.app, plugin, account, async () => {
+			await controller.loadData();
+			await refreshSnapshotView();
+		});
 		modal.open();
 	}
 
@@ -361,7 +406,8 @@
 						<tr class={getAccountClass(item)}>
 							<td class="account-name"
 								on:click={(e) => handleAccountRowClick(item, e)}
-								title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal' : undefined}>
+								on:contextmenu={(e) => handleAccountContextMenu(item, e)}
+								title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal · Right-click: account details' : undefined}>
 								{#if item.isCategory}
 									<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 								{/if}
@@ -398,7 +444,8 @@
 						<tr class={getAccountClass(item)}>
 							<td class="account-name"
 								on:click={(e) => handleAccountRowClick(item, e)}
-								title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal' : undefined}>
+								on:contextmenu={(e) => handleAccountContextMenu(item, e)}
+								title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal · Right-click: account details' : undefined}>
 								{#if item.isCategory}
 									<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 								{/if}
@@ -435,7 +482,8 @@
 						<tr class={getAccountClass(item)}>
 							<td class="account-name"
 								on:click={(e) => handleAccountRowClick(item, e)}
-								title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal' : undefined}>
+								on:contextmenu={(e) => handleAccountContextMenu(item, e)}
+								title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal · Right-click: account details' : undefined}>
 								{#if item.isCategory}
 									<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 								{/if}

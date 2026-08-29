@@ -25,7 +25,7 @@ export {
 	formatSignificantAmount,
 } from './formatters';
 export { countDecimals, parseCurrencyNumberCSV, buildPrecisionMap } from './currencyPrecision';
-export { parseCommoditiesListCSV, parseCommoditiesPriceDataCSV, parseCommodityDetailsCSV, parseCombinedCommodityDataCSV, parseCommodityPriceHistoryCSV } from './csvParsers';
+export { parseCommoditiesListCSV, parseCommoditiesPriceDataCSV, parseCommodityDetailsCSV, parseCombinedCommodityDataCSV, parseCommodityPriceHistoryCSV, parseAccountDetailCSV } from './csvParsers';
 export { buildAccountTree, getOpenAccounts, getPayees, getTags, getCommodities } from './accounts';
 export { getTransactionEntries, getBalanceEntries, getNoteEntries } from './journal';
 export {
@@ -46,6 +46,8 @@ export {
 	createPriceDirective,
 	saveOpenDirective,
 	saveCloseDirective,
+	updateAccountReconcileMetadata,
+	createPadDirective,
 	validateCommodityLocation,
 	updateOperatingCurrency,
 	createQueryDirective,
@@ -53,11 +55,19 @@ export {
 	createIndicatorDirective,
 	updateIndicatorDirective,
 	deleteIndicatorDirective,
+	createScheduleDirective,
+	updateScheduleDirective,
+	deleteScheduleDirective,
+	advanceScheduleDate,
+	computeScheduleDisplayAmount,
+	computeDueOccurrences,
 	type TransactionData,
 	type BalanceData,
 	type NoteData,
 	type CostData,
 	type PriceDataPayload,
+	type PostingStub,
+	type ScheduleDirectiveParams,
 } from './directives';
 
 // Re-export structuredLayout helpers that some callers pull from utils/index

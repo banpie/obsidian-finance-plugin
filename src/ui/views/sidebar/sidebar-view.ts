@@ -9,6 +9,9 @@ import * as queries from '../../../queries/index';
 import { Logger } from '../../../utils/logger';
 import { getReconciliationStatus } from '../../../services/reconciliation.service';
 import type { ReconciliationAccountStatus } from '../../../services/reconciliation.service';
+import { AccountDetailModal } from '../../modals/AccountDetailModal';
+import { UnifiedTransactionModal } from '../../modals/UnifiedTransactionModal';
+import { ForceReconcileModal } from '../../modals/ForceReconcileModal';
 import { BeancountFileView } from '../beancount-file-view';
 import { UnifiedDashboardView, UNIFIED_DASHBOARD_VIEW_TYPE } from '../dashboard/unified-dashboard-view';
 import { resolveNavTab, type NavRequest } from '../../../types/navigation';
@@ -64,7 +67,7 @@ export class BeancountView extends ItemView {
 
 		this.component = new BeancountViewComponent({
 			target: container,
-			props: this.state
+			props: { ...this.state, plugin: this.plugin }
 		});
 
 		// Listen for events
@@ -77,6 +80,21 @@ export class BeancountView extends ItemView {
 		});
 		this.component.$on('reconcile-click', (e: CustomEvent<{ account: string; lastBalanceDate: string | null; ctrlKey: boolean }>) => {
 			void this.openAccountInTransactions(e.detail.account, e.detail.lastBalanceDate, e.detail.ctrlKey);
+		});
+		this.component.$on('edit-account', (e: CustomEvent<{ account: string }>) => {
+			new AccountDetailModal(this.plugin.app, this.plugin, e.detail.account, async () => { await this.updateView(); }).open();
+		});
+		this.component.$on('add-balance', (e: CustomEvent<{ account: string }>) => {
+			new UnifiedTransactionModal(this.plugin.app, this.plugin, null, async () => { await this.updateView(); }, { tab: 'balance', account: e.detail.account }).open();
+		});
+		this.component.$on('force-reconcile', (e: CustomEvent<{ account: string; failingDate: string | null; failingDiscrepancy: string | null }>) => {
+			new ForceReconcileModal(
+				this.plugin.app,
+				this.plugin,
+				e.detail.account,
+				{ date: e.detail.failingDate, discrepancy: e.detail.failingDiscrepancy },
+				async () => { await this.updateView(); }
+			).open();
 		});
 
 		window.setTimeout(() => { void this.updateView(); }, 0);
