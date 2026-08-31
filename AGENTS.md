@@ -24,10 +24,6 @@
 - On each Mac that runs or edits the plugin, update `codex/local-current` with a fast-forward-only pull, run the shared deployment script locally, reload Obsidian, and perform a focused smoke test. If that Mac has unrelated source changes, preserve them and stop before a pull or merge that would overwrite them.
 - Never let a stale checkout deploy over the shared iCloud runtime directory. Pull and verify `codex/local-current` before every local deployment, and do not treat iCloud synchronization alone as a plugin reload.
 
-Current feature branch:
-
-- `codex/reports-dashboard` is for Reports dashboard work, including making investment holding cost basis easier to inspect.
-
 ## Investment Cost Basis Direction
 
 - Treat commodity metadata and investment holdings separately. The Commodity dashboard includes currencies, prices, logos, and exchange-rate-like commodities; many of these do not have a meaningful holding cost basis.
