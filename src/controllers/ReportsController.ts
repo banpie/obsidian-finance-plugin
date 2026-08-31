@@ -4,6 +4,7 @@ import type { ChartConfiguration } from 'chart.js/auto';
 import type BeancountPlugin from '../main';
 import * as queries from '../queries/index';
 import { Logger } from '../utils/logger';
+import { getBalanceCategoryLabel } from '../utils/accountLabels';
 
 export type ReportsPeriodMode = 'month' | 'year';
 export type ReportsPeriodPreset = 'this-month' | 'last-month' | 'this-year' | 'last-year' | 'custom-month' | 'custom-year';
@@ -387,8 +388,8 @@ export class ReportsController {
 			const expensesByCategory = this.groupRows(expensesByAccount, row => this.accountSegment(row.account, 1));
 			const assetsByAccount = this.parseAccountRows(assetsCsv).filter(row => row.amount > 0);
 			const liabilitiesByAccount = this.parseAccountRows(liabilitiesCsv).filter(row => row.amount > 0);
-			const assetsByCategory = this.groupRows(assetsByAccount, row => this.accountSegment(row.account, 1), true);
-			const liabilitiesByCategory = this.groupRows(liabilitiesByAccount, row => this.accountSegment(row.account, 1), true);
+			const assetsByCategory = this.groupRows(assetsByAccount, row => getBalanceCategoryLabel(row.account), true);
+			const liabilitiesByCategory = this.groupRows(liabilitiesByAccount, row => getBalanceCategoryLabel(row.account), true);
 			const investmentCostBasis = this.parseInvestmentCostBasisRows(investmentCostPostingsCsv, currency);
 			this.addInvestmentCashflowBasisRows(investmentCostBasis, investmentCashflowPostingsCsv, currency);
 			const investmentNativePrices = this.parseInvestmentNativePrices(investmentNativePricesCsv, currency);

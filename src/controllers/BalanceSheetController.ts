@@ -5,6 +5,7 @@ import type BeancountPlugin from '../main';
 import * as queries from '../queries/index';
 import { parse as parseCsv } from 'csv-parse/sync';
 import type { ChartConfiguration } from 'chart.js/auto';
+import { getBalanceAccountDisplayName } from '../utils/accountLabels';
 
 /**
  * Helper to clean other currencies output from BQL subst() function.
@@ -145,12 +146,13 @@ export class BalanceSheetController {
 				const part = parts[i];
 				const parentPath = currentPath;
 				currentPath = currentPath ? `${currentPath}:${part}` : part;
-				
+				const displayName = getBalanceAccountDisplayName(currentPath, part);
+
 				if (!accountMap.has(currentPath)) {
 					// Always use reporting currency for all valuation methods
 					const item: AccountItem = {
 						account: currentPath,
-						displayName: part,
+						displayName,
 						level: i,
 						amount: i === parts.length - 1 ? convertedAmount : `0.00 ${reportingCurrency}`,
 						amountNumber: i === parts.length - 1 ? amountNumber : 0,

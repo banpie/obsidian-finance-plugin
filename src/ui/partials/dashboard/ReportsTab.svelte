@@ -5,6 +5,7 @@
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
 	import PeriodNavigator from './PeriodNavigator.svelte';
+	import { getBalanceCategoryLabel } from '../../../utils/accountLabels';
 
 	export let controller: ReportsController;
 
@@ -254,8 +255,7 @@
 	}
 
 	function majorCategory(account: string | undefined): string {
-		const parts = (account || '').split(':');
-		return parts[1] || account || 'Other';
+		return getBalanceCategoryLabel(account);
 	}
 
 	function investmentType(account: string | undefined): string {
