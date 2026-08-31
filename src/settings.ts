@@ -13,6 +13,7 @@ import type { LintMode } from './lang/beancount-lint';
  */
 export type FileOrganization = "yearly" | "monthly";
 export type DashboardDefaultPeriod = "this-month" | "last-month" | "this-year" | "last-year";
+export type PriceFetchBackend = "bean-price" | "external";
 
 export interface BeancountPluginSettings {
     /** Path to the main Beancount file. */
@@ -49,6 +50,12 @@ export interface BeancountPluginSettings {
     // Price Fetching Settings
     /** Whether to enable automatic price fetching on a schedule. */
     autoPriceFetch: boolean;
+    /** Price engine used by manual and automatic refreshes. */
+    priceFetchBackend: PriceFetchBackend;
+    /** Base command for a validated external price pipeline. */
+    externalPriceCommand: string;
+    /** Maximum external pipeline runtime in seconds. */
+    externalPriceTimeoutSeconds: number;
     /** Interval in hours for automatic price fetching. */
     priceFetchIntervalHours: number;
     /** Timestamp of last automatic price fetch. */
@@ -86,6 +93,9 @@ export const DEFAULT_SETTINGS: BeancountPluginSettings = {
     fileOrganization: 'yearly',
     // Price Fetching Settings
     autoPriceFetch: false,
+    priceFetchBackend: 'bean-price',
+    externalPriceCommand: '',
+    externalPriceTimeoutSeconds: 360,
     priceFetchIntervalHours: 24,
     lastAutoPriceFetch: 0,
     beanPriceCommand: '',
@@ -256,11 +266,51 @@ export class BeancountSettingTab extends PluginSettingTab {
                 }));
 
         // Price Fetching Settings Section
-        new Setting(containerEl).setName('Automatic price fetching').setHeading();
+        new Setting(containerEl).setName('Price fetching').setHeading();
+
+        new Setting(containerEl)
+            .setName('Price engine')
+            .setDesc('Choose the single writer used by the dashboard button, command palette, and optional schedule.')
+            .addDropdown(dropdown => dropdown
+                .addOption('bean-price', 'Built-in bean-price')
+                .addOption('external', 'External validated pipeline')
+                .setValue(this.plugin.settings.priceFetchBackend)
+                .onChange(async (value) => {
+                    this.plugin.settings.priceFetchBackend = value as PriceFetchBackend;
+                    await this.plugin.saveSettings();
+                    this.displayTab();
+                }));
+
+        if (this.plugin.settings.priceFetchBackend === 'external') {
+            new Setting(containerEl)
+                .setName('External price command')
+                .setDesc('Base command that accepts --ledger-dir, --execute, and --timeout, then emits one json result. Arguments are spawned without a shell.')
+                .addText(text => text
+                    .setPlaceholder('python3 /path/to/refresh_prices.py')
+                    .setValue(this.plugin.settings.externalPriceCommand)
+                    .onChange(async (value) => {
+                        this.plugin.settings.externalPriceCommand = value.trim();
+                        await this.plugin.saveSettings();
+                    }));
+
+            new Setting(containerEl)
+                .setName('Pipeline timeout (seconds)')
+                .setDesc('Includes fetching, ledger validation, report refresh, audit, and rollback when needed.')
+                .addText(text => text
+                    .setPlaceholder('360')
+                    .setValue(String(this.plugin.settings.externalPriceTimeoutSeconds))
+                    .onChange(async (value) => {
+                        const seconds = parseInt(value);
+                        if (!isNaN(seconds) && seconds >= 30) {
+                            this.plugin.settings.externalPriceTimeoutSeconds = seconds;
+                            await this.plugin.saveSettings();
+                        }
+                    }));
+        }
 
         new Setting(containerEl)
             .setName('Enable automatic price fetching')
-            .setDesc('Automatically fetch commodity prices at scheduled intervals using bean-price.')
+            .setDesc('Automatically run the selected price engine at scheduled intervals.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.autoPriceFetch)
                 .onChange(async (value) => {

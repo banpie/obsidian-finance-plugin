@@ -6,6 +6,7 @@ import { getTargetFile, getMainLedgerPath } from '../utils/structuredLayout';
 import { execSafe } from '../utils';
 import { Logger } from '../utils/logger';
 import { SystemDetector } from '../utils/SystemDetector';
+import { parseExternalPriceResult } from './external-price-result';
 
 /**
  * PriceService
@@ -40,6 +41,9 @@ export class PriceService {
 	 */
 	public async fetchAndSavePrices(): Promise<PriceFetchResult> {
 		Logger.log('[PriceService] fetchAndSavePrices — starting');
+		if (this.plugin.settings.priceFetchBackend === 'external') {
+			return this.fetchWithExternalPipeline();
+		}
 
 		// 1. Resolve the bean-price executable
 		const beanPriceCommand = await this.resolveBeanPriceCommand();
@@ -106,6 +110,8 @@ export class PriceService {
 				failed: [],
 				fetchedCount: 0,
 				savedCount: 0,
+				backend: 'bean-price',
+				summary: 'Fetched 0, saved 0',
 			};
 		}
 
@@ -140,12 +146,65 @@ export class PriceService {
 			failed: [],
 			fetchedCount: newDirectives.length,
 			savedCount,
+			backend: 'bean-price',
+			summary: `Fetched ${newDirectives.length}, saved ${savedCount}`,
 		};
 	}
 
 	// ------------------------------------------------------------------ //
 	//  Private helpers
 	// ------------------------------------------------------------------ //
+
+	private async fetchWithExternalPipeline(): Promise<PriceFetchResult> {
+		const command = this.plugin.settings.externalPriceCommand?.trim();
+		if (!command) {
+			return this.failResult('External price command is not configured.');
+		}
+
+		const ledgerPath = getMainLedgerPath(this.plugin);
+		if (!ledgerPath) {
+			return this.failResult('Ledger file is not configured.');
+		}
+		// @ts-ignore adapter has getBasePath
+		const vaultRoot = this.plugin.app.vault.adapter.getBasePath();
+		const ledgerRel = path.relative(vaultRoot, ledgerPath).replace(/\\/g, '/');
+		const ledgerFile = this.plugin.app.vault.getAbstractFileByPath(ledgerRel) as TFile | null;
+		if (!ledgerFile) {
+			return this.failResult(`Ledger file not found in vault: ${ledgerRel}`);
+		}
+
+		const timeoutSeconds = Math.max(30, this.plugin.settings.externalPriceTimeoutSeconds || 360);
+		const args = [
+			'--ledger-dir',
+			path.dirname(ledgerPath),
+			'--execute',
+			'--timeout',
+			String(Math.max(25, timeoutSeconds - 5)),
+		];
+		Logger.log(`[PriceService] Executing external price pipeline safely: ${command}`);
+
+		try {
+			const completed = await execSafe(command, args, {
+				timeout: timeoutSeconds * 1000,
+				maxBuffer: 5 * 1024 * 1024,
+			});
+			if (completed.stderr.trim()) {
+				Logger.log('[PriceService] External pipeline stderr (informational):\n' + completed.stderr.trim());
+			}
+			return parseExternalPriceResult(completed.stdout);
+		} catch (err) {
+			const errorObj = err as { stdout?: string; stderr?: string; message?: string };
+			if (errorObj.stdout?.trim()) {
+				try {
+					return parseExternalPriceResult(errorObj.stdout);
+				} catch (parseError) {
+					Logger.error('[PriceService] Could not parse failed external pipeline result:', parseError);
+				}
+			}
+			const detail = errorObj.stderr?.trim() || errorObj.message || String(err);
+			return this.failResult(`External price pipeline failed: ${detail}`);
+		}
+	}
 
 	/**
 	 * Filters stdout lines to only those that look like Beancount price
@@ -197,6 +256,8 @@ export class PriceService {
 			failed: [{ commodity: '*', source: '*', error }],
 			fetchedCount: 0,
 			savedCount: 0,
+			backend: this.plugin.settings.priceFetchBackend,
+			summary: error,
 		};
 	}
 }

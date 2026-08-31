@@ -560,10 +560,7 @@ export class CommoditiesController {
     }
 
 
-    /**
-     * Fetches current prices for all commodities by running bean-price on
-     * the main ledger file. Appends new price directives to prices.beancount.
-     */
+    /** Fetches current prices with the single configured price engine. */
     public async fetchPrices(): Promise<void> {
         // Prevent concurrent fetches
         if (get(this.fetchingPrices)) {
@@ -576,25 +573,32 @@ export class CommoditiesController {
         this.error.set(null);
 
         try {
-            new Notice('Fetching prices via bean-price...');
+            const external = this.plugin.settings.priceFetchBackend === 'external';
+            new Notice(external
+                ? 'Updating prices and validating the ledger...'
+                : 'Fetching prices via bean-price...');
 
             const result = await this.priceService.fetchAndSavePrices();
 
-            const summary = `Fetched ${result.fetchedCount}, saved ${result.savedCount}`;
+            const summary = result.summary ?? `Fetched ${result.fetchedCount}, saved ${result.savedCount}`;
             this.lastPriceFetch.set({ date: new Date(), summary });
 
-            if (result.fetchedCount === 0) {
+            if (result.failed.length > 0) {
+                const msg = result.failed[0].error;
+                this.error.set(msg);
+                new Notice(result.restored
+                    ? `Price update failed; prices.beancount was restored. ${msg}`
+                    : `Error: ${msg}`);
+            } else if (external && (result.failedCount ?? 0) > 0) {
+                new Notice(`✓ Price refresh completed; ${result.failedCount} item(s) need review in the price audit.`);
+            } else if (external) {
+                new Notice(`✓ ${summary}`);
+            } else if (result.fetchedCount === 0) {
                 new Notice('⚠ Bean-price returned no price directives. Check your commodity price metadata.');
             } else if (result.savedCount === 0) {
                 new Notice(`ℹ All ${result.fetchedCount} fetched price(s) were already up to date.`);
             } else {
                 new Notice(`✓ Saved ${result.savedCount} new price(s) to prices.beancount`);
-            }
-
-            if (result.failed.length > 0) {
-                const msg = result.failed[0].error;
-                this.error.set(msg);
-                new Notice(`Error: ${msg}`);
             }
 
             // Refresh cards to show updated prices

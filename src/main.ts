@@ -151,7 +151,12 @@ export default class BeancountPlugin extends Plugin {
 				// If dashboard not open, just run the service directly
 				Logger.log('[Main] Fetching prices via command (dashboard not open)');
 				const result = await this.priceService.fetchAndSavePrices();
-				if (result.savedCount > 0) {
+				if (result.failed.length > 0) {
+					const suffix = result.restored ? ' The original price file was restored.' : '';
+					new Notice(`Price update failed: ${result.failed[0].error}.${suffix}`);
+				} else if (result.summary) {
+					new Notice(`✓ ${result.summary}`);
+				} else if (result.savedCount > 0) {
 					new Notice(`✓ Fetched and saved ${result.savedCount} price(s)`);
 				} else {
 					new Notice('No prices fetched. Check commodity price sources.');

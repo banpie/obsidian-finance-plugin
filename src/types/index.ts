@@ -16,6 +16,13 @@ export interface PriceFetchResult {
 	failed: Array<{ commodity: string, source: string, error: string }>;
 	fetchedCount: number;
 	savedCount: number;
+	backend?: 'bean-price' | 'external';
+	summary?: string;
+	positions?: number;
+	updatedPositions?: number;
+	skippedCount?: number;
+	failedCount?: number;
+	latestPriceDate?: string;
+	restored?: boolean;
 }
-
 
