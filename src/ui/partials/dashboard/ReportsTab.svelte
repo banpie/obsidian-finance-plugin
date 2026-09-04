@@ -47,6 +47,7 @@
 		isLoading: true,
 		error: null,
 		currency: 'USD',
+		investmentGainLossColors: 'china',
 		activeView: 'cashflow',
 		showClosedItems: false,
 		periodPreset: 'this-month',
@@ -142,12 +143,13 @@
 		return `${prefix}${formatCurrency(value)}`;
 	}
 
-	function formatPercent(value: number): string {
-		return `${value.toFixed(1)}%`;
+	function formatSignedPercent(value: number): string {
+		const prefix = value > 0 ? '+' : '';
+		return `${prefix}${formatPercent(value)}`;
 	}
 
-	function formatOptionalPercent(value: number | null | undefined): string {
-		return value === null || value === undefined ? '—' : formatPercent(value);
+	function formatPercent(value: number): string {
+		return `${value.toFixed(1)}%`;
 	}
 
 	function barWidth(row: ReportRow): string {
@@ -250,9 +252,10 @@
 	function investmentGain(row: ReportRow): string {
 		if (row.status === 'closed') return '—';
 		if (row.unrealizedGain === null || row.unrealizedGain === undefined) return '—';
-		const percent = formatOptionalPercent(row.unrealizedGainPercent);
-		const percentPrefix = row.unrealizedGainPercent !== null && row.unrealizedGainPercent !== undefined && row.unrealizedGainPercent > 0 ? '+' : '';
-		return `${formatSignedCurrency(row.unrealizedGain)} (${percentPrefix}${percent})`;
+		const percent = row.unrealizedGainPercent === null || row.unrealizedGainPercent === undefined
+			? '—'
+			: formatSignedPercent(row.unrealizedGainPercent);
+		return `${investmentReturnDirection(row.unrealizedGain)} ${formatSignedCurrency(row.unrealizedGain)} (${percent}) · ${investmentReturnLabel(row.unrealizedGain)}`;
 	}
 
 	function investmentGainTitle(row: ReportRow): string {
@@ -272,9 +275,14 @@
 		return value === undefined ? '—' : formatCurrency(value);
 	}
 
-	function lifecyclePercent(row: ReportRow): string {
+	function lifecycleReturnCurrency(row: ReportRow, value: number | undefined): string {
 		if (row.lifecycleVerification === 'needs-review') return 'Review';
-		return row.totalRoi === undefined ? '—' : formatPercent(row.totalRoi);
+		return formatInvestmentReturn(value, formatSignedCurrency);
+	}
+
+	function lifecycleReturnPercent(row: ReportRow): string {
+		if (row.lifecycleVerification === 'needs-review') return 'Review';
+		return formatInvestmentReturn(row.totalRoi, formatSignedPercent);
 	}
 
 	function lifecycleTitle(row: ReportRow): string {
@@ -291,7 +299,29 @@
 
 	function investmentReturnClass(value: number | null | undefined): string {
 		if (value === null || value === undefined) return '';
-		return amountClass(value);
+		if (value > 0) return 'investment-gain';
+		if (value < 0) return 'investment-loss';
+		return 'investment-neutral';
+	}
+
+	function investmentReturnDirection(value: number): string {
+		if (value > 0) return '↑';
+		if (value < 0) return '↓';
+		return '→';
+	}
+
+	function investmentReturnLabel(value: number): string {
+		if (value > 0) return 'Gain';
+		if (value < 0) return 'Loss';
+		return 'Even';
+	}
+
+	function formatInvestmentReturn(
+		value: number | null | undefined,
+		formatter: (amount: number) => string,
+	): string {
+		if (value === null || value === undefined) return '—';
+		return `${investmentReturnDirection(value)} ${formatter(value)} · ${investmentReturnLabel(value)}`;
 	}
 
 	function completeCostRows(rows: ReportRow[]): ReportRow[] {
@@ -997,7 +1027,7 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-<div class="reports-tab">
+<div class={`reports-tab investment-colors-${state.investmentGainLossColors}`}>
 	<div class="reports-header">
 		<div class="reports-title">
 			<h2>Reports</h2>
@@ -1303,8 +1333,8 @@
 								{#if state.showClosedItems}
 									<td class="align-right" title={lifecycleTitle(row)}>{lifecycleCurrency(row, row.cumulativeInvested)}</td>
 									<td class="align-right" title={lifecycleTitle(row)}>{lifecycleCurrency(row, row.cumulativeRecovered)}</td>
-									<td class={`align-right ${investmentReturnClass(row.lifetimeProfit)}`} title={lifecycleTitle(row)}>{lifecycleCurrency(row, row.lifetimeProfit)}</td>
-									<td class={`align-right ${investmentReturnClass(row.totalRoi)}`} title={lifecycleTitle(row)}>{lifecyclePercent(row)}</td>
+									<td class={`align-right ${investmentReturnClass(row.lifetimeProfit)}`} title={lifecycleTitle(row)}>{lifecycleReturnCurrency(row, row.lifetimeProfit)}</td>
+									<td class={`align-right ${investmentReturnClass(row.totalRoi)}`} title={lifecycleTitle(row)}>{lifecycleReturnPercent(row)}</td>
 								{/if}
 								<td class="align-right">{formatPercent(row.percent)}</td>
 							</tr>
@@ -1626,7 +1656,7 @@
 										{#if detailSelection.kind === 'investment'}
 											<td class="align-right">{formatOptionalCurrency(groupCostBasis(group.rows))}</td>
 											<td class="align-right">—</td>
-											<td class={`align-right ${investmentReturnClass(groupGain(group.rows))}`}>{formatOptionalCurrency(groupGain(group.rows))}</td>
+											<td class={`align-right ${investmentReturnClass(groupGain(group.rows))}`}>{formatInvestmentReturn(groupGain(group.rows), formatSignedCurrency)}</td>
 										{/if}
 										<td class="align-right">{detailPercent(group.amount, detailSelection.amount)}</td>
 									</tr>
@@ -2547,6 +2577,39 @@
 
 	.negative {
 		color: var(--text-error);
+	}
+
+	.reports-tab.investment-colors-china {
+		--investment-gain-color: var(--text-error);
+		--investment-loss-color: var(--text-success);
+		--investment-neutral-color: var(--text-muted);
+	}
+
+	.reports-tab.investment-colors-international {
+		--investment-gain-color: var(--text-success);
+		--investment-loss-color: var(--text-error);
+		--investment-neutral-color: var(--text-muted);
+	}
+
+	.reports-tab.investment-colors-accessible {
+		--investment-gain-color: var(--text-normal);
+		--investment-loss-color: var(--text-normal);
+		--investment-neutral-color: var(--text-muted);
+	}
+
+	.investment-gain,
+	.reports-table .inactive-row td.investment-gain {
+		color: var(--investment-gain-color);
+	}
+
+	.investment-loss,
+	.reports-table .inactive-row td.investment-loss {
+		color: var(--investment-loss-color);
+	}
+
+	.investment-neutral,
+	.reports-table .inactive-row td.investment-neutral {
+		color: var(--investment-neutral-color);
 	}
 
 	.muted {

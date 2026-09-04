@@ -420,6 +420,17 @@ export default class BeancountPlugin extends Plugin {
 		}
 	}
 
+	/** Apply the selected investment-only gain/loss color convention. */
+	public applyInvestmentGainLossColors(): void {
+		for (const leaf of this.app.workspace.getLeavesOfType(UNIFIED_DASHBOARD_VIEW_TYPE)) {
+			if (leaf.view instanceof UnifiedDashboardView) {
+				leaf.view.reportsController.setInvestmentGainLossColors(
+					this.settings.investmentGainLossColors || DEFAULT_SETTINGS.investmentGainLossColors,
+				);
+			}
+		}
+	}
+
 	// Register BQL processor
 	private registerBQLProcessor() {
 		// Create processor instance

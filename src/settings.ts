@@ -16,6 +16,7 @@ import { Logger } from './utils/logger';
 export type FileOrganization = "yearly" | "monthly";
 export type DashboardDefaultPeriod = "this-month" | "last-month" | "this-year" | "last-year";
 export type PriceFetchBackend = "bean-price" | "external";
+export type InvestmentGainLossColorConvention = "china" | "international" | "accessible";
 
 export interface BeancountPluginSettings {
     /** Command to run Beancount/Python (e.g. "bean-query", "python3"). */
@@ -28,6 +29,8 @@ export interface BeancountPluginSettings {
     maxJournalResults: number;
     /** Default period shown by dashboard period summaries. */
     dashboardDefaultPeriod: DashboardDefaultPeriod;
+    /** Color convention used only for investment gain/loss values. */
+    investmentGainLossColors: InvestmentGainLossColorConvention;
     // BQL Code Block Settings
     /** Whether to show tool buttons (copy, refresh) on query blocks. */
     bqlShowTools: boolean;
@@ -81,6 +84,7 @@ export const DEFAULT_SETTINGS: BeancountPluginSettings = {
     maxTransactionResults: 2000,
     maxJournalResults: 1000,
     dashboardDefaultPeriod: 'this-month',
+    investmentGainLossColors: 'china',
     // BQL Code Block Settings
     bqlShowTools: true,
     bqlShowQuery: false,
@@ -128,6 +132,7 @@ export class BeancountSettingTab extends PluginSettingTab {
         return {
             operatingCurrency: { name: 'Operating currency', description: 'The currency to use for transaction defaults and for consolidating totals.' },
             dashboardDefaultPeriod: { name: 'Default dashboard period', description: 'Choose the period shown by dashboard summaries when the dashboard first loads.' },
+            investmentGainLossColors: { name: 'Investment gain/loss colors', description: 'Choose how gains and losses are colored in investment reports.' },
             structuredFolderName: { name: 'Base folder name', description: 'The name of the root folder in your vault where Beancount files will be stored.' },
             fileOrganization: { name: 'File organization', description: 'How transactions should be split into separate files.' },
             accountAutocomplete: { name: 'Editor autocomplete', description: 'Show context-aware completions in .beancount files.' },
@@ -276,6 +281,20 @@ export class BeancountSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.dashboardDefaultPeriod = value as DashboardDefaultPeriod;
                     await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Investment gain/loss colors')
+            .setDesc('Applies only to investment returns. Status, validation, budget, and other financial colors are unchanged. Direction arrows and gain/loss labels remain visible in every mode.')
+            .addDropdown(dropdown => dropdown
+                .addOption('china', 'China market — red gain, green loss')
+                .addOption('international', 'International — green gain, red loss')
+                .addOption('accessible', 'Accessible — neutral color with labels')
+                .setValue(this.plugin.settings.investmentGainLossColors || 'china')
+                .onChange(async (value) => {
+                    this.plugin.settings.investmentGainLossColors = value as InvestmentGainLossColorConvention;
+                    await this.plugin.saveSettings();
+                    this.plugin.applyInvestmentGainLossColors();
                 }));
 
         new Setting(containerEl)
