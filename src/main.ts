@@ -1,6 +1,6 @@
 // src/main.ts
 
-import { Plugin, Notice } from 'obsidian';
+import { MarkdownPreviewRenderer, Plugin, Notice, type MarkdownPostProcessor } from 'obsidian';
 import { BeancountSettingTab, type BeancountPluginSettings, DEFAULT_SETTINGS } from './settings';
 import { BeancountView, BEANCOUNT_VIEW_TYPE } from './ui/views/sidebar/sidebar-view';
 import { BeancountFileView, BEANCOUNT_FILE_VIEW_TYPE } from './ui/views/beancount-file-view';
@@ -30,6 +30,7 @@ import { resolveBeanQueryCommand } from './utils/beanQueryCommandRecovery';
 export default class BeancountPlugin extends Plugin {
 	settings: BeancountPluginSettings;
 	private bqlProcessor: BQLCodeBlockProcessor;
+	private bqlPostProcessor?: MarkdownPostProcessor;
 	public inlineBqlProcessor: InlineBQLProcessor;
 
 	/** Public API surface for inter-plugin access. */
@@ -277,7 +278,11 @@ export default class BeancountPlugin extends Plugin {
 	 */
 	onunload() {
 		Logger.log('Plugin unloading...');
-		// Cleanup is handled automatically by registerInterval
+		this.bqlProcessor?.dispose();
+		if (this.bqlPostProcessor) {
+			MarkdownPreviewRenderer.unregisterPostProcessor(this.bqlPostProcessor);
+			this.bqlPostProcessor = undefined;
+		}
 	}
 
 	// Register BQL processor
@@ -286,7 +291,7 @@ export default class BeancountPlugin extends Plugin {
 		this.bqlProcessor = new BQLCodeBlockProcessor(this);
 
 		// Register the processor
-		this.registerMarkdownCodeBlockProcessor('bql', this.bqlProcessor.getProcessor());
+		this.bqlPostProcessor = this.registerMarkdownCodeBlockProcessor('bql', this.bqlProcessor.getProcessor());
 	}
 
 	// Register inline BQL processor

@@ -14,6 +14,7 @@ interface BQLHTMLElement extends HTMLElement {
 export class BQLCodeBlockProcessor {
 	private plugin: BeancountPlugin;
 	private activeBlocks: Set<HTMLElement> = new Set();
+	private blockObservers: Map<HTMLElement, MutationObserver> = new Map();
 
 	constructor(plugin: BeancountPlugin) {
 		this.plugin = plugin;
@@ -37,6 +38,13 @@ export class BQLCodeBlockProcessor {
 		});
 	}
 
+	/** Release DOM observers and block references before a plugin reload. */
+	public dispose(): void {
+		this.blockObservers.forEach(observer => observer.disconnect());
+		this.blockObservers.clear();
+		this.activeBlocks.clear();
+	}
+
 	private async processCodeBlock(source: string, element: HTMLElement, context: MarkdownPostProcessorContext) {
 		const query = source.trim();
 		if (!query) return;
@@ -48,11 +56,13 @@ export class BQLCodeBlockProcessor {
 		this.activeBlocks.add(element);
 		
 		// Clean up when element is removed
+		this.blockObservers.get(element)?.disconnect();
 		const observer = new MutationObserver((mutations) => {
 			mutations.forEach((mutation) => {
 				mutation.removedNodes.forEach((node) => {
 					if (node === element || (node.instanceOf(HTMLElement) && node.contains(element))) {
 						this.activeBlocks.delete(element);
+						this.blockObservers.delete(element);
 						observer.disconnect();
 					}
 				});
@@ -61,6 +71,7 @@ export class BQLCodeBlockProcessor {
 		
 		if (element.parentElement) {
 			observer.observe(element.parentElement, { childList: true, subtree: true });
+			this.blockObservers.set(element, observer);
 		}
 
 		// Create container for the BQL result
