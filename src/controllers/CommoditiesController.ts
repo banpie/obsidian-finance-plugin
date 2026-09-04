@@ -36,6 +36,14 @@ export interface CommodityInfo {
     fullMetadata: Record<string, unknown>;
     /** Latest price information if available. */
     currentPrice?: string;
+    /** Latest direct quote in the commodity's original investment currency. */
+    nativeCurrentPrice?: string;
+    /** Original investment currency from commodity metadata. */
+    nativeCurrency?: string;
+    /** Date of the latest direct original-currency quote. */
+    nativePriceDate?: string | null;
+    /** Currency used for consolidated reporting. */
+    operatingCurrency?: string;
     /** Alias for fullMetadata for UI compatibility. */
     metadata?: Record<string, unknown>;
     /** Logo URL from commodity metadata. */
@@ -238,6 +246,7 @@ export class CommoditiesController {
                         ...(logoUrl ? { logo: logoUrl } : {}),
                     },
                     currentPrice: price ? `${price} ${operatingCurrency}` : undefined,
+                    operatingCurrency,
                     logoUrl,
                     priceDate: priceData?.date || null,
                     isPriceLatest: priceData?.isLatest || false,
@@ -286,18 +295,27 @@ export class CommoditiesController {
                 this.plugin.runQuery(queries.getCommodityPriceHistoryQuery(symbol))
             ]);
             const details = parseCommodityDetailsCSV(detailsCSV);
-            const priceHistory = parseCommodityPriceHistoryCSV(priceHistoryCSV);
+            const priceHistory = parseCommodityPriceHistoryCSV(priceHistoryCSV)
+                .filter(point => point.date !== '1970-01-01');
 
             Logger.log('[CommoditiesController] loadCommodityDetails: parsed ->', details);
 
             const existing = get(this.selectedCommodity) || this.getCommodityBySymbol(symbol);
-            const metadata = {
+            const metadata: Record<string, unknown> = {
                 ...(existing?.metadata || {}),
                 ...details.metadata,
                 ...(details.displayName ? { name: details.displayName } : {}),
                 ...(details.logo ? { logo: details.logo } : {}),
                 ...(details.priceMetadata ? { price: details.priceMetadata } : {}),
             };
+            const nativeCurrency = typeof metadata.investment_currency === 'string'
+                ? metadata.investment_currency.trim()
+                : '';
+            const nativePricePoint = nativeCurrency
+                ? priceHistory
+                    .filter(point => point.currency === nativeCurrency)
+                    .sort((a, b) => b.date.localeCompare(a.date))[0]
+                : undefined;
 
             this.selectedCommodity.set({
                 ...(existing || {}),
@@ -309,6 +327,12 @@ export class CommoditiesController {
                 pricemetadata: details.priceMetadata || undefined,
                 fullMetadata: metadata,
                 metadata,
+                nativeCurrentPrice: nativePricePoint
+                    ? `${nativePricePoint.amount} ${nativePricePoint.currency}`
+                    : undefined,
+                nativeCurrency: nativeCurrency || undefined,
+                nativePriceDate: nativePricePoint?.date || null,
+                operatingCurrency: existing?.operatingCurrency || this.getOperatingCurrency(),
                 logoUrl: details.logo || existing?.logoUrl || null,
                 filename: details.filename || undefined,
                 lineno: details.lineno || undefined,
