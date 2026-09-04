@@ -100,7 +100,7 @@ export class OverviewController {
 		try {
 			const period = this.getPeriodRange();
 			const [netWorthResult, periodIncomeResult, periodExpensesResult, periodSavingsResult] = await Promise.all([
-				this.plugin.runQuery(queries.getTotalWorthQuery(reportingCurrency, 2, period.endDate)),
+				this.plugin.runQuery(queries.getTotalWorthQuery(reportingCurrency, 2, period.endDate, period.valuationDate)),
 				this.plugin.runQuery(queries.getPeriodIncomeQuery(reportingCurrency, 2, period.startDate, period.endDate)),
 				this.plugin.runQuery(queries.getPeriodExpensesQuery(reportingCurrency, 2, period.startDate, period.endDate)),
 				this.plugin.runQuery(queries.getPeriodSavingsQuery(reportingCurrency, 2, period.startDate, period.endDate)),
@@ -213,6 +213,7 @@ export class OverviewController {
 			return {
 				startDate: `${year}-01-01`,
 				endDate: `${year + 1}-01-01`,
+				valuationDate: `${year}-12-31`,
 				label: this.formatPeriodLabel(periodMode, year, month),
 			};
 		}
@@ -222,6 +223,7 @@ export class OverviewController {
 		return {
 			startDate: `${year}-${this.pad2(month)}-01`,
 			endDate: `${nextYear}-${this.pad2(nextMonth)}-01`,
+			valuationDate: `${year}-${this.pad2(month)}-${this.pad2(new Date(year, month, 0).getDate())}`,
 			label: this.formatPeriodLabel(periodMode, year, month),
 		};
 	}
