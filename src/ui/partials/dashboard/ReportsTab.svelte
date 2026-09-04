@@ -344,12 +344,16 @@
 		];
 	}
 
-	function filterDetailGroups(groups: DetailGroup[]): DetailGroup[] {
+	function filterDetailGroups(
+		groups: DetailGroup[],
+		search: string,
+		lifecycle: ReportLifecycleFilter,
+	): DetailGroup[] {
 		return groups.flatMap(group => {
-			const groupMatches = matchesReportSearch(detailRowSearch, [group.label]);
+			const groupMatches = matchesReportSearch(search, [group.label]);
 			const rows = group.rows.filter(row =>
-				matchesLifecycleFilter(row.status, detailRowLifecycleFilter)
-				&& (groupMatches || matchesReportSearch(detailRowSearch, reportRowSearchValues(row)))
+				matchesLifecycleFilter(row.status, lifecycle)
+				&& (groupMatches || matchesReportSearch(search, reportRowSearchValues(row)))
 			);
 			return rows.length ? [{ ...group, rows }] : [];
 		});
@@ -935,7 +939,7 @@
 		&& matchesReportSearch(projectSearch, [project.label, project.tag, statusLabel(project)])
 	);
 
-	$: filteredDetailGroups = filterDetailGroups(detailGroups);
+	$: filteredDetailGroups = filterDetailGroups(detailGroups, detailRowSearch, detailRowLifecycleFilter);
 	$: filteredDetailAccounts = detailAccounts.filter(row =>
 		matchesLifecycleFilter(row.status, detailRowLifecycleFilter)
 		&& matchesReportSearch(detailRowSearch, reportRowSearchValues(row))
