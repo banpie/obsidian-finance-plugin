@@ -74,6 +74,10 @@
 	$: logoUrl = commodity?.metadata?.logo || commodity?.logo_url;
 	$: priceSource = commodity?.metadata?.price || commodity?.price_meta;
 	$: currentPrice = commodity?.currentPrice;
+	$: nativeCurrentPrice = commodity?.nativeCurrentPrice;
+	$: nativePriceDate = commodity?.nativePriceDate;
+	$: convertedPriceDate = commodity?.priceDate;
+	$: showNativePrice = nativeCurrentPrice && commodity?.nativeCurrency !== commodity?.operatingCurrency;
 	$: displayName = commodity?.displayName || commodity?.metadata?.name || "";
 	$: priceHistory = commodity?.priceHistory || [];
 	$: priceHistoryChartConfig = buildPriceHistoryChart(priceHistory);
@@ -100,24 +104,37 @@
 		if (!history.length) return null;
 
 		const currencies = Array.from(new Set(history.map((point) => point.currency).filter(Boolean)));
-		const labelCurrency = currencies.length === 1 ? currencies[0] : "mixed";
+		const dates = Array.from(new Set(history.map((point) => point.date))).sort();
+		const colors = [
+			["rgb(75, 192, 192)", "rgba(75, 192, 192, 0.12)"],
+			["rgb(153, 102, 255)", "rgba(153, 102, 255, 0.10)"],
+			["rgb(255, 159, 64)", "rgba(255, 159, 64, 0.10)"],
+		];
+		const datasets = currencies.map((currency, index) => {
+			const values = new Map(
+				history
+					.filter((point) => point.currency === currency)
+					.map((point) => [point.date, point.amount]),
+			);
+			const [borderColor, backgroundColor] = colors[index % colors.length];
+			return {
+				label: `Price (${currency})`,
+				data: dates.map((date) => values.get(date) ?? null),
+				borderColor,
+				backgroundColor,
+				tension: 0.25,
+				fill: false,
+				spanGaps: false,
+				pointRadius: history.length > 60 ? 0 : 3,
+				pointHoverRadius: 5,
+			};
+		});
 
 		return {
 			type: "line",
 			data: {
-				labels: history.map((point) => point.date),
-				datasets: [
-					{
-						label: labelCurrency ? `Price (${labelCurrency})` : "Price",
-						data: history.map((point) => point.amount),
-						borderColor: "rgb(75, 192, 192)",
-						backgroundColor: "rgba(75, 192, 192, 0.12)",
-						tension: 0.25,
-						fill: true,
-						pointRadius: history.length > 60 ? 0 : 3,
-						pointHoverRadius: 5,
-					},
-				],
+				labels: dates,
+				datasets,
 			},
 			options: {
 				responsive: true,
@@ -130,8 +147,7 @@
 						callbacks: {
 							label: (context) => {
 								const value = context.parsed.y;
-								const currency = history[context.dataIndex]?.currency || "";
-								return `Price: ${formatPriceAmount(value)} ${currency}`.trim();
+								return `${context.dataset.label}: ${formatPriceAmount(value)}`;
 							},
 						},
 					},
@@ -177,9 +193,16 @@
 			{#if displayName}
 				<div class="display-name">{displayName}</div>
 			{/if}
+			{#if showNativePrice}
+				<div class="current-price">
+					Original price: <strong>{nativeCurrentPrice}</strong>
+					{#if nativePriceDate}<span class="price-date">({nativePriceDate})</span>{/if}
+				</div>
+			{/if}
 			{#if currentPrice}
 				<div class="current-price">
-					Current price: <strong>{currentPrice}</strong>
+					Converted price: <strong>{currentPrice}</strong>
+					{#if convertedPriceDate}<span class="price-date">({convertedPriceDate})</span>{/if}
 				</div>
 			{/if}
 		</div>
@@ -450,6 +473,12 @@
 	.current-price strong {
 		color: var(--text-normal);
 		font-size: 16px;
+	}
+
+	.price-date {
+		margin-left: 5px;
+		font-size: 12px;
+		color: var(--text-faint);
 	}
 
 	.display-name {
