@@ -6,6 +6,7 @@ import * as queries from '../queries/index';
 import { Logger } from '../utils/logger';
 import { getBalanceCategoryLabel } from '../utils/accountLabels';
 import { findInvestmentLifecycle, parseInvestmentLifecycleCsv, type InvestmentLifecycleVerification } from '../utils/investmentLifecycle';
+import { getInvestmentTypeKey } from '../utils/reportFilters';
 
 export type ReportsPeriodMode = 'month' | 'year';
 export type ReportsPeriodPreset = 'this-month' | 'last-month' | 'this-year' | 'last-year' | 'custom-month' | 'custom-year';
@@ -17,6 +18,7 @@ export interface ReportRow {
 	account?: string;
 	commodity?: string;
 	commodityName?: string;
+	investmentType?: string;
 	amount: number;
 	percent: number;
 	quantity?: number | null;
@@ -418,7 +420,7 @@ export class ReportsController {
 						lifecycleVerification: lifecycle.verification,
 					};
 				});
-			const investmentsByType = this.groupRows(investmentRows, row => this.investmentType(row.account), true, showClosedItems);
+			const investmentsByType = this.groupRows(investmentRows, row => row.investmentType || getInvestmentTypeKey(row.account), true, showClosedItems);
 			const topInvestments = this.withPercent(
 				investmentRows
 					.filter(row => showClosedItems || Math.abs(row.amount) >= 0.01)
@@ -629,6 +631,7 @@ export class ReportsController {
 			account,
 			commodity,
 			commodityName,
+			investmentType: getInvestmentTypeKey(account),
 			amount,
 			percent: 0,
 			quantity: quantityAmount || null,
@@ -1143,11 +1146,6 @@ export class ReportsController {
 	private accountLabel(account: string | undefined): string {
 		const parts = (account || '').split(':');
 		return parts[parts.length - 1] || account || 'Other';
-	}
-
-	private investmentType(account: string | undefined): string {
-		const segment = this.accountSegment(account, 2);
-		return segment.split('-', 1)[0] || segment;
 	}
 
 	private projectLabel(label: string | undefined, tag: string | undefined): string {
