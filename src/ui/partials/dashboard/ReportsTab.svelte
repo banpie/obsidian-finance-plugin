@@ -509,8 +509,16 @@
 		return selection.valueLabel || formatCurrency(selection.amount);
 	}
 
+	function isBalanceDetail(kind: DetailKind): boolean {
+		return kind === 'asset' || kind === 'liability' || kind === 'networth' || kind === 'investment';
+	}
+
+	function detailAmountClass(kind: DetailKind, value: number): string {
+		return isBalanceDetail(kind) ? '' : amountClass(value);
+	}
+
 	function detailValueClass(selection: DetailSelection): string {
-		return selection.valueLabel ? '' : amountClass(selection.amount);
+		return selection.valueLabel ? '' : detailAmountClass(selection.kind, selection.amount);
 	}
 
 	function detailRowLabel(row: ReportRow): string {
@@ -1652,7 +1660,7 @@
 								{#each filteredDetailGroups as group}
 									<tr class="group-row">
 										<td colspan={detailSelection.kind === 'investment' ? 4 : 1}>{group.label}</td>
-										<td class={`align-right ${detailSelection.kind === 'investment' ? '' : amountClass(group.amount)}`}>{formatCurrency(group.amount)}</td>
+										<td class={`align-right ${detailAmountClass(detailSelection.kind, group.amount)}`}>{formatCurrency(group.amount)}</td>
 										{#if detailSelection.kind === 'investment'}
 											<td class="align-right">{formatOptionalCurrency(groupCostBasis(group.rows))}</td>
 											<td class="align-right">—</td>
@@ -1676,7 +1684,7 @@
 												<td>{row.commodity || ''}</td>
 												<td><span class={`status-pill ${statusClass(row)}`} title={statusTitle(row)}>{statusLabel(row)}</span></td>
 											{/if}
-											<td class={`align-right ${detailSelection.kind === 'investment' ? '' : amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
+											<td class={`align-right ${detailAmountClass(detailSelection.kind, row.amount)}`}>{formatCurrency(row.amount)}</td>
 											{#if detailSelection.kind === 'investment'}
 												<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
 												<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
@@ -1704,7 +1712,7 @@
 											<td>{row.commodity || ''}</td>
 											<td><span class={`status-pill ${statusClass(row)}`} title={statusTitle(row)}>{statusLabel(row)}</span></td>
 										{/if}
-										<td class={`align-right ${detailSelection.kind === 'investment' ? '' : amountClass(row.amount)}`}>{formatCurrency(row.amount)}</td>
+										<td class={`align-right ${detailAmountClass(detailSelection.kind, row.amount)}`}>{formatCurrency(row.amount)}</td>
 										{#if detailSelection.kind === 'investment'}
 											<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
 											<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
@@ -1787,7 +1795,7 @@
 					<div class="period-label">Code: {holdingSelection.commodity || '—'} · {holdingSelection.label}</div>
 				</div>
 				<div class="detail-modal-actions">
-					<strong class={amountClass(holdingSelection.amount)}>{formatCurrency(holdingSelection.amount)}</strong>
+					<strong>{formatCurrency(holdingSelection.amount)}</strong>
 					<button type="button" class="close-button" on:click={closeHoldingTransactions} aria-label="Close holding transactions">Close</button>
 				</div>
 			</header>
@@ -1893,7 +1901,7 @@
 					<div class="period-label">{state.periodLabel} · {accountSelection.account}</div>
 				</div>
 				<div class="detail-modal-actions">
-					<strong class={amountClass(accountSelection.amount)}>{formatCurrency(accountSelection.amount)}</strong>
+					<strong>{formatCurrency(accountSelection.amount)}</strong>
 					<button type="button" class="close-button" on:click={closeAccountTransactions} aria-label="Close account transactions">Close</button>
 				</div>
 			</header>
