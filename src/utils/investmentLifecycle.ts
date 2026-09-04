@@ -4,6 +4,9 @@ export type InvestmentLifecycleVerification = 'verified' | 'needs-review';
 
 export interface InvestmentLifecycleMetrics {
 	commodity: string;
+	investment?: string;
+	displayName?: string;
+	assetCode?: string;
 	cumulativeInvested?: number;
 	cumulativeRecovered?: number;
 	lifetimeProfit?: number;
@@ -71,6 +74,9 @@ export function parseInvestmentLifecycleCsv(rawCsv: string, asOfDate?: string): 
 		const metrics: InvestmentLifecycleMetrics = verified
 			? {
 				commodity,
+				investment: row.investment || undefined,
+				displayName: row.display_name || undefined,
+				assetCode: row.asset_code || undefined,
 				cumulativeInvested: buy,
 				cumulativeRecovered: recovered,
 				lifetimeProfit: profit,
@@ -80,6 +86,9 @@ export function parseInvestmentLifecycleCsv(rawCsv: string, asOfDate?: string): 
 			}
 			: {
 				commodity,
+				investment: row.investment || undefined,
+				displayName: row.display_name || undefined,
+				assetCode: row.asset_code || undefined,
 				latestTrade: latestTrade || undefined,
 				verification: 'needs-review',
 			};
@@ -90,4 +99,26 @@ export function parseInvestmentLifecycleCsv(rawCsv: string, asOfDate?: string): 
 
 	for (const commodity of duplicates) result.delete(commodity);
 	return result;
+}
+
+export function findInvestmentLifecycle(
+	lifecycleByCommodity: Map<string, InvestmentLifecycleMetrics>,
+	commodity?: string,
+	account?: string,
+	label?: string
+): InvestmentLifecycleMetrics | undefined {
+	const direct = commodity ? lifecycleByCommodity.get(commodity) : undefined;
+	if (direct) return direct;
+
+	const haystacks = [account, label].filter((value): value is string => Boolean(value)).map(value => value.toLowerCase());
+	const candidates = Array.from(lifecycleByCommodity.values()).filter(lifecycle => {
+		const names = [lifecycle.investment, lifecycle.displayName]
+			.filter((value): value is string => Boolean(value))
+			.map(value => value.toLowerCase());
+		if (names.some(name => haystacks.some(haystack => haystack.endsWith(name)))) return true;
+
+		const shortCode = (lifecycle.assetCode || '').split(':').pop()?.toLowerCase();
+		return Boolean(shortCode && haystacks.some(haystack => haystack.split(/[:-]/).includes(shortCode)));
+	});
+	return candidates.length === 1 ? candidates[0] : undefined;
 }

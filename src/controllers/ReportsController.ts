@@ -5,7 +5,7 @@ import type BeancountPlugin from '../main';
 import * as queries from '../queries/index';
 import { Logger } from '../utils/logger';
 import { getBalanceCategoryLabel } from '../utils/accountLabels';
-import { parseInvestmentLifecycleCsv, type InvestmentLifecycleVerification } from '../utils/investmentLifecycle';
+import { findInvestmentLifecycle, parseInvestmentLifecycleCsv, type InvestmentLifecycleVerification } from '../utils/investmentLifecycle';
 
 export type ReportsPeriodMode = 'month' | 'year';
 export type ReportsPeriodPreset = 'this-month' | 'last-month' | 'this-year' | 'last-year' | 'custom-month' | 'custom-year';
@@ -405,7 +405,7 @@ export class ReportsController {
 			const lifecycleByCommodity = parseInvestmentLifecycleCsv(investmentLifecycleCsv, range.endDate);
 			const investmentRows = this.parseInvestmentRows(investmentsCsv, investmentCostBasis, investmentNativePrices, currency, showClosedItems, range.endDate)
 				.map(row => {
-					const lifecycle = row.commodity ? lifecycleByCommodity.get(row.commodity) : undefined;
+					const lifecycle = findInvestmentLifecycle(lifecycleByCommodity, row.commodity, row.account, row.label);
 					if (!lifecycle) return row;
 					return {
 						...row,
