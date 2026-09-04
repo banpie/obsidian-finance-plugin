@@ -364,7 +364,7 @@ export function getCommodityDetailsQuery(symbol: string): string {
 
 export function getCommodityPriceHistoryQuery(symbol: string): string {
 	const safeSymbol = escapeBqlString(symbol);
-	return `SELECT date AS date_, amount AS amount_ FROM #prices WHERE currency='${safeSymbol}' ORDER BY date`;
+	return `SELECT date AS date_, number(amount) AS amount_, currency(amount) AS currency_ FROM #prices WHERE currency='${safeSymbol}' ORDER BY date`;
 }
 
 // --- Price Queries ---

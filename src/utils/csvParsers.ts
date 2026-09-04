@@ -212,7 +212,8 @@ export function parseCombinedCommodityDataCSV(
 
 /**
  * Parses CSV from getCommodityPriceHistoryQuery into dated price points.
- * Format: [date_, amount_], where amount_ is typically "123.45 CNY".
+ * Preferred format: [date_, amount_, currency_], with an exact numeric amount.
+ * The legacy [date_, amount_] shape is still accepted for compatibility.
  */
 export function parseCommodityPriceHistoryCSV(csv: string): Array<{ date: string; amount: number; currency: string; amountRaw: string }> {
     const rows: Array<{ date: string; amount: number; currency: string; amountRaw: string }> = [];
@@ -232,15 +233,19 @@ export function parseCommodityPriceHistoryCSV(csv: string): Array<{ date: string
             if (row.length < 2) continue;
 
             const date = row[0]?.trim();
-            const amountRaw = row[1]?.trim() || '';
-            const amountMatch = amountRaw.match(/(-?[\d,]+(?:\.\d+)?)\s+([A-Z][A-Z0-9'._-]*)/);
-            if (!date || !amountMatch) continue;
+            const numericRaw = row[1]?.trim() || '';
+            const explicitCurrency = row[2]?.trim() || '';
+            const legacyAmountMatch = numericRaw.match(/(-?[\d,]+(?:\.\d+)?)\s+([A-Z][A-Z0-9'._-]*)/);
+            const amountText = explicitCurrency ? numericRaw : legacyAmountMatch?.[1] || '';
+            const currency = explicitCurrency || legacyAmountMatch?.[2] || '';
+            const amount = parseFloat(amountText.replace(/,/g, ''));
+            if (!date || !currency || !Number.isFinite(amount)) continue;
 
             rows.push({
                 date,
-                amount: parseFloat(amountMatch[1].replace(/,/g, '')),
-                currency: amountMatch[2],
-                amountRaw,
+                amount,
+                currency,
+                amountRaw: `${amountText} ${currency}`,
             });
         }
 
