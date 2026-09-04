@@ -32,6 +32,11 @@ function openAccountClause(asOfDate?: string): string {
 	return asOfDate ? '' : ' AND NOT close_date(account)';
 }
 
+/** Exclude accrual-only and local balancing entries from cash-flow reports. */
+export function cashFlowEntryClause(): string {
+	return " AND NOT entry_meta('cashflow_treatment') = 'non_cash' AND NOT entry_meta('finance_os_type') = 'local_correction'";
+}
+
 export function getTotalAssetsQuery(currency: string, rounding: number, asOfDate?: string, valuationDate = asOfDate): string {
 	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'${valuationDateArgument(valuationDate)}))), ${rounding}) AS _totalAssets WHERE account ~ '^Assets'${asOfDateClause(asOfDate)}`;
 }
@@ -46,43 +51,43 @@ export function getTotalWorthQuery(currency: string, rounding: number, asOfDate?
 
 // This Month Queries
 export function getThisMonthIncomeQuery(currency: string, rounding: number): string {
-	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _thisMonthIncome WHERE account ~ '^Income' AND month=month(today()) AND year=year(today())`;
+	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _thisMonthIncome WHERE account ~ '^Income' AND month=month(today()) AND year=year(today())${cashFlowEntryClause()}`;
 }
 
 export function getThisMonthExpensesQuery(currency: string, rounding: number): string {
-	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _thisMonthExpenses WHERE account ~ '^Expenses' AND month=month(today()) AND year=year(today())`;
+	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _thisMonthExpenses WHERE account ~ '^Expenses' AND month=month(today()) AND year=year(today())${cashFlowEntryClause()}`;
 }
 
 export function getThisMonthSavingsQuery(currency: string, rounding: number): string {
-	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _thisMonthNetWorthChange WHERE account ~ '^(Income|Expenses)' AND month=month(today()) AND year=year(today())`;
+	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _thisMonthNetWorthChange WHERE account ~ '^(Income|Expenses)' AND month=month(today()) AND year=year(today())${cashFlowEntryClause()}`;
 }
 
 export function getPeriodIncomeQuery(currency: string, rounding: number, startDate: string, endDate: string): string {
-	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _periodIncome WHERE account ~ '^Income' AND date >= ${startDate} AND date < ${endDate}`;
+	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _periodIncome WHERE account ~ '^Income' AND date >= ${startDate} AND date < ${endDate}${cashFlowEntryClause()}`;
 }
 
 export function getPeriodExpensesQuery(currency: string, rounding: number, startDate: string, endDate: string): string {
-	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _periodExpenses WHERE account ~ '^Expenses' AND date >= ${startDate} AND date < ${endDate}`;
+	return `SELECT round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _periodExpenses WHERE account ~ '^Expenses' AND date >= ${startDate} AND date < ${endDate}${cashFlowEntryClause()}`;
 }
 
 export function getPeriodSavingsQuery(currency: string, rounding: number, startDate: string, endDate: string): string {
-	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _periodNetIncome WHERE account ~ '^(Income|Expenses)' AND date >= ${startDate} AND date < ${endDate}`;
+	return `SELECT neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _periodNetIncome WHERE account ~ '^(Income|Expenses)' AND date >= ${startDate} AND date < ${endDate}${cashFlowEntryClause()}`;
 }
 
 export function getPeriodIncomeBreakdownQuery(currency: string, rounding: number, startDate: string, endDate: string): string {
-	return `SELECT account, neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _income WHERE account ~ '^Income' AND date >= ${startDate} AND date < ${endDate} GROUP BY account ORDER BY account`;
+	return `SELECT account, neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _income WHERE account ~ '^Income' AND date >= ${startDate} AND date < ${endDate}${cashFlowEntryClause()} GROUP BY account ORDER BY account`;
 }
 
 export function getPeriodExpenseBreakdownQuery(currency: string, rounding: number, startDate: string, endDate: string): string {
-	return `SELECT account, round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _expenses WHERE account ~ '^Expenses' AND date >= ${startDate} AND date < ${endDate} GROUP BY account ORDER BY account`;
+	return `SELECT account, round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _expenses WHERE account ~ '^Expenses' AND date >= ${startDate} AND date < ${endDate}${cashFlowEntryClause()} GROUP BY account ORDER BY account`;
 }
 
 export function getPeriodIncomeTransactionsQuery(currency: string, rounding: number, startDate: string, endDate: string): string {
-	return `SELECT date, payee, narration, account, neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _amount WHERE account ~ '^Income' AND date >= ${startDate} AND date < ${endDate} GROUP BY date, payee, narration, account ORDER BY date DESC`;
+	return `SELECT date, payee, narration, account, neg(round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding})) AS _amount WHERE account ~ '^Income' AND date >= ${startDate} AND date < ${endDate}${cashFlowEntryClause()} GROUP BY date, payee, narration, account ORDER BY date DESC`;
 }
 
 export function getPeriodExpenseTransactionsQuery(currency: string, rounding: number, startDate: string, endDate: string): string {
-	return `SELECT date, payee, narration, account, round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _amount WHERE account ~ '^Expenses' AND date >= ${startDate} AND date < ${endDate} GROUP BY date, payee, narration, account ORDER BY date DESC`;
+	return `SELECT date, payee, narration, account, round(number(only('${currency}', convert(sum(position), '${currency}'))), ${rounding}) AS _amount WHERE account ~ '^Expenses' AND date >= ${startDate} AND date < ${endDate}${cashFlowEntryClause()} GROUP BY date, payee, narration, account ORDER BY date DESC`;
 }
 
 export function getPeriodCounterpartAccountsQuery(startDate: string, endDate: string): string {
