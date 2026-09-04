@@ -217,6 +217,7 @@
 	}
 
 	function investmentGain(row: ReportRow): string {
+		if (row.status === 'closed') return '—';
 		if (row.unrealizedGain === null || row.unrealizedGain === undefined) return '—';
 		const percent = formatOptionalPercent(row.unrealizedGainPercent);
 		const percentPrefix = row.unrealizedGainPercent !== null && row.unrealizedGainPercent !== undefined && row.unrealizedGainPercent > 0 ? '+' : '';
@@ -224,13 +225,37 @@
 	}
 
 	function investmentGainTitle(row: ReportRow): string {
+		if (row.status === 'closed') return 'Current unrealized gain does not apply to a closed investment. Use the lifetime columns.';
 		if (row.costStatus === 'cashflow') return 'Cash-flow return: current value minus net invested cash flow.';
 		if (row.costStatus === 'available') return 'Unrealized gain/loss based on holding cost basis.';
 		return 'No return basis available for this holding.';
 	}
 
 	function investmentGainClass(row: ReportRow): string {
+		if (row.status === 'closed') return '';
 		return investmentReturnClass(row.unrealizedGain);
+	}
+
+	function lifecycleCurrency(row: ReportRow, value: number | undefined): string {
+		if (row.lifecycleVerification === 'needs-review') return 'Review';
+		return value === undefined ? '—' : formatCurrency(value);
+	}
+
+	function lifecyclePercent(row: ReportRow): string {
+		if (row.lifecycleVerification === 'needs-review') return 'Review';
+		return row.totalRoi === undefined ? '—' : formatPercent(row.totalRoi);
+	}
+
+	function lifecycleTitle(row: ReportRow): string {
+		if (row.lifecycleVerification === 'verified') {
+			return `Verified lifetime cash flows${row.lifecycleAsOfDate ? ` through ${row.lifecycleAsOfDate}` : ''}.`;
+		}
+		if (row.lifecycleVerification === 'needs-review') {
+			return 'Historical cash flows do not reconcile with locally recorded realized profit. Review before showing a numeric lifetime return.';
+		}
+		return row.status === 'closed'
+			? 'No verified lifecycle report is available for this closed investment.'
+			: 'Lifetime return is shown for closed investments.';
 	}
 
 	function investmentReturnClass(value: number | null | undefined): string {
@@ -992,6 +1017,12 @@
 							<th class="align-right">Cost Basis</th>
 							<th class="align-right">Avg Cost / Unit</th>
 							<th class="align-right">Gain/Loss</th>
+							{#if state.showClosedItems}
+								<th class="align-right">Invested</th>
+								<th class="align-right">Recovered</th>
+								<th class="align-right">Lifetime P/L</th>
+								<th class="align-right">Total ROI</th>
+							{/if}
 							<th class="align-right">Share</th>
 						</tr>
 					</thead>
@@ -1021,6 +1052,12 @@
 								<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
 								<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
 								<td class={`align-right ${investmentGainClass(row)}`} title={investmentGainTitle(row)}>{investmentGain(row)}</td>
+								{#if state.showClosedItems}
+									<td class="align-right" title={lifecycleTitle(row)}>{lifecycleCurrency(row, row.cumulativeInvested)}</td>
+									<td class="align-right" title={lifecycleTitle(row)}>{lifecycleCurrency(row, row.cumulativeRecovered)}</td>
+									<td class={`align-right ${investmentReturnClass(row.lifetimeProfit)}`} title={lifecycleTitle(row)}>{lifecycleCurrency(row, row.lifetimeProfit)}</td>
+									<td class={`align-right ${investmentReturnClass(row.totalRoi)}`} title={lifecycleTitle(row)}>{lifecyclePercent(row)}</td>
+								{/if}
 								<td class="align-right">{formatPercent(row.percent)}</td>
 							</tr>
 						{/each}

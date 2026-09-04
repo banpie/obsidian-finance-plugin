@@ -5,6 +5,7 @@ import type BeancountPlugin from '../main';
 import * as queries from '../queries/index';
 import { Logger } from '../utils/logger';
 import { getBalanceCategoryLabel } from '../utils/accountLabels';
+import { parseInvestmentLifecycleCsv, type InvestmentLifecycleVerification } from '../utils/investmentLifecycle';
 
 export type ReportsPeriodMode = 'month' | 'year';
 export type ReportsPeriodPreset = 'this-month' | 'last-month' | 'this-year' | 'last-year' | 'custom-month' | 'custom-year';
@@ -29,6 +30,12 @@ export interface ReportRow {
 	averageCost?: number | null;
 	unrealizedGain?: number | null;
 	unrealizedGainPercent?: number | null;
+	cumulativeInvested?: number;
+	cumulativeRecovered?: number;
+	lifetimeProfit?: number;
+	totalRoi?: number;
+	lifecycleAsOfDate?: string;
+	lifecycleVerification?: InvestmentLifecycleVerification;
 	costStatus?: 'available' | 'missing' | 'mixed-currency' | 'cashflow';
 	status?: ReportLifecycleStatus;
 	closeDate?: string;
@@ -359,6 +366,7 @@ export class ReportsController {
 				investmentCostPostingsCsv,
 				investmentCashflowPostingsCsv,
 				investmentNativePricesCsv,
+				investmentLifecycleCsv,
 			] = await Promise.all([
 				this.plugin.runQuery(queries.getPeriodIncomeBreakdownQuery(currency, 2, range.startDate, range.endDate)),
 				this.plugin.runQuery(queries.getPeriodExpenseBreakdownQuery(currency, 2, range.startDate, range.endDate)),
@@ -380,6 +388,7 @@ export class ReportsController {
 				this.plugin.runQuery(queries.getInvestmentCostPostingsQuery(currency, range.endDate, range.valuationDate)),
 				this.plugin.runQuery(queries.getInvestmentCashflowPostingsQuery(currency, range.endDate, range.valuationDate)),
 				this.plugin.runQuery(queries.getInvestmentNativePricesQuery(range.valuationDate)),
+				showClosedItems ? this.loadInvestmentLifecycleCsv() : Promise.resolve(''),
 			]);
 
 			const incomeByAccount = this.parseAccountRows(incomeCsv);
@@ -393,7 +402,22 @@ export class ReportsController {
 			const investmentCostBasis = this.parseInvestmentCostBasisRows(investmentCostPostingsCsv, currency);
 			this.addInvestmentCashflowBasisRows(investmentCostBasis, investmentCashflowPostingsCsv, currency);
 			const investmentNativePrices = this.parseInvestmentNativePrices(investmentNativePricesCsv, currency);
-			const investmentRows = this.parseInvestmentRows(investmentsCsv, investmentCostBasis, investmentNativePrices, currency, showClosedItems, range.endDate);
+			const lifecycleByCommodity = parseInvestmentLifecycleCsv(investmentLifecycleCsv, range.endDate);
+			const investmentRows = this.parseInvestmentRows(investmentsCsv, investmentCostBasis, investmentNativePrices, currency, showClosedItems, range.endDate)
+				.map(row => {
+					const lifecycle = row.commodity ? lifecycleByCommodity.get(row.commodity) : undefined;
+					if (!lifecycle) return row;
+					return {
+						...row,
+						status: 'closed' as const,
+						cumulativeInvested: lifecycle.cumulativeInvested,
+						cumulativeRecovered: lifecycle.cumulativeRecovered,
+						lifetimeProfit: lifecycle.lifetimeProfit,
+						totalRoi: lifecycle.totalRoi,
+						lifecycleAsOfDate: lifecycle.latestTrade,
+						lifecycleVerification: lifecycle.verification,
+					};
+				});
 			const investmentsByType = this.groupRows(investmentRows, row => this.investmentType(row.account), true, showClosedItems);
 			const topInvestments = this.withPercent(
 				investmentRows
@@ -447,6 +471,17 @@ export class ReportsController {
 		} catch (e) {
 			Logger.error('Error loading reports:', e);
 			this.state.update(s => ({ ...s, isLoading: false, error: e instanceof Error ? e.message : String(e) }));
+		}
+	}
+
+	private async loadInvestmentLifecycleCsv(): Promise<string> {
+		const folder = (this.plugin.settings.structuredFolderName || 'Finances').replace(/^\/+|\/+$/g, '');
+		const reportPath = `${folder}/reports/investment-positions.csv`;
+		try {
+			return await this.plugin.app.vault.adapter.read(reportPath);
+		} catch (error) {
+			Logger.warn(`Closed-investment lifecycle report is unavailable at ${reportPath}.`, error);
+			return '';
 		}
 	}
 
