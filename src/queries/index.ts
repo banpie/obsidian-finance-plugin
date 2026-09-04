@@ -256,6 +256,45 @@ export function getTargetListQuery(): string {
 	return `SELECT date AS _startDate, meta('name') AS _name, meta('accountQuery') AS _accountString, meta('cycle') AS _period, bool(meta('isRollover')) AS _isRollOver, meta('target') AS _targetAmount, meta('currency') AS _currency, meta('tag') AS _tag, meta('tagMode') AS _tagMode, meta('filename') AS _filename, meta('lineno') AS _lineno FROM events WHERE type='Indicator' AND description='Target'`;
 }
 
+// --- Scheduled/Recurring Transactions Query ---
+
+/** Max postings a single schedule can carry — the SELECT enumerates this many
+ * posting{N}Account/Amount/Currency meta columns unconditionally (most are
+ * NULL for schedules with fewer postings), since BQL can't select a dynamic
+ * number of columns in one query. */
+export const MAX_SCHEDULE_POSTINGS = 8;
+
+export function getScheduleListQuery(): string {
+	const postingCols: string[] = [];
+	for (let i = 1; i <= MAX_SCHEDULE_POSTINGS; i++) {
+		postingCols.push(`meta('posting${i}Account') AS _p${i}account`);
+		postingCols.push(`meta('posting${i}Amount') AS _p${i}amount`);
+		postingCols.push(`meta('posting${i}Currency') AS _p${i}currency`);
+	}
+	return `SELECT date AS _startDateCol, description AS _name, meta('frequency') AS _frequency, meta('startDate') AS _startDate, meta('nextDate') AS _nextDate, meta('lastGenerated') AS _lastGenerated, bool(meta('active')) AS _active, meta('payee') AS _payee, meta('narration') AS _narration, meta('flag') AS _flag, meta('tags') AS _tags, meta('links') AS _links, meta('displayAmount') AS _displayAmount, meta('displayCurrency') AS _displayCurrency, meta('postingCount') AS _postingCount, ${postingCols.join(', ')}, meta('filename') AS _filename, meta('lineno') AS _lineno FROM events WHERE type='Recurring'`;
+}
+
+/**
+ * Dedupe check used before materializing a due occurrence: does a
+ * transaction already exist tagged `scheduled: "<name>"` on this exact date?
+ * (e.g. the confirm modal was resubmitted, or nextDate drifted stale.)
+ * Mirrors the `FROM postings WHERE id = ...` lookup shape already used by
+ * updateTransaction()/deleteTransaction() in transactionDirectives.ts.
+ *
+ * NOTE: uses `entry_meta()`, not `meta()` — when querying `FROM postings`,
+ * `meta()` resolves *posting-level* metadata (empty here, since `scheduled`
+ * is set on the transaction), while `entry_meta()` resolves the parent
+ * transaction's metadata. Verified directly against bean-query: `meta()`
+ * returned blank for every row, `entry_meta()` returned the tag correctly.
+ *
+ * Also, the metadata key must start lowercase — beancount grammar requires
+ * `[a-z][a-zA-Z0-9\-_]*` for metadata keys.
+ */
+export function getScheduledOccurrenceExistsQuery(name: string, date: string): string {
+	const sanitizedName = name.replace(/'/g, "''");
+	return `SELECT id FROM postings WHERE entry_meta('scheduled') = '${sanitizedName}' AND date = ${date} LIMIT 1`;
+}
+
 
 // --- Budget/Target Queries ---
 
@@ -336,7 +375,10 @@ export function getAllCommoditiesQuery(): string {
 
 export function getCommoditiesPriceDataQuery(currency: string): string {
 	const safeCurrency = escapeBqlString(currency);
-	return `SELECT last(date) AS date_, last(currency) AS currency_, currency_meta(last(currency), 'name') AS displayname_, round(getprice(last(currency), '${safeCurrency}'),2) AS price_, currency_meta(last(currency), 'logo') AS logo_, bool(today()-1<last(date)) AS islatest_ FROM #prices GROUP BY currency`;
+	// Rounded to a generous 10 decimals (not hardcoded to 2) so low-value/crypto
+	// commodity prices aren't truncated before the client applies per-currency
+	// display precision — see CurrencyPrecisionService.
+	return `SELECT last(date) AS date_, last(currency) AS currency_, currency_meta(last(currency), 'name') AS displayname_, round(getprice(last(currency), '${safeCurrency}'),10) AS price_, currency_meta(last(currency), 'logo') AS logo_, bool(today()-1<last(date)) AS islatest_ FROM #prices GROUP BY currency`;
 }
 
 
@@ -353,7 +395,8 @@ export function getCommoditiesPriceDataQuery(currency: string): string {
  */
 export function getCombinedCommodityDataQuery(operatingCurrency: string): string {
 	const safeOperatingCurrency = escapeBqlString(operatingCurrency);
-	return `SELECT currency AS currency_, currency_meta(last(currency), 'name') AS displayname_, units(sum(position)) AS units_, convert(sum(position), '${safeOperatingCurrency}') AS valueOp_, round(getprice(last(currency), '${safeOperatingCurrency}'), 2) AS price_, currency_meta(last(currency), 'logo') AS logo_ WHERE account ~ '^Assets' GROUP BY currency`;
+	// See getCommoditiesPriceDataQuery — 10 decimals to avoid truncating price_ server-side.
+	return `SELECT currency AS currency_, currency_meta(last(currency), 'name') AS displayname_, units(sum(position)) AS units_, convert(sum(position), '${safeOperatingCurrency}') AS valueOp_, round(getprice(last(currency), '${safeOperatingCurrency}'), 10) AS price_, currency_meta(last(currency), 'logo') AS logo_ WHERE account ~ '^Assets' GROUP BY currency`;
 }
 
 
@@ -371,4 +414,74 @@ export function getCommodityPriceHistoryQuery(symbol: string): string {
 
 export function getAllCurrenciesQuery(): string {
 	return `SELECT distinct(currency) AS currency_`;
+}
+
+// --- Currency Precision Queries ---
+// Bootstrap data for CurrencyPrecisionService: infers each currency's typical
+// decimal precision from how it's actually written in the ledger (postings +
+// price directives), the same signal Beancount's own DisplayContext uses.
+
+export function getPostingsCurrencyNumberQuery(): string {
+	return `SELECT currency, number`;
+}
+
+export function getPriceDirectivesCurrencyAmountQuery(): string {
+	return `SELECT currency, amount FROM #prices`;
+}
+
+// --- Reconciliation Queries ---
+
+/**
+ * Returns open accounts that have a `reconcile` metadata key on their open directive.
+ * The value is the number of days the user wants between reconciliations.
+ *
+ * Uses `open.meta['reconcile']` dict-key access on the `#accounts` table,
+ * since `account_meta()` is not available in all beanquery versions.
+ */
+export function getReconcileAccountsQuery(): string {
+	return `SELECT account, open.meta['reconcile'] AS reconcile_days FROM #accounts WHERE NOT bool(close) AND open.meta['reconcile'] IS NOT NULL`;
+}
+
+/**
+ * Returns the most recent PASSING balance assertion date for each account
+ * that has at least one balance directive. Uses the dedicated `#balances`
+ * table which exposes `account` as a plain string (unlike `#entries.accounts`
+ * which is a set and cannot be grouped).
+ *
+ * `WHERE discrepancy IS NULL` excludes failed assertions: bean-query still
+ * records a row for a `balance` directive that didn't check out, with the
+ * mismatch amount in `discrepancy`. Without this filter, an account with a
+ * failing assertion would be reported as "reconciled" on the assertion's
+ * date even though the ledger doesn't actually balance (issue #272).
+ */
+export function getLastBalanceDateQuery(): string {
+	return `SELECT account, max(date) AS last_balance_date FROM #balances WHERE discrepancy IS NULL GROUP BY account`;
+}
+
+/**
+ * Returns each account's MOST RECENT balance assertion regardless of whether
+ * it passed, using the same `last(...)`-per-group idiom as
+ * getCommodityDetailsQuery/getCommoditiesPriceDataQuery. Unlike
+ * getLastBalanceDateQuery (which must stay filtered to passing assertions for
+ * the overdue calculation, see #272), this answers a different question:
+ * "is this account's latest balance check currently failing?" —
+ * `last_discrepancy IS NOT NULL` means yes. Used to gate the "Force
+ * reconcile" (pad directive) action, which only makes sense against an
+ * actually-failing assertion.
+ */
+export function getLatestBalanceStatusQuery(): string {
+	return `SELECT account, last(date) AS last_date, last(discrepancy) AS last_discrepancy FROM #balances GROUP BY account`;
+}
+
+/**
+ * Returns open/close dates, declared currencies, `reconcile` metadata, and
+ * the open directive's filename/lineno (for later in-place metadata edits)
+ * for a single account. `.date`/`.currencies`/`.meta['filename']`/
+ * `.meta['lineno']` extrapolate the proven `open.meta['reconcile']` idiom
+ * from getReconcileAccountsQuery — verify against a real bean-query before
+ * relying on this in production.
+ */
+export function getAccountDetailQuery(account: string): string {
+	const safeAccount = escapeBqlString(account);
+	return `SELECT account, open.date AS open_date, close.date AS close_date, open.currencies AS currencies, open.meta['reconcile'] AS reconcile_days, open.meta['filename'] AS filename, open.meta['lineno'] AS lineno FROM #accounts WHERE account = '${safeAccount}'`;
 }

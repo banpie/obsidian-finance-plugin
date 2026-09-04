@@ -20,6 +20,19 @@
 	export let mode: "add" | "edit" = transaction || entry ? "edit" : "add"; // Auto-detect mode
 	export let operatingCurrency: string = "INR";
 	export let plugin: any = null;
+	// Preselect a tab/account in add mode (e.g. the Reconciliation panel's "Balance" quick-action).
+	// Ignored whenever an existing entry/transaction is being edited.
+	export let initialTab: "transaction" | "balance" | "note" | "query" | null = null;
+	export let initialAccount: string | null = null;
+
+	import { SnippetSuggestModal } from "./SnippetSuggestModal";
+	import { Notice } from "obsidian";
+
+	import PostingRow from "./transaction-edit/PostingRow.svelte";
+	import TagLinkInput from "./transaction-edit/TagLinkInput.svelte";
+	import BalanceTabForm from "./transaction-edit/BalanceTabForm.svelte";
+	import NoteTabForm from "./transaction-edit/NoteTabForm.svelte";
+	import QueryTabForm from "./transaction-edit/QueryTabForm.svelte";
 
 	const dispatch = createEventDispatcher();
 
@@ -59,6 +72,8 @@
 				: (entry.type as "transaction" | "balance" | "note");
 	} else if (transaction) {
 		activeTab = "transaction";
+	} else if (initialTab) {
+		activeTab = initialTab;
 	}
 
 	// Query directive fields
@@ -251,7 +266,7 @@
 
 	// Balance-specific fields
 	let balanceAccount =
-		entry?.type === "balance" ? (entry as JournalBalance).account : "";
+		entry?.type === "balance" ? (entry as JournalBalance).account : (initialAccount ?? "");
 	let balanceAmount =
 		entry?.type === "balance" ? (entry as JournalBalance).amount : "";
 	let balanceCurrency =
@@ -694,6 +709,262 @@
 		saving = false;
 	}
 
+	// Parse Beancount transaction text into fields
+	function parseBeancountTransaction(text: string) {
+		const lines = text.split(/\r?\n/);
+		let payee = '';
+		let narration = '';
+		let flag = '*';
+		const tags: string[] = [];
+		const links: string[] = [];
+		const metadata: Record<string, string> = {};
+		const postings: any[] = [];
+
+		if (lines.length === 0) return { payee, narration, flag, tags, links, metadata, postings };
+
+		// Header parse
+		const header = lines[0].trim();
+		const dateMatch = header.match(/^\d{4}-\d{2}-\d{2}\s+([*!])/);
+		if (dateMatch) {
+			flag = dateMatch[1];
+		}
+
+		// Extract tags from header
+		const tagMatches = header.matchAll(/#([A-Za-z0-9_-]+)/g);
+		for (const match of tagMatches) {
+			tags.push(match[1]);
+		}
+
+		// Extract links from header
+		const linkMatches = header.matchAll(/\^([A-Za-z0-9_-]+)/g);
+		for (const match of linkMatches) {
+			links.push(match[1]);
+		}
+
+		// Extract payee and narration quotes
+		const quotes: string[] = [];
+		let inQuote = false;
+		let currentQuote = '';
+		for (let i = 0; i < header.length; i++) {
+			const char = header[i];
+			if (char === '"' && (i === 0 || header[i - 1] !== '\\')) {
+				if (inQuote) {
+					quotes.push(currentQuote);
+					currentQuote = '';
+					inQuote = false;
+				} else {
+					inQuote = true;
+				}
+			} else if (inQuote) {
+				currentQuote += char;
+			}
+		}
+
+		if (quotes.length >= 2) {
+			payee = quotes[0];
+			narration = quotes[1];
+		} else if (quotes.length === 1) {
+			narration = quotes[0];
+		}
+
+		let hasSeenPostings = false;
+		let currentPosting: any = null;
+
+		for (let i = 1; i < lines.length; i++) {
+			const line = lines[i];
+			const trimmed = line.trim();
+			if (!trimmed || trimmed.startsWith(';')) continue;
+
+			// Check if metadata line
+			const metadataMatch = line.match(/^\s+([A-Za-z0-9_-]+):\s+(.+)/);
+			if (metadataMatch) {
+				const key = metadataMatch[1];
+				const value = metadataMatch[2].replace(/^["']|["']$/g, '');
+				if (key.toLowerCase() === 'snippet') continue;
+
+				if (!hasSeenPostings) {
+					metadata[key] = value;
+				} else if (currentPosting) {
+					if (!currentPosting.metadata) currentPosting.metadata = {};
+					currentPosting.metadata[key] = value;
+				}
+				continue;
+			}
+
+			// Clean inline comment from posting line
+			const commentIdx = trimmed.indexOf(';');
+			let mainLine = commentIdx >= 0 ? trimmed.substring(0, commentIdx).trim() : trimmed;
+			let comment = commentIdx >= 0 ? trimmed.substring(commentIdx + 1).trim() : '';
+
+			// Extract posting flag if present
+			let postingFlag: string | null = null;
+			if (mainLine.startsWith('* ') || mainLine.startsWith('! ')) {
+				postingFlag = mainLine[0];
+				mainLine = mainLine.substring(2).trim();
+			}
+
+			const accountMatch = mainLine.match(/^([A-Z0-9][A-Za-z0-9:-]+)/);
+			if (accountMatch) {
+				hasSeenPostings = true;
+				const account = accountMatch[1];
+				let rest = mainLine.substring(account.length).trim();
+
+				let amount = '';
+				let currency = '';
+				let cost: any = null;
+				let price: any = null;
+
+				if (rest) {
+					// Price (starts with @ or @@)
+					const priceIdx = rest.search(/@@?/);
+					let priceStr = '';
+					if (priceIdx >= 0) {
+						priceStr = rest.substring(priceIdx).trim();
+						rest = rest.substring(0, priceIdx).trim();
+					}
+
+					// Cost (starts with { or {{, ends with } or }})
+					const costStartIdx = rest.indexOf('{');
+					let costStr = '';
+					if (costStartIdx >= 0) {
+						const costEndIdx = rest.lastIndexOf('}');
+						if (costEndIdx > costStartIdx) {
+							costStr = rest.substring(costStartIdx, costEndIdx + 1);
+							rest = rest.substring(0, costStartIdx).trim();
+						}
+					}
+
+					// Amount Currency
+					if (rest) {
+						const parts = rest.split(/\s+/);
+						if (parts.length >= 1) amount = parts[0];
+						if (parts.length >= 2) currency = parts[1];
+					}
+
+					// Cost parse
+					if (costStr) {
+						const isTotal = costStr.startsWith('{{');
+						const costInner = costStr.replace(/^\{+/, '').replace(/\}+$/, '').trim();
+						const costParts = costInner.split(',').map(s => s.trim());
+						let costNum = '';
+						let costCurr = currency || '';
+						let costDate = '';
+						let costLabel = '';
+
+						if (costParts.length >= 1) {
+							const firstPart = costParts[0].split(/\s+/);
+							costNum = firstPart[0];
+							if (firstPart.length >= 2) costCurr = firstPart[1];
+						}
+						if (costParts.length >= 2) {
+							if (/^\d{4}-\d{2}-\d{2}/.test(costParts[1])) {
+								costDate = costParts[1];
+							} else if (costParts[1].startsWith('"')) {
+								costLabel = costParts[1].replace(/^"/, '').replace(/"$/, '');
+							}
+						}
+						if (costParts.length >= 3) {
+							if (costParts[2].startsWith('"')) {
+								costLabel = costParts[2].replace(/^"/, '').replace(/"$/, '');
+							}
+						}
+
+						cost = {
+							number: costNum,
+							currency: costCurr,
+							date: costDate,
+							label: costLabel,
+							isTotal
+						};
+					}
+
+					// Price parse
+					if (priceStr) {
+						const isTotal = priceStr.startsWith('@@');
+						const priceInner = priceStr.replace(/^@@?/, '').trim();
+						const priceParts = priceInner.split(/\s+/);
+						let priceAmt = '';
+						let priceCurr = '';
+
+						if (priceParts.length >= 1) priceAmt = priceParts[0];
+						if (priceParts.length >= 2) priceCurr = priceParts[1];
+
+						price = {
+							amount: priceAmt,
+							currency: priceCurr,
+							isTotal
+						};
+					}
+				}
+
+				currentPosting = {
+					account,
+					amount,
+					currency,
+					flag: postingFlag,
+					comment,
+					metadata: {},
+					cost: cost || {
+						number: '',
+						currency: currency || 'USD',
+						date: '',
+						label: '',
+						isTotal: false
+					},
+					price: price || {
+						amount: '',
+						currency: currency || 'USD',
+						isTotal: false
+					}
+				};
+				postings.push(currentPosting);
+			}
+		}
+
+		return { payee, narration, flag, tags, links, metadata, postings };
+	}
+
+	// Open load snippet suggest modal
+	function openLoadSnippetModal() {
+		if (!plugin) {
+			console.error("Plugin instance not found");
+			return;
+		}
+
+		const snippets = plugin.snippetCompletions || [];
+		if (snippets.length === 0) {
+			new Notice("No snippets found. Please enable snippets and define them in snippets.beancount first.");
+			return;
+		}
+
+		new SnippetSuggestModal(plugin.app, snippets, (item) => {
+			const infoStr = item.info as string;
+			const doubleNewlineIdx = infoStr.indexOf('\n\n');
+			if (doubleNewlineIdx >= 0) {
+				const templateText = infoStr.substring(doubleNewlineIdx + 2);
+				const parsed = parseBeancountTransaction(templateText);
+
+				payee = parsed.payee;
+				narration = parsed.narration;
+				flag = parsed.flag;
+				postings = parsed.postings;
+				selectedTags = parsed.tags;
+				selectedLinks = parsed.links;
+				transactionMetadata = parsed.metadata;
+				showTransactionMetadata = Object.keys(transactionMetadata).length > 0;
+
+				// Refresh Svelte reactive expandable lists
+				showCost = postings.map(p => p.cost && (p.cost.number || p.cost.date || p.cost.label));
+				showPrice = postings.map(p => p.price && p.price.amount);
+				showPostingFlag = postings.map(p => !!p.flag);
+				showPostingComment = postings.map(p => !!p.comment);
+				showPostingMetadata = postings.map(p => p.metadata && Object.keys(p.metadata).length > 0);
+
+				new Notice(`Loaded snippet: ${item.label}`);
+			}
+		}).open();
+	}
+
 	// Cancel editing
 	function cancel() {
 		dispatch("cancel");
@@ -894,7 +1165,7 @@
 									on:click={() =>
 										removeTransactionMetadata(key)}
 								>
-									🗑️
+									&times;
 								</button>
 							</div>
 						{/each}
@@ -912,291 +1183,27 @@
 			<!-- Postings -->
 			<div class="postings-section">
 				{#each postings as posting, index}
-					<div class="posting-container">
-						<div class="posting-row">
-							<div class="posting-account">
-						<label for="posting-account-{index}">Account *</label>
-						<input
-							id="posting-account-{index}"
-							type="text"
-							bind:value={posting.account}
-							list="accounts-list"
-							placeholder="Account name"
-							required
-						/>
-					</div>
-
-					<div class="posting-amount">
-						<label for="posting-amount-{index}">Amount</label>
-						<input
-							id="posting-amount-{index}"
-							type="number"
-							step="0.01"
-							bind:value={posting.amount}
-							placeholder="Optional amount"
-						/>
-					</div>
-
-					<div class="posting-currency">
-						<label for="posting-currency-{index}">Currency</label>
-						<input
-							id="posting-currency-{index}"
-									bind:value={posting.currency}
-									list="currencies-list"
-									placeholder="INR"
-									maxlength="3"
-								/>
-							</div>
-
-							<div class="posting-toggle-buttons">
-								<button
-									type="button"
-									class="posting-toggle-btn cost-btn"
-									class:active={showCost[index]}
-									on:click={() => toggleCost(index)}
-									title="Cost"
-								>
-									$
-								</button>
-								<button
-									type="button"
-									class="posting-toggle-btn price-btn"
-									class:active={showPrice[index]}
-									on:click={() => togglePrice(index)}
-									title="Price"
-								>
-									@
-								</button>
-								<button
-									type="button"
-									class="posting-toggle-btn flag-btn"
-									class:active={showPostingFlag[index]}
-									on:click={() => togglePostingFlag(index)}
-									title="Flag"
-								>
-									!
-								</button>
-								<button
-									type="button"
-									class="posting-toggle-btn comment-btn"
-									class:active={showPostingComment[index]}
-									on:click={() => togglePostingComment(index)}
-									title="Comment"
-								>
-									💬
-								</button>
-								<button
-									type="button"
-									class="posting-toggle-btn metadata-btn"
-									class:active={showPostingMetadata[index]}
-									on:click={() =>
-										togglePostingMetadata(index)}
-									title="Metadata"
-								>
-									📋
-								</button>
-								{#if postings.length > 2}
-									<button
-										type="button"
-										class="remove-posting"
-										on:click={() => removePosting(index)}
-										title="Remove posting"
-									>
-										🗑️
-									</button>
-								{/if}
-							</div>
-						</div>
-
-						<!-- Cost Section -->
-						{#if showCost[index]}
-							<div class="posting-advanced cost-section">
-								<div class="advanced-grid">
-									<div class="advanced-field">
-									<label for="cost-amount-{index}">Amount</label>
-									<input
-										id="cost-amount-{index}"
-										type="number"
-										step="0.01"
-										bind:value={posting.cost.number}
-										placeholder="150.00"
-									/>
-								</div>
-
-								<div class="advanced-field">
-									<label for="cost-currency-{index}">Currency</label>
-									<input
-									id="cost-currency-{index}"
-										type="text"
-										bind:value={posting.cost.currency}
-										list="currencies-list"
-										placeholder="USD"
-										maxlength="3"
-									/>
-								</div>
-
-								<div class="advanced-field">
-									<label for="cost-date-{index}">Date</label>
-									<input
-										id="cost-date-{index}"
-										type="date"
-										bind:value={posting.cost.date}
-										max={date}
-										use:nativeDatePicker
-									/>
-								</div>
-
-								<div class="advanced-field">
-									<label for="cost-label-{index}">Label</label>
-									<input
-										id="cost-label-{index}"
-											bind:value={posting.cost.label}
-											placeholder="lot-001"
-										/>
-									</div>
-
-									<div class="advanced-field checkbox-field">
-										<label>
-											<input
-												type="checkbox"
-												bind:checked={
-													posting.cost.isTotal
-												}
-											/>
-											Total Cost {{}}
-										</label>
-									</div>
-								</div>
-							</div>
-						{/if}
-
-						<!-- Price Section -->
-						{#if showPrice[index]}
-							<div class="posting-advanced price-section">
-								<div class="advanced-grid">
-									<div class="advanced-field">
-									<label for="price-amount-{index}">Amount</label>
-									<input
-										id="price-amount-{index}"
-										type="number"
-										step="0.01"
-										bind:value={posting.price.amount}
-										placeholder="1.09"
-									/>
-								</div>
-
-								<div class="advanced-field">
-									<label for="price-currency-{index}">Currency</label>
-									<input
-										id="price-currency-{index}"
-											list="currencies-list"
-											placeholder="CAD"
-											maxlength="3"
-										/>
-									</div>
-
-									<div class="advanced-field checkbox-field">
-										<label>
-											<input
-												type="checkbox"
-												bind:checked={
-													posting.price.isTotal
-												}
-											/>
-											Total Price @@
-										</label>
-									</div>
-								</div>
-							</div>
-						{/if}
-
-						<!-- Posting Flag Section -->
-						{#if showPostingFlag[index]}
-							<div class="posting-advanced flag-section">
-								<div class="flag-field">
-									<label>
-										<input
-											type="radio"
-											bind:group={posting.flag}
-											value="!"
-										/>
-										! Incomplete
-									</label>
-									<label>
-										<input
-											type="radio"
-											bind:group={posting.flag}
-											value="*"
-										/>
-										* Complete
-									</label>
-								</div>
-							</div>
-						{/if}
-
-						<!-- Comment Section -->
-						{#if showPostingComment[index]}
-							<div class="posting-advanced comment-section">
-							<label for="posting-comment-{index}">Comment</label>
-							<input
-								id="posting-comment-{index}"
-									placeholder="Inline comment"
-									class="comment-input"
-								/>
-							</div>
-						{/if}
-
-						<!-- Posting Metadata Section -->
-						{#if showPostingMetadata[index]}
-							<div class="posting-advanced metadata-section">
-								<div class="metadata-list">
-									{#each Object.keys(posting.metadata || {}) as key}
-										<div class="metadata-item">
-											<input
-												type="text"
-												value={key}
-												placeholder="key"
-												class="metadata-key"
-												on:change={(e) =>
-													updatePostingMetadataKey(
-														index,
-														key,
-														e.currentTarget.value,
-													)}
-											/>
-											<input
-												type="text"
-												bind:value={
-													posting.metadata[key]
-												}
-												placeholder="Value"
-												class="metadata-value"
-											/>
-											<button
-												type="button"
-												class="remove-metadata"
-												on:click={() =>
-													removePostingMetadata(
-														index,
-														key,
-													)}
-											>
-												🗑️
-											</button>
-										</div>
-									{/each}
-									<button
-										type="button"
-										class="add-metadata-btn"
-										on:click={() =>
-											addPostingMetadata(index)}
-									>
-										+ Add Metadata
-									</button>
-								</div>
-							</div>
-						{/if}
-					</div>
+					<PostingRow
+						{posting}
+						{index}
+						totalPostings={postings.length}
+						{date}
+						{operatingCurrency}
+						showCost={showCost[index]}
+						showPrice={showPrice[index]}
+						showPostingFlag={showPostingFlag[index]}
+						showPostingComment={showPostingComment[index]}
+						showPostingMetadata={showPostingMetadata[index]}
+						onToggleCost={toggleCost}
+						onTogglePrice={togglePrice}
+						onToggleFlag={togglePostingFlag}
+						onToggleComment={togglePostingComment}
+						onToggleMetadata={togglePostingMetadata}
+						onRemovePosting={removePosting}
+						onAddMetadata={addPostingMetadata}
+						onRemoveMetadata={removePostingMetadata}
+						onUpdateMetadataKey={updatePostingMetadataKey}
+					/>
 				{/each}
 
 				<button type="button" class="add-posting" on:click={addPosting}>
@@ -1204,268 +1211,50 @@
 				</button>
 			</div>
 
-			<!-- Tags & Links (side-by-side) -->
-			<div class="tags-links-section">
-				<div class="tags-links-row">
-					<div class="form-group">
-						<label for="tags">Tags</label>
-						<input
-							type="text"
-							id="tags"
-							on:keydown={handleTagInput}
-							list="tags-list"
-							placeholder="Tag + Enter"
-						/>
-						<datalist id="tags-list">
-							{#each tags as tag}
-								<option value={tag} />
-							{/each}
-						</datalist>
-						{#if selectedTags.length > 0}
-							<div class="selected-tags">
-								{#each selectedTags as tag}
-									<span class="tag"
-										>#{tag}<button
-											type="button"
-											on:click={() => removeTag(tag)}
-											>&times;</button
-										></span
-									>
-								{/each}
-							</div>
-						{/if}
-					</div>
-					<div class="form-group">
-						<label for="links">Links</label>
-						<input
-							type="text"
-							id="links"
-							on:keydown={handleLinkInput}
-							placeholder="Link + Enter"
-						/>
-						{#if selectedLinks.length > 0}
-							<div class="selected-links">
-								{#each selectedLinks as link}
-									<span class="link"
-										>^{link}<button
-											type="button"
-											on:click={() => removeLink(link)}
-											>&times;</button
-										></span
-									>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				</div>
-			</div>
+			<!-- Tags & Links -->
+			<TagLinkInput
+				bind:selectedTags
+				bind:selectedLinks
+				{tags}
+			/>
 		{/if}
 
 		<!-- Balance Form -->
 		{#if activeTab === "balance"}
-			<div class="form-grid">
-				<div class="form-group">
-					<label for="balance-date">Date *</label>
-					<input
-						type="date"
-						id="balance-date"
-						bind:value={date}
-						use:nativeDatePicker
-						required
-					/>
-				</div>
-
-				<div class="form-group full-width">
-					<label for="balance-account">Account *</label>
-					<input
-						type="text"
-						id="balance-account"
-						bind:value={balanceAccount}
-						list="accounts-list"
-						placeholder="Account to check balance"
-						required
-					/>
-				</div>
-
-				<div class="form-group">
-					<label for="balance-amount">Amount *</label>
-					<input
-						type="number"
-						step="0.01"
-						id="balance-amount"
-						bind:value={balanceAmount}
-						placeholder="Expected balance"
-						required
-					/>
-				</div>
-
-				<div class="form-group">
-					<label for="balance-currency">Currency *</label>
-					<input
-						type="text"
-						id="balance-currency"
-						bind:value={balanceCurrency}
-						list="currencies-list"
-						placeholder="INR"
-						maxlength="3"
-						required
-					/>
-				</div>
-			</div>
+			<BalanceTabForm
+				bind:date
+				bind:balanceAccount
+				bind:balanceAmount
+				bind:balanceCurrency
+			/>
 		{/if}
 
 		<!-- Note Form -->
 		{#if activeTab === "note"}
-			<div class="form-grid">
-				<div class="form-group">
-					<label for="note-date">Date *</label>
-					<input
-						type="date"
-						id="note-date"
-						bind:value={date}
-						use:nativeDatePicker
-						required
-					/>
-				</div>
-
-				<div class="form-group full-width">
-					<label for="note-account">Account *</label>
-					<input
-						type="text"
-						id="note-account"
-						bind:value={noteAccount}
-						list="accounts-list"
-						placeholder="Account for the note"
-						required
-					/>
-				</div>
-
-				<div class="form-group full-width">
-					<label for="note-comment">Comment *</label>
-					<textarea
-						id="note-comment"
-						bind:value={noteComment}
-						placeholder="Note content"
-						required
-						rows="3"
-					></textarea>
-				</div>
-			</div>
+			<NoteTabForm
+				bind:date
+				bind:noteAccount
+				bind:noteComment
+			/>
 		{/if}
 
 		<!-- Query Form -->
 		{#if activeTab === "query"}
-			<div class="form-grid">
-				<div class="form-group">
-					<label for="query-date">Date *</label>
-					<input
-						type="date"
-						id="query-date"
-						bind:value={date}
-						use:nativeDatePicker
-						required
-					/>
-				</div>
-
-				<div class="form-group full-width">
-					<label for="query-name">Query name *</label>
-					<input
-						type="text"
-						id="query-name"
-						bind:value={queryName}
-						placeholder="e.g. my_expenses"
-						required
-					/>
-					<small class="query-hint">Use in notes with <code>bql-q:{queryName || 'name'}</code></small>
-				</div>
-
-				<div class="form-group full-width">
-					<label for="query-sql">SQL *</label>
-					<textarea
-						id="query-sql"
-						bind:value={querySql}
-						placeholder="SELECT account, sum(position) WHERE account ~ 'Expenses' GROUP BY account"
-						required
-						rows="4"
-						class="query-sql-textarea"
-					></textarea>
-					<button
-						type="button"
-						class="btn-test-query"
-						on:click={testQuerySQL}
-						disabled={queryTesting || !querySql.trim()}
-					>
-						{queryTesting ? "Running..." : "▶ Test Query"}
-					</button>
-				</div>
-
-				{#if queryTestError}
-					<div class="form-group full-width">
-						<div class="query-test-error">
-							<strong>Error:</strong> {queryTestError}
-						</div>
-					</div>
-				{/if}
-
-				{#if queryTestRows.length > 0}
-					<div class="form-group full-width">
-						<div class="query-test-results">
-							<small class="query-preview-label">
-								Preview {Math.min(queryTestRows.length - 1, 5)} row(s)
-							</small>
-							<table class="query-preview-table">
-								<thead>
-									<tr>{#each queryTestRows[0] as h}<th>{h}</th>{/each}</tr>
-								</thead>
-								<tbody>
-									{#each queryTestRows.slice(1) as row}
-										<tr>{#each row as cell}<td>{cell}</td>{/each}</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
-					</div>
-				{/if}
-			</div>
+			<QueryTabForm
+				bind:date
+				bind:queryName
+				bind:querySql
+				{queryTesting}
+				{queryTestRows}
+				{queryTestError}
+				{savedQueries}
+				{savedQueriesLoading}
+				onTestQuerySQL={testQuerySQL}
+				onLoadSavedQueries={loadSavedQueries}
+				onLoadQueryIntoForm={loadQueryIntoForm}
+			/>
 		{/if}
 
-		<!-- Saved Queries Browser -->
-		{#if activeTab === "query"}
-			<div class="saved-queries-section">
-				<div class="saved-queries-header">
-					<span>Saved Named Queries</span>
-					<button
-						type="button"
-						class="btn-refresh-queries"
-						on:click={() => { savedQueriesLoaded = false; loadSavedQueries(); }}
-						disabled={savedQueriesLoading}
-						title="Refresh list"
-					>↻</button>
-				</div>
-				{#if savedQueriesLoading}
-					<p class="saved-queries-empty">Loading…</p>
-				{:else if Object.keys(savedQueries).length === 0}
-					<p class="saved-queries-empty">No named queries saved yet.</p>
-				{:else}
-					<ul class="saved-queries-list">
-						{#each Object.entries(savedQueries) as [name, sql]}
-							<li class="saved-query-item">
-								<div class="saved-query-info">
-									<code class="saved-query-name">bql-q:{name}</code>
-									<span class="saved-query-sql">{sql}</span>
-								</div>
-								<button
-									type="button"
-									class="btn-load-query"
-									on:click={() => loadQueryIntoForm(name, sql)}
-									title="Load into editor"
-								>Load</button>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			</div>
-		{/if}
 		<datalist id="accounts-list">
 			{#each accounts as account}
 				<option value={account} />
@@ -1491,6 +1280,15 @@
 					disabled={deleting}
 				>
 					{deleting ? "Deleting..." : "Delete"}
+				</button>
+			{/if}
+			{#if mode === "add" && activeTab === "transaction" && plugin?.settings?.enableUserSnippets}
+				<button
+					type="button"
+					class="btn-secondary"
+					on:click={openLoadSnippetModal}
+				>
+					📋 Load Snippet
 				</button>
 			{/if}
 		</div>
@@ -1793,9 +1591,9 @@
 	}
 
 	.remove-posting {
-		background: var(--background-modifier-error);
+		background: var(--background-modifier-form-field);
 		color: var(--text-error);
-		border: none;
+		border: 1px solid var(--background-modifier-border);
 		border-radius: 4px;
 		width: 2rem;
 		height: 2rem;
@@ -1804,11 +1602,13 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		transition: all 0.2s;
 	}
 
 	.remove-posting:hover:not(:disabled) {
-		background: var(--text-error);
-		color: var(--text-on-accent);
+		background: var(--background-modifier-error);
+		border-color: var(--text-error);
+		color: var(--text-error);
 	}
 
 	.remove-posting:disabled {
@@ -2047,12 +1847,14 @@
 	}
 
 	.header-flag select {
-		padding: 0.5rem;
+		padding: 0.3rem 0.5rem;
 		border: 1px solid var(--background-modifier-border);
 		border-radius: 4px;
 		background: var(--background-primary);
 		color: var(--text-normal);
-		font-size: 0.9rem;
+		font-size: 0.875rem;
+		height: 2rem;
+		line-height: 1.2;
 	}
 
 	.header-metadata-btn {
@@ -2127,19 +1929,7 @@
 		color: var(--text-on-accent);
 	}
 
-	.remove-posting {
-		background: var(--background-modifier-error);
-		border: 1px solid var(--text-error);
-		border-radius: 4px;
-		padding: 0.5rem;
-		cursor: pointer;
-		font-size: 0.9rem;
-		transition: all 0.2s;
-	}
-
-	.remove-posting:hover {
-		opacity: 0.8;
-	}
+	/* Consolidated with definition above */
 
 	/* Posting Advanced Sections */
 	.posting-advanced {
@@ -2202,12 +1992,20 @@
 	}
 
 	.remove-metadata {
-		background: var(--background-modifier-error);
-		border: 1px solid var(--text-error);
+		background: var(--background-modifier-form-field);
+		color: var(--text-error);
+		border: 1px solid var(--background-modifier-border);
 		border-radius: 4px;
 		padding: 0.5rem;
 		cursor: pointer;
 		font-size: 0.9rem;
+		transition: all 0.2s;
+	}
+
+	.remove-metadata:hover {
+		background: var(--background-modifier-error);
+		border-color: var(--text-error);
+		color: var(--text-error);
 	}
 
 	.add-metadata-btn {

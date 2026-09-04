@@ -1,12 +1,18 @@
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte';
 	import { writable, type Writable } from 'svelte/store';
 	import type { IncomeStatementController, IncomeStatementState } from '../../../controllers/IncomeStatementController';
 	import type { AccountItem } from '../../../controllers/BalanceSheetController';
 	import { Logger } from '../../../utils/logger';
+	import { parsePeriodLabel } from '../../../utils/index';
+	import { resolveNavTab, type NavRequest } from '../../../types/navigation';
 	import SunburstChart from '../../common/SunburstChart.svelte';
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
+	import CustomSelect from '../../common/CustomSelect.svelte';
+
+	const dispatch = createEventDispatcher();
 
 	// Chart selector
 	let selectedChart: 'trend' | 'total' = 'trend';
@@ -15,6 +21,7 @@
 
 	// --- Receive the controller ---
 	export let controller: IncomeStatementController;
+	export let navigate: ((req: NavRequest) => void) | null = null;
 
 	// --- Placeholder state & store subscription ---
 	const placeholderState: Writable<IncomeStatementState> = writable({
@@ -26,6 +33,54 @@
 	});
 	$: stateStore = controller ? controller.state : placeholderState;
 	$: state = $stateStore;
+	$: currencyDecimals = controller ? controller.plugin.currencyPrecisionService.getDecimals(state.currency) : 2;
+
+	$: if (controller) {
+		controller.onChartClick = (periodKey: string, interval: 'month' | 'week', ctrlKey?: boolean) => {
+			const { startDate, endDate } = parsePeriodLabel(periodKey, interval);
+			if (startDate && endDate) {
+				const req: NavRequest = { tab: resolveNavTab({ ctrlKey }), filters: { startDate, endDate } };
+				if (navigate) {
+					navigate(req);
+				} else {
+					dispatch('navigate', req);
+				}
+			}
+		};
+	}
+
+	function handleAccountRowClick(item: AccountItem, event: MouseEvent) {
+		if (item.isCategory) {
+			if (event && (event.ctrlKey || event.metaKey)) {
+				// Ctrl/Cmd+click on a category header is the existing escape hatch
+				// straight to Transactions — deliberately not repurposed for Journal.
+				handleAccountNavigate(item.account);
+			} else {
+				toggleCollapse(item.account, event);
+			}
+		} else {
+			handleAccountNavigate(item.account, event);
+		}
+	}
+
+	function handleAccountNavigate(account: string, event?: { ctrlKey?: boolean; metaKey?: boolean }) {
+		if (!account) return;
+		const req: NavRequest = { tab: resolveNavTab(event), filters: { account } };
+		if (navigate) {
+			navigate(req);
+		} else {
+			dispatch('navigate', req);
+		}
+	}
+
+	function handleSegmentClick(e: CustomEvent<{ account: string }>) {
+		// Sunburst only ever emits this on Ctrl/Cmd+click (plain click drills in
+		// instead) — always send it to Transactions, per the sunburst's own contract.
+		const account = e.detail?.account;
+		if (account) {
+			handleAccountNavigate(account);
+		}
+	}
 
 	// Indentation helper
 	function getIndentation(level: number): string {
@@ -130,77 +185,60 @@
 		<!-- Chart Area -->
 		<div class="chart-area">
 			<div class="chart-area-header">
-				<div class="chart-selector" role="group" aria-label="Select chart">
-					<button
-						class="chart-selector-btn"
-						class:active={selectedChart === 'trend'}
-						on:click={() => (selectedChart = 'trend')}
-						aria-pressed={selectedChart === 'trend'}
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/>
-						</svg>
-						Trends
-					</button>
-					<button
-						class="chart-selector-btn"
-						class:active={selectedChart === 'total'}
-						on:click={() => (selectedChart = 'total')}
-						aria-pressed={selectedChart === 'total'}
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<circle cx="12" cy="12" r="3"/>
-							<circle cx="12" cy="12" r="7"/>
-							<circle cx="12" cy="12" r="11"/>
-						</svg>
-						Total
-					</button>
-				</div>
+				<div class="pill-dropdown-group">
+					<CustomSelect
+						variant="primary"
+						position="left"
+						options={[
+							{ value: 'trend', label: 'Trends', icon: 'line-chart' },
+							{ value: 'total', label: 'Totals Breakdown', icon: 'pie-chart' }
+						]}
+						bind:value={selectedChart}
+						on:change={(e) => selectedChart = e.detail}
+						ariaLabel="Select chart view"
+					/>
 
-				{#if selectedChart === 'trend'}
-					<div class="trend-controls">
-						<div class="trend-type-toggle">
-							<button
-								class:active={state.chartTrendType === 'netprofit'}
-								on:click={() => handleTrendTypeChange('netprofit')}
-								disabled={state.chartLoading}
-							>Net Profit</button>
-							<button
-								class:active={state.chartTrendType === 'income'}
-								on:click={() => handleTrendTypeChange('income')}
-								disabled={state.chartLoading}
-							>Income</button>
-							<button
-								class:active={state.chartTrendType === 'expense'}
-								on:click={() => handleTrendTypeChange('expense')}
-								disabled={state.chartLoading}
-							>Expense</button>
-						</div>
-						<div class="interval-toggle">
-							<button
-								class:active={state.chartInterval === 'month'}
-								on:click={() => handleIntervalChange('month')}
-								disabled={state.chartLoading}
-							>Monthly</button>
-							<button
-								class:active={state.chartInterval === 'week'}
-								on:click={() => handleIntervalChange('week')}
-								disabled={state.chartLoading}
-							>Weekly</button>
-						</div>
-					</div>
-				{:else if selectedChart === 'total'}
-					<div class="section-toggle">
-						<button
-							class:active={selectedTotalSection === 'income'}
-							on:click={() => (selectedTotalSection = 'income')}
-						>Income</button>
-						<button
-							class:active={selectedTotalSection === 'expenses'}
-							on:click={() => (selectedTotalSection = 'expenses')}
-						>Expenses</button>
-					</div>
-				{/if}
+					{#if selectedChart === 'trend'}
+						<CustomSelect
+							variant="secondary"
+							position="middle"
+							options={[
+								{ value: 'netprofit', label: 'Net Profit', icon: 'dollar-sign' },
+								{ value: 'income', label: 'Income', icon: 'plus-circle' },
+								{ value: 'expense', label: 'Expense', icon: 'minus-circle' }
+							]}
+							value={state.chartTrendType}
+							on:change={(e) => handleTrendTypeChange(e.detail)}
+							disabled={state.chartLoading}
+							ariaLabel="Select trend type"
+						/>
+
+						<CustomSelect
+							variant="secondary"
+							position="right"
+							options={[
+								{ value: 'month', label: 'Monthly', icon: 'calendar' },
+								{ value: 'week', label: 'Weekly', icon: 'clock' }
+							]}
+							value={state.chartInterval}
+							on:change={(e) => handleIntervalChange(e.detail === 'week' ? 'week' : 'month')}
+							disabled={state.chartLoading}
+							ariaLabel="Select chart interval"
+						/>
+					{:else if selectedChart === 'total'}
+						<CustomSelect
+							variant="secondary"
+							position="right"
+							options={[
+								{ value: 'income', label: 'Income', icon: 'plus-circle' },
+								{ value: 'expenses', label: 'Expenses', icon: 'minus-circle' }
+							]}
+							bind:value={selectedTotalSection}
+							on:change={(e) => selectedTotalSection = e.detail}
+							ariaLabel="Select totals section"
+						/>
+					{/if}
+				</div>
 			</div>
 
 			{#if selectedChart === 'trend'}
@@ -224,11 +262,13 @@
 						liabilities={[]}
 						equity={[]}
 						currency={state.currency}
+						decimals={currencyDecimals}
 						totalAssets={state.totalIncome}
 						totalLiabilities={0}
 						totalEquity={0}
 						assetsLabel="Income"
 						assetsExpectNegative={false}
+						on:segment-click={handleSegmentClick}
 					/>
 				{:else}
 					<!-- Expenses: expect positive (debit accounts). Pass as liabilities→red, with liabilitiesExpectNegative=false -->
@@ -238,11 +278,13 @@
 						liabilities={state.expenses}
 						equity={[]}
 						currency={state.currency}
+						decimals={currencyDecimals}
 						totalAssets={0}
 						totalLiabilities={state.totalExpenses}
 						totalEquity={0}
 						liabilitiesLabel="Expenses"
 						liabilitiesExpectNegative={false}
+						on:segment-click={handleSegmentClick}
 					/>
 				{/if}
 			{/if}
@@ -284,17 +326,18 @@
 							{#each visibleIncome as item}
 								<tr class={getAccountClass(item)}>
 									<td class="account-name"
-										on:click={(e) => item.isCategory && toggleCollapse(item.account, e)}>
+										on:click={(e) => handleAccountRowClick(item, e)}
+										title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal' : undefined}>
 										{#if item.isCategory}
 											<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 										{/if}
 										{getIndentation(item.level)}{item.displayName}
 									</td>
-									<td class="align-right amount-cell" class:category-amount={item.isCategory}>
+									<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 										{item.amount}
 									</td>
 									{#if showOtherCurrenciesColumn}
-										<td class="align-right other-currencies-cell">
+										<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 											{item.otherCurrencies || ''}
 										</td>
 									{/if}
@@ -304,7 +347,7 @@
 					</table>
 					<div class="section-total">
 						<span>Total Income</span>
-						<span class="total-amount">{state.totalIncome.toFixed(2)} {state.currency}</span>
+						<span class="total-amount">{state.totalIncome.toFixed(currencyDecimals)} {state.currency}</span>
 					</div>
 				</div>
 
@@ -325,17 +368,18 @@
 							{#each visibleExpenses as item}
 								<tr class={getAccountClass(item)}>
 									<td class="account-name"
-										on:click={(e) => item.isCategory && toggleCollapse(item.account, e)}>
+										on:click={(e) => handleAccountRowClick(item, e)}
+										title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal' : undefined}>
 										{#if item.isCategory}
 											<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 										{/if}
 										{getIndentation(item.level)}{item.displayName}
 									</td>
-									<td class="align-right amount-cell" class:category-amount={item.isCategory}>
+									<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 										{item.amount}
 									</td>
 									{#if showOtherCurrenciesColumn}
-										<td class="align-right other-currencies-cell">
+										<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 											{item.otherCurrencies || ''}
 										</td>
 									{/if}
@@ -345,7 +389,7 @@
 					</table>
 					<div class="section-total">
 						<span>Total Expenses</span>
-						<span class="total-amount">{state.totalExpenses.toFixed(2)} {state.currency}</span>
+						<span class="total-amount">{state.totalExpenses.toFixed(currencyDecimals)} {state.currency}</span>
 					</div>
 				</div>
 			</div>
@@ -354,7 +398,7 @@
 			<div class="net-profit-row">
 				<span class="net-profit-label">Net Profit</span>
 				<span class="net-profit-value {netProfitClass(state.netProfit)}">
-					{state.netProfit.toFixed(2)} {state.currency}
+					{state.netProfit.toFixed(currencyDecimals)} {state.currency}
 				</span>
 			</div>
 		</div>
@@ -419,6 +463,7 @@
 		border-radius: var(--radius-m);
 		padding: var(--size-4-4);
 		background: var(--background-secondary);
+		position: relative;
 	}
 
 	.chart-area-header {
@@ -428,122 +473,39 @@
 		margin-bottom: var(--size-4-4);
 		flex-wrap: wrap;
 		gap: var(--size-4-2);
+		position: relative;
+		z-index: 20;
 	}
 
-	.chart-selector {
-		display: flex;
-		border: 1px solid var(--background-modifier-border);
-		border-radius: var(--radius-s);
-		overflow: hidden;
-	}
-
-	.chart-selector-btn {
-		display: flex;
+	.pill-dropdown-group {
+		display: inline-flex;
 		align-items: center;
-		gap: 5px;
-		padding: 4px 12px;
-		border: none;
-		background: var(--interactive-normal);
-		color: var(--text-muted);
-		cursor: pointer;
-		font-size: var(--font-ui-small);
-		transition: background 0.15s, color 0.15s;
+		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
 	}
 
-	.chart-selector-btn:not(:last-child) {
-		border-right: 1px solid var(--background-modifier-border);
-	}
-
-	.chart-selector-btn:hover {
-		background: var(--interactive-hover);
-		color: var(--text-normal);
-	}
-
-	.chart-selector-btn.active {
-		background: var(--interactive-accent);
-		color: var(--text-on-accent);
-	}
-
-	.trend-controls {
-		display: flex;
-		gap: var(--size-4-2);
-		align-items: center;
-		flex-wrap: wrap;
-	}
-
-	.trend-type-toggle {
-		display: flex;
+	.chart-select-dropdown {
+		background: var(--background-primary);
 		border: 1px solid var(--background-modifier-border);
 		border-radius: var(--radius-s);
-		overflow: hidden;
-	}
-
-	.trend-type-toggle button {
 		padding: var(--size-4-1) var(--size-4-3);
-		background: var(--interactive-normal);
-		border: none;
-		color: var(--text-muted);
-		cursor: pointer;
-		font-size: var(--font-ui-small);
-		transition: background-color 0.15s, color 0.15s;
-	}
-
-	.trend-type-toggle button:not(:last-child) {
-		border-right: 1px solid var(--background-modifier-border);
-	}
-
-	.trend-type-toggle button.active {
-		background: var(--interactive-accent);
-		color: var(--text-on-accent);
-	}
-
-	.trend-type-toggle button:hover:not(.active):not(:disabled) {
-		background: var(--interactive-hover);
 		color: var(--text-normal);
-	}
-
-	.trend-type-toggle button:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.interval-toggle,
-	.section-toggle {
-		display: flex;
-		border: 1px solid var(--background-modifier-border);
-		border-radius: var(--radius-s);
-		overflow: hidden;
-	}
-
-	.interval-toggle button,
-	.section-toggle button {
-		padding: var(--size-4-1) var(--size-4-3);
-		background: var(--interactive-normal);
-		border: none;
-		color: var(--text-muted);
-		cursor: pointer;
 		font-size: var(--font-ui-small);
-		transition: background-color 0.15s, color 0.15s;
+		font-weight: 500;
+		cursor: pointer;
+		transition: border-color 0.15s ease, background-color 0.15s ease;
 	}
 
-	.interval-toggle button:not(:last-child),
-	.section-toggle button:not(:last-child) {
-		border-right: 1px solid var(--background-modifier-border);
+	.chart-select-dropdown:hover:not(:disabled) {
+		border-color: var(--interactive-accent);
+		background-color: var(--interactive-hover);
 	}
 
-	.interval-toggle button.active,
-	.section-toggle button.active {
-		background: var(--interactive-accent);
-		color: var(--text-on-accent);
+	.chart-select-dropdown:focus {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 1px;
 	}
 
-	.interval-toggle button:hover:not(.active):not(:disabled),
-	.section-toggle button:hover:not(.active) {
-		background: var(--interactive-hover);
-		color: var(--text-normal);
-	}
-
-	.interval-toggle button:disabled {
+	.chart-select-dropdown:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
@@ -715,11 +677,25 @@
 		text-overflow: ellipsis;
 		max-width: 180px;
 		width: 50%;
-		cursor: default;
+		cursor: pointer;
 	}
 
 	:global(.account-row.category) .account-name {
 		cursor: pointer;
+	}
+
+	:global(.account-row.leaf) {
+		cursor: pointer;
+		transition: background-color 0.15s ease;
+	}
+
+	:global(.account-row.leaf):hover {
+		background-color: var(--background-modifier-hover);
+	}
+
+	:global(.account-row.leaf):hover .account-name {
+		color: var(--text-accent);
+		text-decoration: underline;
 	}
 
 	.collapse-icon {

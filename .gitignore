@@ -38,3 +38,13 @@ docs-site/static/img/Showcase.mp4
 # Lint outputs
 lint_any.json
 
+# Docs site dependencies and build outputs
+docs-site/node_modules/
+docs-site/build/
+docs-site/.docusaurus/
+docs-site/.cache-loader/
+docs-site/npm-debug.log*
+docs-site/.env*.local
+**.graphify**
+PRE_RELEASE_CHECKLIST.md
+CONNECTIONS_TESTING.md

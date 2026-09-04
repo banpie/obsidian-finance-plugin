@@ -9,6 +9,7 @@
 	import SkeletonLoader from "../../common/SkeletonLoader.svelte";
 	import ErrorBanner from "../../common/ErrorBanner.svelte";
 	import EmptyState from "../../common/EmptyState.svelte";
+	import CustomSelect from "../../common/CustomSelect.svelte";
 
 	export let controller: CommoditiesController;
 
@@ -17,13 +18,20 @@
 	// Extract the stores from the controller
 	$: filteredCommoditiesStore = controller.filteredCommodities;
 	$: operatingCurrency = controller.getOperatingCurrency();
+	$: lastUpdatedStore = controller.lastUpdated;
+	// Re-derive after every loadData() (tracked via lastUpdatedStore) so this reflects
+	// the currency precision map once it's finished loading, not just its value at mount.
+	let operatingCurrencyDecimals = 2;
+	$: if ($lastUpdatedStore || operatingCurrency) {
+		operatingCurrencyDecimals = controller.getCurrencyDecimals(operatingCurrency);
+	}
 	$: searchTermStore = controller.searchTerm;
 	$: loadingStore = controller.loading;
 	$: errorStore = controller.error;
-	$: lastUpdatedStore = controller.lastUpdated;
 	$: hasCommodityDataStore = controller.hasCommodityData;
 	$: fetchingPricesStore = controller.fetchingPrices;
 	$: lastPriceFetchStore = controller.lastPriceFetch;
+	$: beanPriceAvailableStore = controller.beanPriceAvailable;
 
 	// UI state
 	type FilterMode = 'all' | 'has_holding' | 'has_price' | 'has_both';
@@ -40,6 +48,7 @@
 	// Load data on mount
 	onMount(async () => {
 		console.debug("[CommoditiesTab] onMount — loading commodities");
+		controller.refreshBeanPriceAvailability();
 		await controller.loadData();
 	});
 
@@ -119,8 +128,10 @@
 			<button
 				on:click={handleUpdatePrices}
 				class="update-prices-button"
-				disabled={$loadingStore || $fetchingPricesStore}
-				title="Fetch latest prices for commodities with configured price sources"
+				disabled={!$beanPriceAvailableStore || $loadingStore || $fetchingPricesStore}
+				title={$beanPriceAvailableStore
+					? "Fetch latest prices for commodities with configured price sources"
+					: "Set up a bean-price command in Settings → Connection to enable price fetching"}
 			>
 				{$fetchingPricesStore ? "⟳ Fetching..." : "💰 Update Prices"}
 			</button>
@@ -144,27 +155,20 @@
 
 	<!-- Filter toggle -->
 	<div class="filter-bar">
-		<div class="filter-toggle" role="group" aria-label="Filter commodities">
-			<button
-				class="filter-btn"
-				class:active={filterMode === 'all'}
-				on:click={() => filterMode = 'all'}
-			>All</button>
-			<button
-				class="filter-btn"
-				class:active={filterMode === 'has_holding'}
-				on:click={() => filterMode = 'has_holding'}
-			>Has Holding</button>
-			<button
-				class="filter-btn"
-				class:active={filterMode === 'has_price'}
-				on:click={() => filterMode = 'has_price'}
-			>Has Price</button>
-			<button
-				class="filter-btn"
-				class:active={filterMode === 'has_both'}
-				on:click={() => filterMode = 'has_both'}
-			>Has Both</button>
+		<div class="pill-dropdown-group">
+			<CustomSelect
+				variant="primary"
+				position="single"
+				options={[
+					{ value: 'all', label: 'All Commodities', icon: 'layers' },
+					{ value: 'has_holding', label: 'Has Holding', icon: 'wallet' },
+					{ value: 'has_price', label: 'Has Price', icon: 'tag' },
+					{ value: 'has_both', label: 'Has Both', icon: 'sparkles' }
+				]}
+				bind:value={filterMode}
+				on:change={(e) => filterMode = e.detail}
+				ariaLabel="Filter commodities"
+			/>
 		</div>
 		<span class="filter-count">{displayCommodities.length} shown</span>
 	</div>
@@ -193,6 +197,7 @@
 					{commodity}
 					{index}
 					{operatingCurrency}
+					{operatingCurrencyDecimals}
 					on:click={handleCommodityClick}
 				/>
 			{/each}
@@ -279,9 +284,13 @@
 	}
 
 	.update-prices-button:disabled {
-		opacity: 0.6;
+		opacity: 0.5;
 		cursor: not-allowed;
 		transform: none;
+		background: var(--background-secondary);
+		border-color: var(--background-modifier-border);
+		color: var(--text-faint);
+		filter: grayscale(1);
 	}
 
 	.add-commodity-button {
@@ -317,40 +326,14 @@
 		align-items: center;
 		justify-content: space-between;
 		margin-bottom: 16px;
+		position: relative;
+		z-index: 20;
 	}
 
-	.filter-toggle {
-		display: flex;
-		background: var(--background-secondary);
-		border: 1px solid var(--background-modifier-border);
-		border-radius: 8px;
-		padding: 3px;
-		gap: 2px;
-	}
-
-	.filter-btn {
-		padding: 5px 14px;
-		border: none;
-		border-radius: 6px;
-		background: transparent;
-		color: var(--text-muted);
-		font-size: 13px;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all 0.15s ease;
-		white-space: nowrap;
-	}
-
-	.filter-btn:hover {
-		color: var(--text-normal);
-		background: var(--background-modifier-hover);
-	}
-
-	.filter-btn.active {
-		background: var(--background-primary);
-		color: var(--text-normal);
-		font-weight: 600;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+	.pill-dropdown-group {
+		display: inline-flex;
+		align-items: center;
+		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
 	}
 
 	.filter-count {

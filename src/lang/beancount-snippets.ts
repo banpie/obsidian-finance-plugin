@@ -10,6 +10,7 @@ import {
     type CompletionResult,
     type Completion,
 } from '@codemirror/autocomplete';
+import type BeancountPlugin from '../main';
 
 // ---------------------------------------------------------------------------
 // Date helper — returns today as YYYY-MM-DD
@@ -139,5 +140,127 @@ export function beancountSnippetSource(context: CompletionContext): CompletionRe
         from: line.from,
         options,
         filter: false,
+    };
+}
+
+// ---------------------------------------------------------------------------
+// User-Defined Transaction Snippets
+// ---------------------------------------------------------------------------
+
+/**
+ * Parses user-defined snippet transactions from the contents of snippets.beancount.
+ * Extracts the Snippet metadata value as the suggestion label, updates the date
+ * to today's date, and strips the Snippet metadata line.
+ */
+export function parseSnippetsFile(fileContent: string): Completion[] {
+    const completions: Completion[] = [];
+    const lines = fileContent.split(/\r?\n/);
+    
+    let currentTxnLines: string[] = [];
+    let currentSnippetName: string | null = null;
+    let insideTxn = false;
+
+    // Helper to get today's date format (YYYY-MM-DD)
+    const today = todayStr();
+
+    const finalizeTxn = () => {
+        if (currentTxnLines.length > 0 && currentSnippetName) {
+            const cleanedLines: string[] = [];
+            
+            // First line processing: replace the date prefix (YYYY-MM-DD) with today's date
+            const firstLine = currentTxnLines[0];
+            const dateRegex = /^(\d{4}-\d{2}-\d{2})/;
+            const updatedFirstLine = firstLine.replace(dateRegex, today);
+            cleanedLines.push(updatedFirstLine);
+
+            for (let i = 1; i < currentTxnLines.length; i++) {
+                const line = currentTxnLines[i];
+                // Check if this line is the Snippet metadata definition
+                if (/^\s*Snippet:\s*/i.test(line)) {
+                    continue; // Skip the Snippet metadata line
+                }
+                cleanedLines.push(line);
+            }
+
+            const template = cleanedLines.join('\n');
+
+            completions.push({
+                label: currentSnippetName,
+                detail: 'snippet',
+                type: 'keyword',
+                info: `Snippet: ${currentSnippetName}\n\n${template}`,
+                apply: snippet(template),
+                boost: 9,
+            });
+        }
+        currentTxnLines = [];
+        currentSnippetName = null;
+        insideTxn = false;
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const isHeader = /^\d{4}-\d{2}-\d{2}/.test(line);
+
+        if (isHeader) {
+            if (insideTxn) {
+                finalizeTxn();
+            }
+            insideTxn = true;
+            currentTxnLines.push(line);
+        } else if (insideTxn) {
+            const trimmed = line.trim();
+            const startsWithWhitespace = /^\s/.test(line);
+            
+            if (startsWithWhitespace || trimmed === '' || trimmed.startsWith(';')) {
+                currentTxnLines.push(line);
+                
+                // Extract snippet name from Metadata
+                const match = line.match(/^\s*Snippet:\s*(.+)$/i);
+                if (match) {
+                    let name = match[1].trim();
+                    if ((name.startsWith('"') && name.endsWith('"')) || (name.startsWith("'") && name.endsWith("'"))) {
+                        name = name.slice(1, -1);
+                    }
+                    currentSnippetName = name;
+                }
+            } else {
+                finalizeTxn();
+            }
+        }
+    }
+    
+    finalizeTxn();
+
+    return completions;
+}
+
+/**
+ * CompletionSource for user-defined transaction snippets.
+ * Activates when the cursor is at the very beginning of a line.
+ */
+export function beancountUserSnippetSource(plugin: BeancountPlugin) {
+    return (context: CompletionContext): CompletionResult | null => {
+        const { state, pos } = context;
+        const line = state.doc.lineAt(pos);
+
+        // Only activate when cursor is at the very start of the line content
+        const lineUpToCursor = line.text.slice(0, pos - line.from);
+        const matchAtStart = lineUpToCursor.match(/^([a-zA-Z0-9_-]*)$/);
+        if (!matchAtStart) return null;
+
+        const typed = matchAtStart[1];
+        const snippets = plugin.snippetCompletions || [];
+        const options = snippets.filter((s) =>
+            s.label.toLowerCase().startsWith(typed.toLowerCase())
+        );
+
+        if (options.length === 0) return null;
+
+        return {
+            from: line.from,
+            options,
+            filter: false,
+        };
     };
 }

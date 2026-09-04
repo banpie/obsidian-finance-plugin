@@ -1,13 +1,21 @@
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte';
 	// --- REMOVED onMount, parseCsv, queries, plugin imports ---
 	import { writable, type Writable } from 'svelte/store';
+	import { Menu } from 'obsidian';
 	import type { BalanceSheetController, BalanceSheetState, AccountItem } from '../../../controllers/BalanceSheetController';
 	import { Logger } from '../../../utils/logger';
 	import { AccountManagementModal } from '../../modals/AccountManagementModal';
+	import { AccountDetailModal } from '../../modals/AccountDetailModal';
+	import { BeancountView, BEANCOUNT_VIEW_TYPE } from '../../views/sidebar/sidebar-view';
+	import { resolveNavTab, type NavRequest } from '../../../types/navigation';
 	import SunburstChart from '../../common/SunburstChart.svelte';
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
+	import CustomSelect from '../../common/CustomSelect.svelte';
+
+	const dispatch = createEventDispatcher();
 
 	// Chart selector: which chart is shown in the chart area
 	let selectedChart: 'trend' | 'balances' = 'trend';
@@ -16,6 +24,40 @@
 
 	// --- Receive the controller ---
 	export let controller: BalanceSheetController;
+	export let navigate: ((req: NavRequest) => void) | null = null;
+
+	function handleAccountRowClick(item: AccountItem, event: MouseEvent) {
+		if (item.isCategory) {
+			if (event && (event.ctrlKey || event.metaKey)) {
+				// Ctrl/Cmd+click on a category header is the existing escape hatch
+				// straight to Transactions — deliberately not repurposed for Journal.
+				handleAccountNavigate(item.account);
+			} else {
+				toggleCollapse(item.account, event);
+			}
+		} else {
+			handleAccountNavigate(item.account, event);
+		}
+	}
+
+	function handleAccountNavigate(account: string, event?: { ctrlKey?: boolean; metaKey?: boolean }) {
+		if (!account) return;
+		const req: NavRequest = { tab: resolveNavTab(event), filters: { account } };
+		if (navigate) {
+			navigate(req);
+		} else {
+			dispatch('navigate', req);
+		}
+	}
+
+	function handleSegmentClick(e: CustomEvent<{ account: string }>) {
+		// Sunburst only ever emits this on Ctrl/Cmd+click (plain click drills in
+		// instead) — always send it to Transactions, per the sunburst's own contract.
+		const account = e.detail?.account;
+		if (account) {
+			handleAccountNavigate(account);
+		}
+	}
 
 	// --- Set up a placeholder and subscribe to the store ---
 	const placeholderState: Writable<BalanceSheetState> = writable({
@@ -26,6 +68,7 @@
 	});
 	$: stateStore = controller ? controller.state : placeholderState;
 	$: state = $stateStore;
+	$: currencyDecimals = controller ? controller.plugin.currencyPrecisionService.getDecimals(state.currency) : 2;
 	// ------------------------------------------------------
 
 	// Helper function to generate indentation based on account level
@@ -112,6 +155,21 @@
 	$: visibleEquity = state.equity ? state.equity.filter(item => shouldShowRow(item, collapsedAccounts)) : [];
 
 	// Account management functions
+
+	// Opening/closing an account here only refreshes this tab's own controller.
+	// The Snapshot sidebar view (reconciliation panel) caches its own account
+	// list independently and has no listener for changes made elsewhere, so it
+	// must be refreshed explicitly or it keeps showing stale (e.g. just-closed)
+	// accounts until the user manually hits its own refresh button (issue #271).
+	async function refreshSnapshotView() {
+		const leaves = controller.plugin.app.workspace.getLeavesOfType(BEANCOUNT_VIEW_TYPE);
+		for (const leaf of leaves) {
+			if (leaf.view instanceof BeancountView) {
+				await leaf.view.updateView();
+			}
+		}
+	}
+
 	function handleOpenAccount() {
 		const plugin = controller.plugin;
 		const modal = new AccountManagementModal(
@@ -121,6 +179,7 @@
 			async () => {
 				// Refresh callback
 				await controller.loadData();
+				await refreshSnapshotView();
 			}
 		);
 		modal.open();
@@ -135,8 +194,34 @@
 			async () => {
 				// Refresh callback
 				await controller.loadData();
+				await refreshSnapshotView();
 			}
 		);
+		modal.open();
+	}
+
+	// Right-click on a leaf account row -> "Account details" (view/edit reconcile
+	// interval, Balance/Force reconcile quick actions). Categories have no
+	// open/close/reconcile state of their own, so the menu is leaf-only.
+	function handleAccountContextMenu(item: AccountItem, event: MouseEvent) {
+		if (item.isCategory) return;
+		event.preventDefault();
+		const menu = new Menu();
+		menu.addItem((menuItem) =>
+			menuItem
+				.setTitle('Account details')
+				.setIcon('info')
+				.onClick(() => openAccountDetail(item.account))
+		);
+		menu.showAtMouseEvent(event);
+	}
+
+	function openAccountDetail(account: string) {
+		const plugin = controller.plugin;
+		const modal = new AccountDetailModal(plugin.app, plugin, account, async () => {
+			await controller.loadData();
+			await refreshSnapshotView();
+		});
 		modal.open();
 	}
 
@@ -186,61 +271,47 @@
 		<!-- Chart Area -->
 		<div class="chart-area">
 			<div class="chart-area-header">
-				<div class="chart-selector" role="group" aria-label="Select chart">
-					<button
-						class="chart-selector-btn"
-						class:active={selectedChart === 'trend'}
-						on:click={() => (selectedChart = 'trend')}
-						aria-pressed={selectedChart === 'trend'}
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-						</svg>
-						Net Worth Trend
-					</button>
-					<button
-						class="chart-selector-btn"
-						class:active={selectedChart === 'balances'}
-						on:click={() => (selectedChart = 'balances')}
-						aria-pressed={selectedChart === 'balances'}
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<circle cx="12" cy="12" r="3"/>
-							<circle cx="12" cy="12" r="7"/>
-							<circle cx="12" cy="12" r="11"/>
-						</svg>
-						Balances
-					</button>
+				<div class="pill-dropdown-group">
+					<CustomSelect
+						variant="primary"
+						position="left"
+						options={[
+							{ value: 'trend', label: 'Net Worth Trend', icon: 'line-chart' },
+							{ value: 'balances', label: 'Balances', icon: 'pie-chart' }
+						]}
+						bind:value={selectedChart}
+						on:change={(e) => selectedChart = e.detail}
+						ariaLabel="Select chart view"
+					/>
+
+					{#if selectedChart === 'trend'}
+						<CustomSelect
+							variant="secondary"
+							position="right"
+							options={[
+								{ value: 'month', label: 'Monthly', icon: 'calendar' },
+								{ value: 'week', label: 'Weekly', icon: 'clock' }
+							]}
+							value={state.chartInterval}
+							on:change={(e) => handleIntervalChange(e.detail === 'week' ? 'week' : 'month')}
+							disabled={state.chartLoading}
+							ariaLabel="Select chart interval"
+						/>
+					{:else if selectedChart === 'balances'}
+						<CustomSelect
+							variant="secondary"
+							position="right"
+							options={[
+								{ value: 'assets', label: 'Assets', icon: 'briefcase' },
+								{ value: 'liabilities', label: 'Liabilities', icon: 'credit-card' },
+								{ value: 'equity', label: 'Equity', icon: 'scale' }
+							]}
+							bind:value={selectedBalanceSection}
+							on:change={(e) => selectedBalanceSection = e.detail}
+							ariaLabel="Select balance section"
+						/>
+					{/if}
 				</div>
-				{#if selectedChart === 'trend'}
-					<div class="interval-toggle">
-						<button
-							class:active={state.chartInterval === 'month'}
-							on:click={() => handleIntervalChange('month')}
-							disabled={state.chartLoading}
-						>Monthly</button>
-						<button
-							class:active={state.chartInterval === 'week'}
-							on:click={() => handleIntervalChange('week')}
-							disabled={state.chartLoading}
-						>Weekly</button>
-					</div>
-				{:else if selectedChart === 'balances'}
-					<div class="balance-section-toggle">
-						<button
-							class:active={selectedBalanceSection === 'assets'}
-							on:click={() => (selectedBalanceSection = 'assets')}
-						>Assets</button>
-						<button
-							class:active={selectedBalanceSection === 'liabilities'}
-							on:click={() => (selectedBalanceSection = 'liabilities')}
-						>Liabilities</button>
-						<button
-							class:active={selectedBalanceSection === 'equity'}
-							on:click={() => (selectedBalanceSection = 'equity')}
-						>Equity</button>
-					</div>
-				{/if}
 			</div>
 
 			{#if selectedChart === 'trend'}
@@ -263,9 +334,11 @@
 						liabilities={[]}
 						equity={[]}
 						currency={state.currency}
+						decimals={currencyDecimals}
 						totalAssets={state.totalAssets}
 						totalLiabilities={0}
 						totalEquity={0}
+						on:segment-click={handleSegmentClick}
 					/>
 				{:else if selectedBalanceSection === 'liabilities'}
 					<SunburstChart
@@ -274,9 +347,11 @@
 						liabilities={state.liabilities}
 						equity={[]}
 						currency={state.currency}
+						decimals={currencyDecimals}
 						totalAssets={0}
 						totalLiabilities={state.totalLiabilities}
 						totalEquity={0}
+						on:segment-click={handleSegmentClick}
 					/>
 				{:else}
 					<SunburstChart
@@ -285,9 +360,11 @@
 						liabilities={[]}
 						equity={state.equity}
 						currency={state.currency}
+						decimals={currencyDecimals}
 						totalAssets={0}
 						totalLiabilities={0}
 						totalEquity={state.totalEquity}
+						on:segment-click={handleSegmentClick}
 					/>
 				{/if}
 			{/if}
@@ -327,18 +404,20 @@
 				<tbody>
 					{#each visibleAssets as item}
 						<tr class={getAccountClass(item)}>
-							<td class="account-name" 
-								on:click={(e) => item.isCategory && toggleCollapse(item.account, e)}>
+							<td class="account-name"
+								on:click={(e) => handleAccountRowClick(item, e)}
+								on:contextmenu={(e) => handleAccountContextMenu(item, e)}
+								title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal · Right-click: account details' : undefined}>
 								{#if item.isCategory}
 									<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 								{/if}
 								{getIndentation(item.level)}{item.displayName}
 							</td>
-								<td class="align-right amount-cell" class:category-amount={item.isCategory}>
+								<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 									{item.amount}
 								</td>
 								{#if showOtherCurrenciesColumn}
-									<td class="align-right other-currencies-cell">
+									<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 										{item.otherCurrencies || ''}
 									</td>
 								{/if}
@@ -363,18 +442,20 @@
 				<tbody>
 					{#each visibleLiabilities as item}
 						<tr class={getAccountClass(item)}>
-							<td class="account-name" 
-								on:click={(e) => item.isCategory && toggleCollapse(item.account, e)}>
+							<td class="account-name"
+								on:click={(e) => handleAccountRowClick(item, e)}
+								on:contextmenu={(e) => handleAccountContextMenu(item, e)}
+								title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal · Right-click: account details' : undefined}>
 								{#if item.isCategory}
 									<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 								{/if}
 								{getIndentation(item.level)}{item.displayName}
 							</td>
-								<td class="align-right amount-cell" class:category-amount={item.isCategory}>
+								<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 									{item.amount}
 								</td>
 								{#if showOtherCurrenciesColumn}
-									<td class="align-right other-currencies-cell">
+									<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 										{item.otherCurrencies || ''}
 									</td>
 								{/if}
@@ -399,18 +480,20 @@
 				<tbody>
 					{#each visibleEquity as item}
 						<tr class={getAccountClass(item)}>
-							<td class="account-name" 
-								on:click={(e) => item.isCategory && toggleCollapse(item.account, e)}>
+							<td class="account-name"
+								on:click={(e) => handleAccountRowClick(item, e)}
+								on:contextmenu={(e) => handleAccountContextMenu(item, e)}
+								title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal · Right-click: account details' : undefined}>
 								{#if item.isCategory}
 									<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 								{/if}
 								{getIndentation(item.level)}{item.displayName}
 							</td>
-								<td class="align-right amount-cell" class:category-amount={item.isCategory}>
+								<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 									{item.amount}
 								</td>
 								{#if showOtherCurrenciesColumn}
-									<td class="align-right other-currencies-cell">
+									<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 										{item.otherCurrencies || ''}
 									</td>
 								{/if}
@@ -492,6 +575,7 @@
 		border-radius: var(--radius-m);
 		padding: var(--size-4-4);
 		background: var(--background-secondary);
+		position: relative;
 	}
 
 	.chart-area-header {
@@ -501,79 +585,39 @@
 		margin-bottom: var(--size-4-4);
 		flex-wrap: wrap;
 		gap: var(--size-4-2);
+		position: relative;
+		z-index: 20;
 	}
 
-	.chart-selector {
-		display: flex;
-		border: 1px solid var(--background-modifier-border);
-		border-radius: var(--radius-s);
-		overflow: hidden;
-	}
-
-	.chart-selector-btn {
-		display: flex;
+	.pill-dropdown-group {
+		display: inline-flex;
 		align-items: center;
-		gap: 5px;
-		padding: 4px 12px;
-		border: none;
-		background: var(--interactive-normal);
-		color: var(--text-muted);
-		cursor: pointer;
-		font-size: var(--font-ui-small);
-		transition: background 0.15s, color 0.15s;
+		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
 	}
 
-	.chart-selector-btn:not(:last-child) {
-		border-right: 1px solid var(--background-modifier-border);
-	}
-
-	.chart-selector-btn:hover {
-		background: var(--interactive-hover);
-		color: var(--text-normal);
-	}
-
-	.chart-selector-btn.active {
-		background: var(--interactive-accent);
-		color: var(--text-on-accent);
-	}
-
-	.interval-toggle,
-	.balance-section-toggle {
-		display: flex;
+	.chart-select-dropdown {
+		background: var(--background-primary);
 		border: 1px solid var(--background-modifier-border);
 		border-radius: var(--radius-s);
-		overflow: hidden;
-	}
-
-	.interval-toggle button,
-	.balance-section-toggle button {
 		padding: var(--size-4-1) var(--size-4-3);
-		background: var(--interactive-normal);
-		border: none;
-		color: var(--text-muted);
-		cursor: pointer;
-		font-size: var(--font-ui-small);
-		transition: background-color 0.15s, color 0.15s;
-	}
-
-	.interval-toggle button:not(:last-child),
-	.balance-section-toggle button:not(:last-child) {
-		border-right: 1px solid var(--background-modifier-border);
-	}
-
-	.interval-toggle button.active,
-	.balance-section-toggle button.active {
-		background: var(--interactive-accent);
-		color: var(--text-on-accent);
-	}
-
-	.interval-toggle button:hover:not(.active):not(:disabled),
-	.balance-section-toggle button:hover:not(.active) {
-		background: var(--interactive-hover);
 		color: var(--text-normal);
+		font-size: var(--font-ui-small);
+		font-weight: 500;
+		cursor: pointer;
+		transition: border-color 0.15s ease, background-color 0.15s ease;
 	}
 
-	.interval-toggle button:disabled {
+	.chart-select-dropdown:hover:not(:disabled) {
+		border-color: var(--interactive-accent);
+		background-color: var(--interactive-hover);
+	}
+
+	.chart-select-dropdown:focus {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 1px;
+	}
+
+	.chart-select-dropdown:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
@@ -762,7 +806,7 @@
 		text-overflow: ellipsis;
 		max-width: 160px;
 		width: 40%;
-		cursor: default;
+		cursor: pointer;
 	}
 
 	:global(.account-row.category) .account-name {
@@ -841,10 +885,18 @@
 
 	.account-row.leaf {
 		border-left: 1px solid var(--background-modifier-border);
+		cursor: pointer;
+		transition: background-color 0.15s ease;
 	}
 
 	.account-row.leaf .account-name {
 		color: var(--text-muted);
+		cursor: pointer;
+	}
+
+	.account-row.leaf:hover .account-name {
+		color: var(--text-accent);
+		text-decoration: underline;
 	}
 
 	/* Hover effects */

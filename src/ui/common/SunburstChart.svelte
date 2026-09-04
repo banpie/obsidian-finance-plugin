@@ -7,13 +7,17 @@
   Supports hover tooltips and click-to-drill-down navigation.
 -->
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte';
 	import type { AccountItem } from '../../controllers/BalanceSheetController';
+
+	const dispatch = createEventDispatcher();
 
 	// ── Props ────────────────────────────────────────────────────────────────
 	export let assets: AccountItem[]      = [];
 	export let liabilities: AccountItem[] = [];
 	export let equity: AccountItem[]      = [];
 	export let currency: string           = 'USD';
+	export let decimals: number            = 2;
 	export let totalAssets: number        = 0;
 	export let totalLiabilities: number   = 0;
 	export let totalEquity: number        = 0;
@@ -177,7 +181,7 @@
 
 			return {
 				id, label, path: label,
-				amount:     `${value.toFixed(2)} ${currency}`,
+				amount:     `${value.toFixed(decimals)} ${currency}`,
 				value:      Math.abs(value),
 				color:      getColor(section, 0, value < 0),
 				startAngle: sa,
@@ -270,14 +274,26 @@
 		tooltipY = e.clientY - rect.top  - 14;
 	}
 
-	function onArcClick(node: SunburstNode) {
+	function onArcClick(node: SunburstNode, event?: MouseEvent | KeyboardEvent) {
+		// Ctrl/Cmd+click always navigates to Transactions, regardless of whether
+		// the arc has children — it's the deliberate escape hatch out of drilling.
+		if (event?.ctrlKey || event?.metaKey) {
+			const account = node.sourceItem?.account || (node.id.startsWith('__') ? '' : node.id);
+			if (account) {
+				dispatch('segment-click', { account, node });
+			}
+			return;
+		}
+		// Plain click only drills in (when there's something to drill into) — it
+		// no longer also navigates away, so drilling stays a self-contained gesture.
 		const children = node.sourceItem?.children ?? [];
-		if (children.length === 0) return; // leaf — nothing to drill into
-		drillStack = [...drillStack, {
-			crumb:   node.path,
-			items:   children,
-			section: node.section,
-		}];
+		if (children.length > 0) {
+			drillStack = [...drillStack, {
+				crumb:   node.path,
+				items:   children,
+				section: node.section,
+			}];
+		}
 	}
 
 	function drillBack(targetDepth: number) {
@@ -302,7 +318,7 @@
 	$: centreAmount = hoveredNode
 		? hoveredNode.amount
 		: drillStack.length === 0
-			? `${centreSectionTotal.toFixed(2)} ${currency}`
+			? `${centreSectionTotal.toFixed(decimals)} ${currency}`
 			: '';
 </script>
 
@@ -357,11 +373,12 @@
 					class="sunburst-arc"
 					class:drillable={node.sourceItem?.children?.length}
 					on:mousemove={(e) => onArcMouseMove(e, node)}
-					on:click={() => onArcClick(node)}
+					on:click={(e) => onArcClick(node, e)}
 					role="button"
 					tabindex="0"
 					aria-label="{node.path}: {node.amount}"
-					on:keydown={(e) => e.key === 'Enter' && onArcClick(node)}
+					title={node.sourceItem?.children?.length ? 'Click to drill in · Ctrl/Cmd+click: view in Transactions' : 'Ctrl/Cmd+click: view in Transactions'}
+					on:keydown={(e) => e.key === 'Enter' && onArcClick(node, e)}
 				/>
 				<!-- Stripe overlay for anomalous-sign accounts -->
 				{#if isAnomalous(node.section, node.negative)}
@@ -585,7 +602,7 @@
 	}
 
 	.sunburst-arc {
-		cursor: default;
+		cursor: pointer;
 		transition: fill 0.12s ease;
 	}
 

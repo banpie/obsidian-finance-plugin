@@ -2,6 +2,7 @@
 	import { createEventDispatcher, onMount, tick } from "svelte";
 	import type { ChartConfiguration } from "chart.js/auto";
 	import ChartComponent from "../common/ChartComponent.svelte";
+	import { formatSignificantAmount } from "../../utils/index";
 	export let symbol: string;
 	export let commodity: any = {
 		symbol: "",
@@ -92,10 +93,7 @@
 
 	function formatPriceAmount(value: number | string | null | undefined) {
 		if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-		return value.toLocaleString(undefined, {
-			minimumFractionDigits: 2,
-			maximumFractionDigits: 4,
-		});
+		return formatSignificantAmount(value);
 	}
 
 	function buildPriceHistoryChart(

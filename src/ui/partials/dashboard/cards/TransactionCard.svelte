@@ -3,6 +3,7 @@
     import type { JournalTransaction } from '../../../../models/journal';
 
     export let entry: JournalTransaction;
+    export let enableUserSnippets = false;
 
     const dispatch = createEventDispatcher();
 
@@ -21,19 +22,27 @@
             <span class="date">{entry.date}</span>
             <span class="flag">{entry.flag}</span>
             {#if entry.payee}
-                <span class="payee">"{entry.payee}"</span>
+                <button class="payee payee-link" type="button" on:click={() => dispatch('view-transactions', { payee: entry.payee })} title="View in Transactions tab">"{entry.payee}"</button>
             {/if}
             <span class="narration">"{entry.narration}"</span>
             {#each entry.tags as tag}
-                <span class="tag">#{tag}</span>
+                <button class="tag tag-link" type="button" on:click={(e) => dispatch('tag-click', { tag, ctrlKey: e.ctrlKey || e.metaKey })} title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal">#{tag}</button>
             {/each}
         </div>
         <div class="header-right">
-             <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title="Delete">
-                ❌
+            <button class="btn-icon" on:click={() => dispatch('edit', entry)} title="Edit">
+                ✏️
             </button>
-            <button class="btn-edit" on:click={() => dispatch('edit', entry)}>
-                ✏️ Edit
+            <button 
+                class="btn-icon" 
+                disabled={!enableUserSnippets} 
+                on:click={() => dispatch('create-snippet', entry)} 
+                title={enableUserSnippets ? "Save as snippet" : "User-defined snippets disabled in settings"}
+            >
+                📋
+            </button>
+            <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title="Delete">
+                ❌
             </button>
         </div>
     </div>
@@ -41,7 +50,9 @@
     <div class="card-body">
         {#each entry.postings as posting}
             <div class="posting-row">
-                <div class="account">{posting.account}</div>
+                <button class="account account-link" type="button" on:click={(e) => dispatch('account-click', { account: posting.account, ctrlKey: e.ctrlKey || e.metaKey })} title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal">
+                    {posting.account}
+                </button>
                 <div class="amount" class:negative={posting.amount && posting.amount.startsWith('-')}>
                     {formatAmount(posting.amount, posting.currency)}
                 </div>
@@ -110,6 +121,29 @@
         font-size: 0.85rem;
     }
 
+    button.payee-link {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        height: auto !important;
+        font-style: italic;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        font-family: inherit;
+        cursor: pointer;
+        transition: color 0.15s ease, text-decoration 0.15s ease;
+    }
+
+    button.payee-link:hover {
+        color: var(--text-accent);
+        text-decoration: underline;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
     .narration {
         color: var(--text-normal);
         font-weight: 500;
@@ -119,6 +153,25 @@
     .tag {
         color: var(--text-accent);
         font-size: 0.8rem;
+    }
+
+    button.tag-link {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        height: auto !important;
+        font-family: inherit;
+        cursor: pointer;
+        transition: color 0.15s ease, text-decoration 0.15s ease;
+    }
+
+    button.tag-link:hover {
+        text-decoration: underline;
+        background: transparent !important;
+        box-shadow: none !important;
     }
 
     .btn-edit {
@@ -138,6 +191,33 @@
     .btn-edit:hover {
         background: var(--background-modifier-hover);
         color: var(--text-accent);
+    }
+
+    .btn-snippet {
+        padding: 3px 10px;
+        border: 1px solid var(--background-modifier-border);
+        background: var(--background-primary);
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        transition: all 0.2s;
+        color: var(--text-normal);
+    }
+
+    .btn-snippet:hover:not(:disabled) {
+        background: var(--background-modifier-hover);
+        color: var(--text-accent);
+    }
+
+    .btn-snippet:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        background: var(--background-secondary-alt);
+        color: var(--text-muted);
+        border-color: var(--background-modifier-border);
     }
 
     .btn-icon {
@@ -180,6 +260,27 @@
     .account {
         color: var(--text-muted);
         font-size: 0.85rem;
+    }
+
+    .account-link {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        height: auto !important;
+        font-family: inherit;
+        cursor: pointer;
+        text-align: left;
+        transition: color 0.15s ease, text-decoration 0.15s ease;
+    }
+
+    .account-link:hover {
+        color: var(--text-accent);
+        text-decoration: underline;
+        background: transparent !important;
+        box-shadow: none !important;
     }
 
     .amount {

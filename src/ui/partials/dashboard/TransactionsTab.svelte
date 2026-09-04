@@ -8,10 +8,25 @@
 	import EmptyState from '../../common/EmptyState.svelte';
 	import { nativeDatePicker } from '../../actions/nativeDatePicker';
 
+	import { resolveNavTab, type NavRequest } from '../../../types/navigation';
+
 	// --- PROPS ---
 	// Receive the controller
 	export let controller: TransactionController;
+	export let navigate: ((req: NavRequest) => void) | null = null;
 	// --- REMOVED all other data props ---
+
+	const dispatch = createEventDispatcher();
+
+	function handlePayeeClick(payee: string, event?: MouseEvent) {
+		if (!payee) return;
+		const req: NavRequest = { tab: resolveNavTab(event), filters: { payee } };
+		if (navigate) {
+			navigate(req);
+		} else {
+			dispatch('navigate', req);
+		}
+	}
 
 	// --- Get the store from the controller ---
 	const stateStore = controller.state;
@@ -27,6 +42,23 @@
 	let debouncedPayeeFilter: string = '';
 	let tagFilter: string = '';
 	let debouncedTagFilter: string = '';
+
+	// Reactive statement to sync pendingFilters if set via controller
+	$: if (state && state.pendingFilters) {
+		const pf = state.pendingFilters;
+		if (pf.account !== undefined) selectedAccount = pf.account || '';
+		if (pf.startDate !== undefined) startDate = pf.startDate || null;
+		if (pf.endDate !== undefined) endDate = pf.endDate || null;
+		if (pf.payee !== undefined) {
+			payeeFilter = pf.payee || '';
+			debouncedPayeeFilter = pf.payee || '';
+		}
+		if (pf.tag !== undefined) {
+			tagFilter = pf.tag || '';
+			debouncedTagFilter = pf.tag || '';
+		}
+		controller.clearPendingFilters();
+	}
 	
 	// --- LOCAL UI STATE (Sorting) ---
 	type SortColumn = 'date' | 'payee' | 'narration' | 'amount' | 'balance';
@@ -34,14 +66,22 @@
 	let sortDirection: 'asc' | 'desc' = 'desc';
 	let sortedTransactions: string[][] = [];
 
-	const dispatch = createEventDispatcher();
-	
 	// --- Debounce handlers - Optimized for better UX ---
 	const updateDebouncedPayee = debounce((value: string) => { debouncedPayeeFilter = value; }, 300);
 	const updateDebouncedTag = debounce((value: string) => { debouncedTagFilter = value; }, 300);
 
 	function handleRefresh() {
 		controller.refresh();
+	}
+
+	function handleClear() {
+		selectedAccount = '';
+		startDate = null;
+		endDate = null;
+		payeeFilter = '';
+		debouncedPayeeFilter = '';
+		tagFilter = '';
+		debouncedTagFilter = '';
 	}
 
 	// --- REMOVED onMount data fetching ---
@@ -102,6 +142,7 @@
 	$: if (sortColumn || sortDirection) {
 		sortTransactions(state.currentTransactions);
 	}
+
 </script>
 
 <div class="account-transactions-view">
@@ -143,6 +184,7 @@
 				<input type="text" id="tag-filter" bind:value={tagFilter} placeholder="Filter by tag..." disabled={state.isLoading} list="beancount-tags" />
 			</div>
 			<div>
+				<button class="btn" on:click={handleClear} disabled={state.isLoading || state.isLoadingFilters}>Clear</button>
 				<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading || state.isLoadingFilters}>Refresh</button>
 			</div>
 		</div>
@@ -178,7 +220,15 @@
 					{#each sortedTransactions as [date, payee, narration, position, balance]}
 						<tr>
 							<td>{date}</td>
-							<td>{payee}</td>
+							<td>
+								{#if payee}
+									<button class="payee-link" type="button" on:click={(e) => handlePayeeClick(payee, e)} title="Click: filter Transactions by payee '{payee}' · Ctrl/Cmd+click: view in Journal">
+										{payee}
+									</button>
+								{:else}
+									<span class="no-payee">&nbsp;</span>
+								{/if}
+							</td>
 							<td>{narration}</td>
 							<td class="align-right">{position}</td>
 							<td class="align-right">{balance}</td>
@@ -215,6 +265,26 @@
 	.transaction-table th:hover { color: var(--text-normal); }
 	.transaction-table td { padding: 6px; border-bottom: 1px solid var(--background-secondary); }
 	.transaction-table tbody tr:nth-child(even) { background-color: var(--background-secondary-alt); }
+	.payee-link {
+		background: transparent !important;
+		border: none !important;
+		box-shadow: none !important;
+		outline: none !important;
+		padding: 0 !important;
+		margin: 0 !important;
+		height: auto !important;
+		font: inherit;
+		color: var(--text-normal);
+		cursor: pointer;
+		text-align: left;
+		transition: color 0.15s ease;
+	}
+	.payee-link:hover {
+		color: var(--interactive-accent);
+		text-decoration: underline;
+		background: transparent !important;
+		box-shadow: none !important;
+	}
 	.align-right { text-align: right; font-family: var(--font-monospace); }
 	.error-message { color: var(--text-error); }
 	.btn {

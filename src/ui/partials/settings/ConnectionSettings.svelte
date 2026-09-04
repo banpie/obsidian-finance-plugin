@@ -3,6 +3,7 @@
 	import { Notice } from "obsidian";
 	import type BeancountPlugin from "../../../main";
 	import { SystemDetector } from "../../../utils/SystemDetector";
+	import { getMainLedgerPath } from "../../../utils/structuredLayout";
 
 	export let plugin: BeancountPlugin;
 
@@ -123,7 +124,7 @@
 			const systemDetector = SystemDetector.getInstance();
 
 			const results = await systemDetector.detectOptimalBeancountSetup(
-				plugin.settings.beancountFilePath || undefined,
+				getMainLedgerPath(plugin) || undefined,
 				false,
 			);
 			autoDetectionResults = results;
@@ -169,7 +170,7 @@
 
 	// Test individual commands
 	async function testBeanQuery() {
-		const filePath = plugin.settings.beancountFilePath;
+		const filePath = getMainLedgerPath(plugin);
 		if (!optimalCommands.beanQuery || !filePath) {
 			commandTests.beanQuery.error =
 				"Bean-query command or file path not available";
@@ -200,7 +201,7 @@
 	}
 
 	async function testBeanQueryCsv() {
-		const filePath = plugin.settings.beancountFilePath;
+		const filePath = getMainLedgerPath(plugin);
 		if (!optimalCommands.beanQuery || !filePath) {
 			commandTests.beanQueryCsv.error =
 				"Bean-query command or file path not available";
@@ -231,11 +232,11 @@
 	}
 
 	async function runAllTests() {
-		if (!plugin.settings.beancountFilePath) {
+		if (!plugin.settings.structuredFolderName) {
 			validationResult = {
 				isValid: false,
 				message:
-					"No beancount file configured. Please run onboarding first.",
+					"No beancount folder configured. Please run onboarding first.",
 			};
 			return;
 		}
@@ -382,9 +383,9 @@
 			commandVerificationMessage = "No command to verify";
 			return;
 		}
-		if (!plugin.settings.beancountFilePath) {
+		if (!plugin.settings.structuredFolderName) {
 			commandVerificationStatus = "error";
-			commandVerificationMessage = "No beancount file configured.";
+			commandVerificationMessage = "No beancount folder configured.";
 			return;
 		}
 		isVerifyingCommand = true;
@@ -394,21 +395,21 @@
 			const systemDetector = SystemDetector.getInstance();
 			const result = await systemDetector.testCommand(
 				commandToVerify.trim(),
-				["-f", "csv", plugin.settings.beancountFilePath, "SELECT TRUE LIMIT 1"],
+				["-f", "csv", getMainLedgerPath(plugin), "SELECT TRUE LIMIT 1"],
 				15000,
 			);
 			if (result.success) {
 				commandVerificationStatus = "success";
-				commandVerificationMessage = "✅ Command verified successfully";
+				commandVerificationMessage = "Command verified successfully";
 				new Notice("✅ Command verified successfully");
 			} else {
 				commandVerificationStatus = "error";
-				commandVerificationMessage = `❌ Verification failed: ${result.error || "Unknown error"}`;
+				commandVerificationMessage = `Verification failed: ${result.error || "Unknown error"}`;
 				new Notice("❌ Command verification failed");
 			}
 		} catch (error) {
 			commandVerificationStatus = "error";
-			commandVerificationMessage = `❌ Error: ${error.message}`;
+			commandVerificationMessage = `Error: ${error.message}`;
 		} finally {
 			isVerifyingCommand = false;
 		}
@@ -429,22 +430,23 @@
 		try {
 			const systemDetector = SystemDetector.getInstance();
 			const result = await systemDetector.testCommand(
-				`${cmd.trim()} --help`,
+				cmd.trim(),
+				['--help'],
 				10000,
 			);
 			if (result.success) {
 				beanPriceVerificationStatus = "success";
 				beanPriceVerificationMessage =
-					"✅ bean-price found and responsive";
+					"bean-price found and responsive";
 				new Notice("✅ bean-price verified");
 			} else {
 				beanPriceVerificationStatus = "error";
-				beanPriceVerificationMessage = `❌ Not found: ${result.error || "Command failed"}`;
+				beanPriceVerificationMessage = `Not found: ${result.error || "Command failed"}`;
 				new Notice("❌ bean-price verification failed");
 			}
 		} catch (error) {
 			beanPriceVerificationStatus = "error";
-			beanPriceVerificationMessage = `❌ Error: ${error.message}`;
+			beanPriceVerificationMessage = `Error: ${error.message}`;
 		} finally {
 			isVerifyingBeanPriceCommand = false;
 		}
@@ -942,31 +944,41 @@
 	.verification-status {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 10px;
 		padding: 10px 12px;
 		border-radius: 4px;
+		border-left: 3px solid transparent;
 		margin-bottom: 12px;
 		font-size: 12px;
+		font-weight: 500;
+		animation: verification-pop 0.2s ease-out;
+	}
+
+	@keyframes verification-pop {
+		from { opacity: 0; transform: translateY(-2px); }
+		to { opacity: 1; transform: translateY(0); }
 	}
 
 	.verification-status.success {
-		background: var(--background-modifier-success);
-		border: 1px solid var(--text-success);
+		background: rgba(0, 180, 0, 0.1);
+		border-left-color: var(--text-success);
 		color: var(--text-success);
 	}
 
 	.verification-status.error {
-		background: var(--background-modifier-error);
-		border: 1px solid var(--text-error);
+		background: rgba(220, 50, 50, 0.1);
+		border-left-color: var(--text-error);
 		color: var(--text-error);
 	}
 
 	.verification-status .status-icon {
 		font-size: 16px;
+		line-height: 1;
 	}
 
 	.verification-status .status-message {
 		flex: 1;
+		color: var(--text-normal);
 	}
 
 	.command-help {

@@ -80,7 +80,7 @@ export async function getBalanceEntries(
 
         Logger.log(`[getBalanceEntries] Parsed ${records.length} balance rows`);
 
-        const balances: JournalBalance[] = records.map((row) => {
+        let balances: JournalBalance[] = records.map((row) => {
             const amountStr = (row.amount || '').trim();
             const amountParts = amountStr.split(/\s+/);
             const amount = amountParts.length >= 2 ? amountParts[0] : '';
@@ -98,8 +98,20 @@ export async function getBalanceEntries(
             };
         });
 
+        // In-memory filters
+        if (filters.payee || filters.tag) {
+            balances = [];
+        } else if (filters.searchTerm) {
+            const q = filters.searchTerm.toLowerCase();
+            balances = balances.filter((b) =>
+                b.account?.toLowerCase().includes(q) ||
+                b.amount?.toLowerCase().includes(q) ||
+                b.currency?.toLowerCase().includes(q)
+            );
+        }
+
         // Re-sort only when an in-memory filter disrupted BQL ORDER BY
-        if (filters.searchTerm) {
+        if (filters.searchTerm || filters.payee || filters.tag) {
             balances.sort((a, b) => {
                 const d = b.date.localeCompare(a.date);
                 return d !== 0 ? d : a.account.localeCompare(b.account);
@@ -157,7 +169,7 @@ export async function getNoteEntries(
 
         Logger.log(`[getNoteEntries] Parsed ${records.length} note rows`);
 
-        const notes: JournalNote[] = records.map((row) => {
+        let notes: JournalNote[] = records.map((row) => {
             const metaStr = row.meta || '{}';
             let metadata: Record<string, unknown> = {};
             try {
@@ -175,8 +187,29 @@ export async function getNoteEntries(
             };
         });
 
+        // In-memory filters
+        if (filters.payee) {
+            notes = [];
+        } else {
+            if (filters.tag) {
+                notes = notes.filter((note, idx) => {
+                    const row = records[idx];
+                    const rowTags = row.tags || '';
+                    const tags = rowTags.split(',').map(t => t.trim().toLowerCase());
+                    return tags.includes(filters.tag!.toLowerCase());
+                });
+            }
+            if (filters.searchTerm) {
+                const q = filters.searchTerm.toLowerCase();
+                notes = notes.filter((n) =>
+                    n.account?.toLowerCase().includes(q) ||
+                    n.comment?.toLowerCase().includes(q)
+                );
+            }
+        }
+
         // Re-sort only when an in-memory filter disrupted BQL ORDER BY
-        if (filters.searchTerm) {
+        if (filters.searchTerm || filters.payee || filters.tag) {
             notes.sort((a, b) => {
                 const d = b.date.localeCompare(a.date);
                 return d !== 0 ? d : a.account.localeCompare(b.account);

@@ -1,11 +1,14 @@
 {
 	"id": "beancount-finance",
 	"name": "Beancount Ledger",
-	"version": "2.2.0",
+	"version": "2.4.1",
 	"minAppVersion": "1.7.2",
-	"description": "Manage your Beancount ledger from your vault. Supports live BQL queries, transaction management, net worth tracking, balance sheets, income statements, and automated price fetching.",
-	"author": "Mukund Shelake",
-	"authorUrl": "https://mukundshelake.me",
-	"fundingUrl": "https://buymeacoffee.com/mkshp",
+	"description": "Manage your Beancount ledger from your vault. Supports live BQL queries, transaction management, scheduled/recurring transactions, net worth tracking, balance sheets, income statements, and automated price fetching.",
+	"author": "mkshp",
+	"authorUrl": "https://github.com/mkshp-dev",
+	"fundingUrl": {
+		"GitHub Sponsors": "https://github.com/sponsors/mkshp-dev",
+		"Buy Me a Coffee": "https://buymeacoffee.com/mkshp"
+	},
 	"isDesktopOnly": true
 }

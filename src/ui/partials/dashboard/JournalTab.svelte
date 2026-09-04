@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
-    import { debounce, getOpenAccounts, getPayees, getTags, deleteTransaction, deleteBalance, deleteNote } from '../../../utils/index';
+    import { debounce, getOpenAccounts, getPayees, getTags, deleteTransaction, deleteBalance, deleteNote, createSnippet, type TransactionData, type CostData, type PriceDataPayload } from '../../../utils/index';
     import SkeletonLoader from '../../common/SkeletonLoader.svelte';
     import ErrorBanner from '../../common/ErrorBanner.svelte';
     import EmptyState from '../../common/EmptyState.svelte';
@@ -9,6 +9,7 @@
     import NoteCard from './cards/NoteCard.svelte';
     import { UnifiedTransactionModal } from '../../modals/UnifiedTransactionModal';
     import { ConfirmModal } from '../../modals/ConfirmModal';
+    import { SnippetNameModal } from '../../modals/SnippetNameModal';
     import { Notice } from 'obsidian';
     import type { JournalEntry } from '../../../models/journal';
     import { Logger } from '../../../utils/logger';
@@ -39,7 +40,10 @@
     // The `UnifiedDashboardView.svelte` passes `store={journalStore}`.
     // I should check `UnifiedDashboardView.svelte` to see if I can pass `plugin`.
 
+    import { resolveNavTab, type NavRequest } from '../../../types/navigation';
+
     export let plugin: any = null; // We will need to update the parent to pass this.
+    export let navigate: ((req: NavRequest) => void) | null = null;
 
     // Destructure store for easier access
     const {
@@ -105,7 +109,7 @@
             return;
         }
         applyFilters();
-    }, 800);
+    }, 300);
 
     async function fetchSuggestions() {
         if (!plugin) return;
@@ -240,10 +244,118 @@
         ).open();
     }
 
-    onMount(() => {
-        Logger.log('JournalTab mounted');
-        // Sync local state with store filters
-        const currentFilters = $filters;
+    function handleCreateSnippet(entry: any) {
+        if (!plugin) {
+            console.error("Plugin instance not found");
+            return;
+        }
+
+        // Guess a default snippet name from payee or narration
+        let defaultName = '';
+        if (entry.payee) {
+            defaultName = entry.payee;
+            if (entry.narration) defaultName += ` - ${entry.narration}`;
+        } else {
+            defaultName = entry.narration || 'MySnippet';
+        }
+
+        // Clean name of characters that aren't nice for autocompletion matching
+        defaultName = defaultName.replace(/[^a-zA-Z0-9\s_-]/g, '').trim();
+
+        new SnippetNameModal(
+            plugin.app,
+            defaultName,
+            async (snippetName) => {
+                try {
+                    // Map JournalTransaction to TransactionData
+                    const transactionData: TransactionData = {
+                        date: entry.date,
+                        flag: entry.flag || '*',
+                        payee: entry.payee || undefined,
+                        narration: entry.narration,
+                        tags: entry.tags || [],
+                        links: entry.links || [],
+                        metadata: entry.metadata as Record<string, string> || {},
+                        postings: (entry.postings || []).map((p: any) => {
+                            const cost: CostData | undefined = p.cost ? {
+                                number: p.cost.number || undefined,
+                                currency: p.cost.currency || undefined,
+                                date: p.cost.date || undefined,
+                                label: p.cost.label || undefined,
+                                isTotal: p.cost.isTotal
+                            } : undefined;
+
+                            const price: PriceDataPayload | undefined = p.price ? {
+                                amount: p.price.amount,
+                                currency: p.price.currency,
+                                isTotal: p.price.isTotal
+                            } : undefined;
+
+                            return {
+                                account: p.account,
+                                amount: p.amount || undefined,
+                                currency: p.currency || undefined,
+                                flag: p.flag || undefined,
+                                comment: p.comment || undefined,
+                                metadata: p.metadata || {},
+                                cost,
+                                price
+                            };
+                        })
+                    };
+
+                    const result = await createSnippet(plugin, snippetName, transactionData);
+                    if (result.success) {
+                        new Notice(`Snippet "${snippetName}" created successfully!`);
+                    } else {
+                        new Notice(`Failed to create snippet: ${result.error || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    console.error('Error creating snippet:', error);
+                    new Notice(`Failed to create snippet. Check console for details.`);
+                }
+            }
+        ).open();
+    }
+
+    function handleAccountClick(accountName: string, ctrlKey = false) {
+        if (!accountName) return;
+        const req: NavRequest = { tab: resolveNavTab({ ctrlKey }), filters: { account: accountName } };
+        if (navigate) {
+            navigate(req);
+        } else {
+            dispatch('navigate', req);
+        }
+    }
+
+    function handlePayeeClick(payeeName: string) {
+        if (!payeeName) return;
+        const req: NavRequest = { tab: 'transactions', filters: { payee: payeeName } };
+        if (navigate) {
+            navigate(req);
+        } else {
+            dispatch('navigate', req);
+        }
+    }
+
+    function handleTagClick(tagName: string, ctrlKey = false) {
+        if (!tagName) return;
+        const req: NavRequest = { tab: resolveNavTab({ ctrlKey }), filters: { tag: tagName } };
+        if (navigate) {
+            navigate(req);
+        } else {
+            dispatch('navigate', req);
+        }
+    }
+
+    // Keep the filter inputs in sync with the store, not just on mount — the
+    // tab stays mounted when a same-tab Ctrl/Cmd+click (e.g. from a Journal
+    // card) pushes new filters into the store via navigate(), so the inputs
+    // must reflect it live instead of only after a tab switch remounts us.
+    $: syncLocalFiltersFromStore($filters);
+
+    function syncLocalFiltersFromStore(currentFilters: any) {
+        if (!currentFilters) return;
         searchTerm = currentFilters.searchTerm || '';
         selectedAccount = currentFilters.account || '';
         startDate = currentFilters.startDate || '';
@@ -256,7 +368,10 @@
         } else {
             typeFilter = 'all';
         }
+    }
 
+    onMount(() => {
+        Logger.log('JournalTab mounted');
         fetchSuggestions();
         loadEntries().then(() => {
             // Set initialized flag after initial load completes
@@ -433,14 +548,21 @@
                 {#if entry.type === 'transaction'}
                     <TransactionCard
                         {entry}
+                        enableUserSnippets={plugin?.settings?.enableUserSnippets}
                         on:edit={() => handleEdit(entry)}
                         on:delete={() => handleDelete(entry)}
+                        on:create-snippet={(e) => handleCreateSnippet(e.detail)}
+                        on:account-click={(e) => handleAccountClick(e.detail?.account, e.detail?.ctrlKey)}
+                        on:payee-click={(e) => handlePayeeClick(typeof e.detail === 'string' ? e.detail : e.detail?.payee)}
+                        on:view-transactions={(e) => handlePayeeClick(e.detail?.payee)}
+                        on:tag-click={(e) => handleTagClick(e.detail?.tag, e.detail?.ctrlKey)}
                     />
                 {:else if entry.type === 'balance'}
                     <BalanceCard
                         {entry}
                         on:edit={() => handleEdit(entry)}
                         on:delete={() => handleDelete(entry)}
+                        on:account-click={(e) => handleAccountClick(e.detail?.account, e.detail?.ctrlKey)}
                     />
                 {:else if entry.type === 'note'}
                     <NoteCard

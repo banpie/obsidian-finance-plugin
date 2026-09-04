@@ -1,7 +1,9 @@
 // src/main.ts
 
-import { MarkdownPreviewRenderer, Plugin, Notice, type MarkdownPostProcessor } from 'obsidian';
+import { MarkdownPreviewRenderer, Plugin, Notice, TFile, type MarkdownPostProcessor } from 'obsidian';
 import { BeancountSettingTab, type BeancountPluginSettings, DEFAULT_SETTINGS } from './settings';
+import type { Completion } from '@codemirror/autocomplete';
+import { parseSnippetsFile } from './lang/beancount-snippets';
 import { BeancountView, BEANCOUNT_VIEW_TYPE } from './ui/views/sidebar/sidebar-view';
 import { BeancountFileView, BEANCOUNT_FILE_VIEW_TYPE } from './ui/views/beancount-file-view';
 import { UnifiedTransactionModal } from './ui/modals/UnifiedTransactionModal';
@@ -11,15 +13,18 @@ import { UnifiedDashboardView, UNIFIED_DASHBOARD_VIEW_TYPE } from './ui/views/da
 import { BQLCodeBlockProcessor } from './ui/markdown/BQLCodeBlockProcessor';
 import { InlineBQLProcessor } from './ui/markdown/InlineBQLProcessor';
 import { OnboardingModal } from './ui/modals/OnboardingModal';
+import { ConfirmModal } from './ui/modals/ConfirmModal';
 import { formatBeancountCommand } from './lang/beancount-format';
 import type { EditorView } from '@codemirror/view';
 
 import { JournalService } from './services/journal.service';
 import { PriceService } from './services/price.service';
+import { CurrencyPrecisionService } from './services/currency-precision.service';
 import { createJournalStore } from './stores/journal.store';
 import { Logger } from './utils/logger';
 import { SystemDetector } from './utils/SystemDetector';
 import { resolveBeanQueryCommand } from './utils/beanQueryCommandRecovery';
+import { getMainLedgerPath } from './utils/structuredLayout';
 
 // --------------------------------------------------
 
@@ -33,13 +38,20 @@ export default class BeancountPlugin extends Plugin {
 	private bqlPostProcessor?: MarkdownPostProcessor;
 	public inlineBqlProcessor: InlineBQLProcessor;
 
+	/** Cached user-defined transaction snippets. */
+	public snippetCompletions: Completion[] = [];
+
 	/** Public API surface for inter-plugin access. */
 	public api: BeancountPluginApi;
 
 	// Services
 	public journalService: JournalService;
 	public priceService: PriceService;
+	public currencyPrecisionService: CurrencyPrecisionService;
 	public journalStore: ReturnType<typeof createJournalStore>;
+
+	/** Whether bean-query is currently reachable (runtime state, NOT persisted). */
+	public isConnectionReady = false;
 
 	/**
 	 * Called when the plugin is loaded by Obsidian.
@@ -54,20 +66,36 @@ export default class BeancountPlugin extends Plugin {
 
 		await this.ensureBeancountCommand();
 
+		// Load snippets if enabled
+		if (this.settings.enableUserSnippets) {
+			await this.loadSnippets();
+		}
+
 		// Expose public API for other plugins
 		this.api = createPluginApi(this);
 
 		// Initialize Core Services
 		this.journalService = new JournalService(this);
 		this.priceService = new PriceService(this);
+		this.currencyPrecisionService = new CurrencyPrecisionService(this);
 		this.journalStore = createJournalStore(this.journalService);
 
-		// Check for onboarding
-		if (!this.settings.beancountFilePath) {
-			Logger.log('No Beancount file configured. Triggering onboarding.');
+		// Non-blocking: infer per-currency display precision from the ledger.
+		if (this.settings.beancountCommand) {
+			void this.currencyPrecisionService.ensureLoaded();
+		}
+
+		// Check for onboarding — use dedicated flag instead of structuredFolderName
+		if (!this.settings.onboardingCompleted) {
+			Logger.log('Onboarding not completed. Triggering onboarding wizard.');
 			this.app.workspace.onLayoutReady(() => {
 				new OnboardingModal(this.app, this).open();
 			});
+		}
+
+		// Non-blocking runtime probe to check if bean-query is reachable
+		if (this.settings.beancountCommand) {
+			void this.probeConnection();
 		}
 
 		// Initialize and register BQL code block processor
@@ -121,7 +149,20 @@ export default class BeancountPlugin extends Plugin {
 		this.addCommand({
 			id: 'run-beancount-onboarding',
 			name: 'Run setup/onboarding',
-			callback: () => { new OnboardingModal(this.app, this).open(); }
+			callback: () => {
+				if (this.settings.onboardingCompleted) {
+					new ConfirmModal(
+						this.app,
+						"Run Setup / Onboarding",
+						"You have already completed setup. Running the onboarding wizard again will allow you to recreate the structured folder layout or migrate another ledger. Do you want to proceed?",
+						() => {
+							new OnboardingModal(this.app, this).open();
+						}
+					).open();
+				} else {
+					new OnboardingModal(this.app, this).open();
+				}
+			}
 		});
 		this.addCommand({
 			id: 'format-beancount-document',
@@ -171,6 +212,72 @@ export default class BeancountPlugin extends Plugin {
 		}
 
 
+		// Register vault listeners for real-time snippets reloading
+		this.registerEvent(
+			this.app.vault.on('modify', (file) => {
+				if (!this.settings.enableUserSnippets) return;
+				const folderName = this.settings.structuredFolderName || 'Finances';
+				if (file instanceof TFile && file.path === `${folderName}/snippets.beancount`) {
+					void this.loadSnippets();
+				}
+			})
+		);
+		this.registerEvent(
+			this.app.vault.on('create', (file) => {
+				if (!this.settings.enableUserSnippets) return;
+				const folderName = this.settings.structuredFolderName || 'Finances';
+				if (file instanceof TFile && file.path === `${folderName}/snippets.beancount`) {
+					void this.loadSnippets();
+				}
+			})
+		);
+		this.registerEvent(
+			this.app.vault.on('delete', (file) => {
+				if (!this.settings.enableUserSnippets) return;
+				const folderName = this.settings.structuredFolderName || 'Finances';
+				if (file instanceof TFile && file.path === `${folderName}/snippets.beancount`) {
+					this.snippetCompletions = [];
+				}
+			})
+		);
+		this.registerEvent(
+			this.app.vault.on('rename', (file, oldPath) => {
+				if (!this.settings.enableUserSnippets) return;
+				const folderName = this.settings.structuredFolderName || 'Finances';
+				const snippetsPath = `${folderName}/snippets.beancount`;
+				if (file instanceof TFile) {
+					if (file.path === snippetsPath) {
+						void this.loadSnippets();
+					} else if (oldPath === snippetsPath) {
+						this.snippetCompletions = [];
+					}
+				}
+			})
+		);
+
+		// Add Command to open snippets file
+		this.addCommand({
+			id: 'open-beancount-snippets',
+			name: 'Open Beancount snippets file',
+			callback: async () => {
+				const folderName = this.settings.structuredFolderName || 'Finances';
+				const snippetsFilePath = `${folderName}/snippets.beancount`;
+				const file = this.app.vault.getAbstractFileByPath(snippetsFilePath);
+				if (file && file instanceof TFile) {
+					await this.app.workspace.getLeaf(true).openFile(file);
+				} else {
+					// File does not exist yet; loadSnippets() will create it
+					await this.loadSnippets();
+					const createdFile = this.app.vault.getAbstractFileByPath(snippetsFilePath);
+					if (createdFile && createdFile instanceof TFile) {
+						await this.app.workspace.getLeaf(true).openFile(createdFile);
+					} else {
+						new Notice('Could not find or create snippets.beancount');
+					}
+				}
+			}
+		});
+
 		this.addSettingTab(new BeancountSettingTab(this.app, this));
 	}
 
@@ -206,6 +313,34 @@ export default class BeancountPlugin extends Plugin {
 				})();
 			}, intervalMs)
 		);
+	}
+
+	/**
+	 * Non-blocking runtime probe to check if bean-query is reachable.
+	 * Sets the in-memory `isConnectionReady` flag without persisting it.
+	 */
+	public async probeConnection(): Promise<void> {
+		if (!this.settings.beancountCommand) {
+			this.isConnectionReady = false;
+			return;
+		}
+		try {
+			const detector = SystemDetector.getInstance();
+			let result = await detector.testCommand(
+				this.settings.beancountCommand, ['--version'], 3000
+			);
+			if (!result.success) {
+				// bean-query does not support --version, so fallback to --help
+				result = await detector.testCommand(
+					this.settings.beancountCommand, ['--help'], 3000
+				);
+			}
+			this.isConnectionReady = result.success;
+			Logger.log(`[Main] Connection probe: ${result.success ? 'ready' : 'not reachable'}`);
+		} catch {
+			this.isConnectionReady = false;
+			Logger.log('[Main] Connection probe: failed (exception)');
+		}
 	}
 
 	/**
@@ -260,7 +395,7 @@ export default class BeancountPlugin extends Plugin {
 	}
 
 	// Helper method to get dashboard refresh callback
-	private getDashboardRefreshCallback(): () => Promise<void> {
+	public getDashboardRefreshCallback(): () => Promise<void> {
 		return async () => {
 			// Find the unified dashboard view and call its refresh method
 			const leaves = this.app.workspace.getLeavesOfType(UNIFIED_DASHBOARD_VIEW_TYPE);
@@ -316,6 +451,12 @@ export default class BeancountPlugin extends Plugin {
 			// Persist migrated value
 			await this.saveSettings();
 		}
+
+		// Migration: upgrade guard to infer onboarding completion for existing users
+		if (raw && !('onboardingCompleted' in raw) && this.settings.structuredFolderName) {
+			this.settings.onboardingCompleted = true;
+			await this.saveSettings();
+		}
 	}
 
 	private async ensureBeancountCommand(): Promise<void> {
@@ -324,7 +465,7 @@ export default class BeancountPlugin extends Plugin {
 		const resolution = await resolveBeanQueryCommand(
 			detector,
 			savedCommand,
-			this.settings.beancountFilePath || undefined,
+			getMainLedgerPath(this),
 		);
 
 		if (resolution.status === 'ready') {
@@ -364,5 +505,53 @@ export default class BeancountPlugin extends Plugin {
 		window.setTimeout(() => {
 			this.bqlProcessor?.refreshAllBlocks();
 		}, 50);
+	}
+
+	/**
+	 * Loads and parses user-defined snippets from snippets.beancount.
+	 * If the file doesn't exist, it creates it with basic templates.
+	 */
+	public async loadSnippets(): Promise<void> {
+		if (!this.settings.enableUserSnippets) {
+			this.snippetCompletions = [];
+			return;
+		}
+
+		try {
+			const folderName = this.settings.structuredFolderName || 'Finances';
+			const snippetsFilePath = `${folderName}/snippets.beancount`;
+			const adapter = this.app.vault.adapter;
+
+			const exists = await adapter.exists(snippetsFilePath);
+			if (!exists) {
+				const initialContent = `;; User-Defined Transaction Snippets
+;;
+;; Define transactions here with the metadata "Snippet: <name>".
+;; These will be suggested when you start typing at the beginning of a line.
+;;
+;; Example:
+2026-01-01 * "Sample Payee" "Sample Narration"
+  Snippet: "sampleSnippet"
+  Assets:Checking      -150.00 USD
+  Expenses:Rent
+`;
+				// Ensure folder exists before creating the file
+				const folderExists = await adapter.exists(folderName);
+				if (!folderExists) {
+					await this.app.vault.createFolder(folderName);
+				}
+				await this.app.vault.create(snippetsFilePath, initialContent);
+				this.snippetCompletions = [];
+				Logger.log('[Main] Created snippets.beancount with initial templates.');
+				return;
+			}
+
+			const content = await adapter.read(snippetsFilePath);
+			this.snippetCompletions = parseSnippetsFile(content);
+			Logger.log(`[Main] Loaded ${this.snippetCompletions.length} user snippet(s).`);
+		} catch (error) {
+			Logger.error('[Main] Failed to load snippets:', error);
+			this.snippetCompletions = [];
+		}
 	}
 }

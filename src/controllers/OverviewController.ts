@@ -99,11 +99,13 @@ export class OverviewController {
 
 		try {
 			const period = this.getPeriodRange();
+			await this.plugin.currencyPrecisionService.ensureLoaded();
+			const decimals = this.plugin.currencyPrecisionService.getDecimals(reportingCurrency);
 			const [netWorthResult, periodIncomeResult, periodExpensesResult, periodSavingsResult] = await Promise.all([
-				this.plugin.runQuery(queries.getTotalWorthQuery(reportingCurrency, 2, period.endDate, period.valuationDate)),
-				this.plugin.runQuery(queries.getPeriodIncomeQuery(reportingCurrency, 2, period.startDate, period.endDate)),
-				this.plugin.runQuery(queries.getPeriodExpensesQuery(reportingCurrency, 2, period.startDate, period.endDate)),
-				this.plugin.runQuery(queries.getPeriodSavingsQuery(reportingCurrency, 2, period.startDate, period.endDate)),
+				this.plugin.runQuery(queries.getTotalWorthQuery(reportingCurrency, decimals, period.endDate, period.valuationDate)),
+				this.plugin.runQuery(queries.getPeriodIncomeQuery(reportingCurrency, decimals, period.startDate, period.endDate)),
+				this.plugin.runQuery(queries.getPeriodExpensesQuery(reportingCurrency, decimals, period.startDate, period.endDate)),
+				this.plugin.runQuery(queries.getPeriodSavingsQuery(reportingCurrency, decimals, period.startDate, period.endDate)),
 			]);
 
 			// Process KPI Data
@@ -112,7 +114,7 @@ export class OverviewController {
 			Logger.log("OverviewController: Parsed Net Worth:", netWorthNum);
 
 			const newState: Partial<OverviewState> = {
-				netWorth: `${netWorthNum.toFixed(2)} ${reportingCurrency}`,
+				netWorth: `${netWorthNum.toFixed(decimals)} ${reportingCurrency}`,
 				currency: reportingCurrency,
 				periodLabel: period.label,
 				...this.formatPeriodResults(periodIncomeResult, periodExpensesResult, periodSavingsResult, reportingCurrency),
@@ -241,7 +243,8 @@ export class OverviewController {
 	}
 
 	private formatCurrency(amount: number, currency: string): string {
-		return `${amount.toFixed(2)} ${currency}`;
+		const decimals = this.plugin.currencyPrecisionService.getDecimals(currency);
+		return `${amount.toFixed(decimals)} ${currency}`;
 	}
 
 	private formatPeriodResults(incomeCsv: string, expensesCsv: string, savingsCsv: string, currency: string): Partial<OverviewState> {

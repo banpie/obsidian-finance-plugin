@@ -1,13 +1,34 @@
 // src/views/sidebar-view.ts
-import { ItemView, WorkspaceLeaf, Notice } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice, TFile } from 'obsidian';
 import type BeancountPlugin from '../../../main';
 import BeancountViewComponent from './SidebarView.svelte'; // Assuming this is the correct Svelte component for the sidebar
 import { runQuery, execSafe } from '../../../utils/index';
+import { getMainLedgerPath } from '../../../utils/structuredLayout';
+import { getVaultRelativePath, convertWslPathToWindows } from '../../../utils/fileEditor';
 import * as queries from '../../../queries/index';
 import { Logger } from '../../../utils/logger';
+import { getReconciliationStatus } from '../../../services/reconciliation.service';
+import type { ReconciliationAccountStatus } from '../../../services/reconciliation.service';
+import { AccountDetailModal } from '../../modals/AccountDetailModal';
+import { UnifiedTransactionModal } from '../../modals/UnifiedTransactionModal';
+import { ForceReconcileModal } from '../../modals/ForceReconcileModal';
+import { BeancountFileView } from '../beancount-file-view';
+import { UnifiedDashboardView, UNIFIED_DASHBOARD_VIEW_TYPE } from '../dashboard/unified-dashboard-view';
+import { resolveNavTab, type NavRequest } from '../../../types/navigation';
 // ----------------------------------------
 
 export const BEANCOUNT_VIEW_TYPE = "beancount-view"; // This identifies the Sidebar/Snapshot view
+
+/** A single parsed `bean-query ... ERRORS` line, structured for click-to-jump. */
+export interface SnapshotError {
+	/** Full path as reported by bean-query (may be a WSL path). */
+	filePath: string;
+	/** Short filename for display, e.g. "2026.beancount". */
+	fileName: string;
+	/** 1-based line number. */
+	lineNum: number;
+	message: string;
+}
 
 export class BeancountView extends ItemView {
 	plugin: BeancountPlugin;
@@ -23,7 +44,12 @@ export class BeancountView extends ItemView {
 		fileStatus: "checking" as "checking" | "ok" | "error",
 		fileStatusMessage: "" as string | null,
 		errorCount: 0,
-		errorList: [] as string[]
+		errorList: [] as SnapshotError[],
+		// Reconciliation state
+		reconciliationOverdue: 0,
+		reconciliationUpToDate: 0,
+		reconciliationAccounts: [] as ReconciliationAccountStatus[],
+		activeTab: 'errors' as 'errors' | 'reconciliation'
 	};
 
 	constructor(leaf: WorkspaceLeaf, plugin: BeancountPlugin) {
@@ -41,11 +67,35 @@ export class BeancountView extends ItemView {
 
 		this.component = new BeancountViewComponent({
 			target: container,
-			props: this.state
+			props: { ...this.state, plugin: this.plugin }
 		});
 
 		// Listen for events
 		this.component.$on('refresh', () => { void this.updateView(); });
+		this.component.$on('tabChange', (e: CustomEvent<string>) => {
+			this.updateProps({ activeTab: e.detail as 'errors' | 'reconciliation' });
+		});
+		this.component.$on('open-error', (e: CustomEvent<{ filePath: string; lineNum: number }>) => {
+			void this.openErrorLocation(e.detail.filePath, e.detail.lineNum);
+		});
+		this.component.$on('reconcile-click', (e: CustomEvent<{ account: string; lastBalanceDate: string | null; ctrlKey: boolean }>) => {
+			void this.openAccountInTransactions(e.detail.account, e.detail.lastBalanceDate, e.detail.ctrlKey);
+		});
+		this.component.$on('edit-account', (e: CustomEvent<{ account: string }>) => {
+			new AccountDetailModal(this.plugin.app, this.plugin, e.detail.account, async () => { await this.updateView(); }).open();
+		});
+		this.component.$on('add-balance', (e: CustomEvent<{ account: string }>) => {
+			new UnifiedTransactionModal(this.plugin.app, this.plugin, null, async () => { await this.updateView(); }, { tab: 'balance', account: e.detail.account }).open();
+		});
+		this.component.$on('force-reconcile', (e: CustomEvent<{ account: string; failingDate: string | null; failingDiscrepancy: string | null }>) => {
+			new ForceReconcileModal(
+				this.plugin.app,
+				this.plugin,
+				e.detail.account,
+				{ date: e.detail.failingDate, discrepancy: e.detail.failingDiscrepancy },
+				async () => { await this.updateView(); }
+			).open();
+		});
 
 		window.setTimeout(() => { void this.updateView(); }, 0);
 	}
@@ -78,17 +128,25 @@ export class BeancountView extends ItemView {
 			return;
 		}
 		try {
-			// Run KPI queries and bean check concurrently
+			await this.plugin.currencyPrecisionService.ensureLoaded();
+			const decimals = this.plugin.currencyPrecisionService.getDecimals(reportingCurrency);
+
+			// Run KPI queries, bean check, and reconciliation concurrently
 			const [
 				kpiResults,
-				checkResult
+				checkResult,
+				reconciliationResult
 			] = await Promise.all([
 				Promise.all([
-					runQuery(this.plugin, queries.getTotalAssetsQuery(reportingCurrency, 2)),
-					runQuery(this.plugin, queries.getTotalLiabilitiesQuery(reportingCurrency, 2)),
-					runQuery(this.plugin, queries.getTotalWorthQuery(reportingCurrency, 2)),
+					runQuery(this.plugin, queries.getTotalAssetsQuery(reportingCurrency, decimals)),
+					runQuery(this.plugin, queries.getTotalLiabilitiesQuery(reportingCurrency, decimals)),
+					runQuery(this.plugin, queries.getTotalWorthQuery(reportingCurrency, decimals)),
 				]),
-				this.runBeanCheck()
+				this.runBeanCheck(),
+				getReconciliationStatus(this.plugin).catch(err => {
+					Logger.error('[refreshData] Reconciliation fetch failed:', err);
+					return { overdueCount: 0, upToDateCount: 0, accounts: [] as ReconciliationAccountStatus[] };
+				})
 			]);
 
 			const [assetsResult, liabilitiesResult, netWorthResult] = kpiResults;
@@ -108,14 +166,17 @@ export class BeancountView extends ItemView {
 			Logger.log('[refreshData] Error list:', checkResult.errorList);
 
 			this.updateProps({
-				assets: `${assetsNum.toFixed(2)} ${reportingCurrency}`,
-				liabilities: `${liabilitiesNum.toFixed(2)} ${reportingCurrency}`,
-				netWorth: `${netWorthNum.toFixed(2)} ${reportingCurrency}`,
+				assets: `${assetsNum.toFixed(decimals)} ${reportingCurrency}`,
+				liabilities: `${liabilitiesNum.toFixed(decimals)} ${reportingCurrency}`,
+				netWorth: `${netWorthNum.toFixed(decimals)} ${reportingCurrency}`,
 				kpiError: null, 
 				fileStatus: checkResult.status, 
 				fileStatusMessage: checkResult.message,
 				errorCount: checkResult.errorCount,
-				errorList: checkResult.errorList
+				errorList: checkResult.errorList,
+				reconciliationOverdue: reconciliationResult.overdueCount,
+				reconciliationUpToDate: reconciliationResult.upToDateCount,
+				reconciliationAccounts: reconciliationResult.accounts
 			});
 
 		} catch (error) {
@@ -133,8 +194,8 @@ export class BeancountView extends ItemView {
 	}
 
 	// --- Runs bean-check (using ERRORS query) ---
-	async runBeanCheck(): Promise<{ status: "ok" | "error"; message: string | null; errorCount: number; errorList: string[] }> {
-		const filePath = this.plugin.settings.beancountFilePath;
+	async runBeanCheck(): Promise<{ status: "ok" | "error"; message: string | null; errorCount: number; errorList: SnapshotError[] }> {
+		const filePath = getMainLedgerPath(this.plugin);
 		const commandBase = this.plugin.settings.beancountCommand;
 		Logger.log('[runBeanCheck] Starting validation check');
 		Logger.log('[runBeanCheck] File path:', filePath);
@@ -231,58 +292,100 @@ export class BeancountView extends ItemView {
 	}
 
 	// --- Parse ERRORS query formatted output ---
-	private parseErrorsFromFormattedOutput(output: string): string[] {
+	private parseErrorsFromFormattedOutput(output: string): SnapshotError[] {
 		Logger.log('[parseErrorsFromFormattedOutput] Starting parse');
 		Logger.log('[parseErrorsFromFormattedOutput] Output length:', output?.length || 0);
 		Logger.log('[parseErrorsFromFormattedOutput] First 500 chars:', output?.substring(0, 500));
-		
+
 		if (!output || !output.trim()) {
 			Logger.log('[parseErrorsFromFormattedOutput] Empty output, returning empty array');
 			return [];
 		}
-		
+
 		const lines = output.split('\n');
 		Logger.log('[parseErrorsFromFormattedOutput] Total lines:', lines.length);
-		const errorLines: string[] = [];
-		
+		const errorLines: SnapshotError[] = [];
+
 		for (let i = 0; i < lines.length; i++) {
 			const line = lines[i];
 			const trimmed = line.trim();
 			Logger.log(`[parseErrorsFromFormattedOutput] Line ${i}:`, trimmed);
-			
+
 			// Match error lines that follow the pattern: filename:line: Error message
 			// Use .+ instead of [^:]+ to handle Windows paths with colons (e.g., C:\path\file.beancount:34: Error)
 			const regex = /.+:\d+:\s+.+/;
 			const matches = trimmed && trimmed.match(regex);
 			Logger.log(`[parseErrorsFromFormattedOutput] Line ${i} matches regex:`, !!matches);
-			
+
 			if (trimmed && matches) {
-				// Extract just the filename without full path for cleaner display
 				// Match filepath (including Windows C:\ paths), line number, and message
 				const match = trimmed.match(/(.+):(\d+):\s+(.+)/);
 				Logger.log(`[parseErrorsFromFormattedOutput] Line ${i} detail match:`, match ? 'YES' : 'NO');
-				
+
 				if (match) {
 					const filePath = match[1];
-					const lineNum = match[2];
+					const lineNum = parseInt(match[2], 10);
 					const message = match[3];
-					
-					// Get just the filename
 					const fileName = filePath.split(/[/\\]/).pop() || filePath;
-					const errorMsg = `${fileName}:${lineNum}: ${message}`;
-					Logger.log(`[parseErrorsFromFormattedOutput] Adding error:`, errorMsg);
-					errorLines.push(errorMsg);
+					Logger.log(`[parseErrorsFromFormattedOutput] Adding error:`, fileName, lineNum, message);
+					errorLines.push({ filePath, fileName, lineNum, message });
 				} else {
-					// Fallback: use the line as-is
+					// Fallback: no parseable file/line — keep the message, no jump target.
 					Logger.log(`[parseErrorsFromFormattedOutput] Using line as-is:`, trimmed);
-					errorLines.push(trimmed);
+					errorLines.push({ filePath: '', fileName: '', lineNum: 0, message: trimmed });
 				}
 			}
 		}
-		
+
 		Logger.log('[parseErrorsFromFormattedOutput] Total parsed errors:', errorLines.length);
 		Logger.log('[parseErrorsFromFormattedOutput] Error lines:', errorLines);
 		return errorLines;
+	}
+
+	// --- Open a validation error's source location in the editor ---
+	private async openErrorLocation(filePath: string, lineNum: number) {
+		if (!filePath) return;
+		try {
+			const windowsPath = convertWslPathToWindows(filePath);
+			const relativePath = getVaultRelativePath(this.plugin, windowsPath);
+			const file = this.plugin.app.vault.getAbstractFileByPath(relativePath);
+			if (!(file instanceof TFile)) {
+				new Notice(`Could not locate file in vault: ${relativePath}`);
+				return;
+			}
+			const leaf = this.plugin.app.workspace.getLeaf(true);
+			await leaf.openFile(file);
+			if (leaf.view instanceof BeancountFileView) {
+				leaf.view.revealLine(lineNum);
+			}
+		} catch (err) {
+			Logger.error('[openErrorLocation] Failed to open error location:', err);
+			new Notice('Failed to open file at error location.');
+		}
+	}
+
+	// --- Open the Transactions (or Journal) tab, filtered by account + reconciliation window ---
+	private async openAccountInTransactions(account: string, lastBalanceDate: string | null, ctrlKey: boolean) {
+		if (!account) return;
+		const req: NavRequest = {
+			tab: resolveNavTab({ ctrlKey }),
+			filters: { account, ...(lastBalanceDate ? { startDate: lastBalanceDate } : {}) }
+		};
+
+		const findDashboardLeaf = () => this.plugin.app.workspace.getLeavesOfType(UNIFIED_DASHBOARD_VIEW_TYPE)
+			.find(leaf => leaf.view instanceof UnifiedDashboardView);
+
+		let leaf = findDashboardLeaf();
+		if (!leaf) {
+			await this.plugin.activateView(UNIFIED_DASHBOARD_VIEW_TYPE, 'tab');
+			leaf = findDashboardLeaf();
+		} else {
+			await this.plugin.app.workspace.revealLeaf(leaf);
+		}
+
+		if (leaf?.view instanceof UnifiedDashboardView) {
+			leaf.view.navigate(req);
+		}
 	}
 }
 

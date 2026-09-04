@@ -16,18 +16,20 @@
             <span class="date">{entry.date}</span>
         </div>
         <div class="header-right">
-             <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title="Delete">
-                ❌
+            <button class="btn-icon" on:click={() => dispatch('edit', entry)} title="Edit">
+                ✏️
             </button>
-            <button class="btn-edit" on:click={() => dispatch('edit', entry)}>
-                ✏️ Edit
+            <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title="Delete">
+                ❌
             </button>
         </div>
     </div>
 
     <div class="card-body">
         <div class="balance-row">
-            <div class="account">{entry.account}</div>
+            <button class="account account-link" type="button" on:click={(e) => dispatch('account-click', { account: entry.account, ctrlKey: e.ctrlKey || e.metaKey })} title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal">
+                {entry.account}
+            </button>
             <div class="amount">
                 {entry.amount} {entry.currency}
             </div>
@@ -36,7 +38,7 @@
              <div class="balance-row diff">
                 <div class="label">Difference:</div>
                 <div class="amount error">
-                    {entry.diff_amount} {entry.currency}
+                    {entry.diff_amount}
                 </div>
             </div>
         {/if}
@@ -148,6 +150,27 @@
     .account {
         color: var(--text-muted);
         font-size: 0.85rem;
+    }
+
+    .account-link {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        height: auto !important;
+        font-family: inherit;
+        cursor: pointer;
+        text-align: left;
+        transition: color 0.15s ease, text-decoration 0.15s ease;
+    }
+
+    .account-link:hover {
+        color: var(--text-accent);
+        text-decoration: underline;
+        background: transparent !important;
+        box-shadow: none !important;
     }
 
     .amount {

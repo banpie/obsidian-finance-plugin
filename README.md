@@ -1,16 +1,30 @@
 # Beancount Ledger
 
-#### Caution
-- Recent release 1.4.0 has breaking changes for Beta testers (BRAT). I had to change the plugin name and id to make sure obsidian allows submission to community store. This does not work well with BRAT users. If you are using this plugin via BRAT, please reinstall it from BRAT settings. This will not affect existing beancount files.
-- The plugin is now available in community store at `https://community.obsidian.md/plugins/beancount-finance`
+![Plugin Logo](logo.png)
 
--------------------------------------------------
-
-![Plugin Logo](docs-site/static/img/Primary_horizontal_logo.png)
+[![CI Check](https://github.com/mkshp-dev/obsidian-finance-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/mkshp-dev/obsidian-finance-plugin/actions/workflows/ci.yml)
+[![Docs Portal](https://img.shields.io/badge/docs-docusaurus-blue.svg)](https://mkshp-dev.github.io/obsidian-finance-plugin/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Obsidian Plugin](https://img.shields.io/badge/Obsidian-v1.7.2+-purple.svg)](https://obsidian.md)
 
 A comprehensive Beancount integration for [Obsidian](https://obsidian.md) that transforms your vault into a powerful plain-text accounting dashboard.
 
-📘 **[Full Documentation](https://mkshp-dev.github.io/obsidian-finance-plugin/)** - Read the complete guide for features, configuration, and usage.
+📘 **[Full Documentation Portal](https://mkshp-dev.github.io/obsidian-finance-plugin/)** — Read the complete guide for features, configuration, and usage.
+
+---
+
+## ✨ Features
+
+*   **📊 Unified Dashboard** — Overview, Transactions, Journal, Accounts & Balances, Income Statement, and Commodities tabs, all backed by live Beancount Query Language (BQL).
+*   **💸 Transaction Management** — Add transactions, balance assertions, and notes through a friendly modal instead of hand-writing plain text.
+*   **📅 Scheduled & Recurring Transactions** — Define one-time or repeating transactions (rent, subscriptions, insurance) from the Snapshot sidebar. Click Refresh to see what's due — including every occurrence a schedule has fallen behind on — and Insert, Skip, or Hold each one individually.
+*   **✅ Reconciliation Tracking** — Assign a reconciliation interval to any account and get an at-a-glance overdue/up-to-date summary in the Snapshot sidebar.
+*   **🪙 Bean Price Integration** — Automated market value updates for stocks, mutual funds, ETFs, and cryptocurrencies.
+*   **📁 Structured Layout** — Automatically split large journals into clean, organized files (accounts, prices, transactions by year, and more).
+*   **📝 Pro-grade File Editor** — A full `.beancount` editor view with live syntax highlighting, diagnostics, smart indentation, and autocompletion.
+*   **🔒 Privacy First** — Fully local; your financial data never leaves your device.
+
+See the [Documentation Portal](https://mkshp-dev.github.io/obsidian-finance-plugin/) for the complete feature list and usage guides.
 
 ---
 
@@ -24,15 +38,21 @@ This plugin integrates with your existing Beancount setup:
 4. **bean-price** *(optional)*: For automatic commodity price fetching (`pip install beanprice`)
 5. **WSL Support** *(optional)*: Full compatibility for Windows users running Beancount in WSL
 
-> **Note:** `bean-query` and `bean-price` are separate packages from Beancount itself and require their own `pip install` commands.
+> **Note:** `bean-query` and `bean-price` are separate packages from Beancount itself and require their own `pip install` commands. See the [Requirements Documentation](https://mkshp-dev.github.io/obsidian-finance-plugin/getting-started/requirements) for more details.
 
 ---
 
 ## 📦 Installation
 
+### Install from community store
+
+1. Open Obsidian Settings and go to **Community plugins**.
+2. Click **Browse** and search for `Beancount Ledger`.
+3. Click **Install**, then **Enable** the plugin.
+
 ### Manual Installation
 1. Download the latest release from [GitHub Releases](https://github.com/mkshp-dev/obsidian-finance-plugin/releases)
-2. Extract files to `<vault>/.obsidian/plugins/obsidian-finance-plugin/`
+2. Extract files to `<vault>/.obsidian/plugins/beancount-finance/`
 3. Enable the plugin in Obsidian Settings → Community Plugins
 
 ### BRAT Beta Installation

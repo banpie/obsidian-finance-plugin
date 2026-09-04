@@ -32,16 +32,19 @@ export class UnifiedTransactionModal extends Modal {
     private entry: JournalEntry | null;
     private mode: 'add' | 'edit';
     private onRefreshCallback?: () => Promise<void>; // Add refresh callback
+    private prefill?: { tab: 'balance'; account: string };
 
     constructor(
-        app: App, 
-        plugin: BeancountPlugin, 
+        app: App,
+        plugin: BeancountPlugin,
         entryOrTransaction: JournalEntry | JournalTransaction | null = null,
-        onRefresh?: () => Promise<void> // Add optional refresh callback
+        onRefresh?: () => Promise<void>, // Add optional refresh callback
+        prefill?: { tab: 'balance'; account: string } // Preselect a tab + account in add mode (e.g. "Balance" quick-action)
     ) {
         super(app);
         this.plugin = plugin;
         this.onRefreshCallback = onRefresh;
+        this.prefill = prefill;
         
         // Handle both transaction (legacy) and entry (new) parameters
         if (entryOrTransaction?.type === 'transaction') {
@@ -87,7 +90,9 @@ export class UnifiedTransactionModal extends Modal {
                 currencies, // Add currencies for autocomplete
                 mode: this.mode,
                 operatingCurrency: this.plugin.settings.operatingCurrency,
-                plugin: this.plugin
+                plugin: this.plugin,
+                initialTab: this.prefill?.tab ?? null,
+                initialAccount: this.prefill?.account ?? null
             }
         });
 
@@ -201,6 +206,7 @@ export class UnifiedTransactionModal extends Modal {
                     entryData.account!,
                     entryData.currencies || [],
                     entryData.booking,
+                    undefined,
                     this.plugin.settings.createBackups ?? true
                 );
                 

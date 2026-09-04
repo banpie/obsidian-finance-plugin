@@ -7,6 +7,114 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## In-progress
 
+- **Reconciliation Actions: Edit, Balance, and Force Reconcile** — The Snapshot sidebar's Reconciliation tab now does more than report status. Each account row gets three buttons: **Edit** opens a new **Account details** modal — view open/close dates, currencies, and reconciliation status, and set or clear the `reconcile` interval on an already-open account, previously only settable once at account creation — also reachable by right-clicking an account row in the Accounts & Balances tab. **Balance** jumps straight to the Add Transaction modal's Balance tab with the account pre-filled, for the everyday "check the real balance, record it" step. **Force reconcile** — enabled only when an account's latest balance assertion is actually failing — inserts a Beancount `pad` directive so Beancount auto-generates a transaction covering the difference, with a pad-account picker and a plain-language warning that this is a plug, not a fix for whatever caused the gap. The summary row was also simplified from two bordered stat boxes to a single text line ("N overdue · N up to date") with a new **Only overdue** toggle to filter the list down to what needs attention.
+
+- **Scheduled & Recurring Transactions** — Set up transactions that repeat automatically or fire once in the future, right from the Snapshot sidebar. A new **Upcoming** tab (toggled against Key Metrics) lets you define a schedule — name, frequency (`One-time`, `Weekly`, `Monthly`, `Quarterly`, `Yearly`), start date, payee/narration, and any number of postings, including a blank posting left to auto-balance — which is stored as a plain-text `event "Recurring"` directive in `events.beancount`. Nothing posts to your ledger automatically: click **Refresh** to check for due occurrences, and a schedule that's fallen behind surfaces *every* missed occurrence at once rather than just the next one. Each occurrence is resolved independently as **Insert** (materialize it and advance), **Skip** (dismiss it and still advance), or left on **Hold** (re-offered next refresh) — with a Hold on an earlier occurrence correctly blocking later ones in the same batch from being resolved out of order. Every materialized transaction is tagged with `scheduled: "<name>"` metadata, giving a built-in duplicate-insert safety check and a full audit trail back to its originating schedule. The bundled onboarding demo ledger now includes several example schedules covering every frequency.
+
+## 2.4.0 - 2026-08-17
+
+- **Unified Inter-Tab Dashboard Connections & Navigation API** — Built a centralized navigation contract (`NavRequest`, `NavigationFilters`) allowing cross-tab linking and filter synchronization across the entire dashboard:
+  - **Journal Tab**: Click any posting account name on a `TransactionCard` or `BalanceCard` to open the Transactions tab pre-filtered to that account (#263).
+  - **Income Statement Chart**: Click any month/week column in the Income Statement trend chart to jump to the Transactions tab pre-filtered to that date range, with a `pointer` cursor on hover (#264).
+  - **Income Statement Table**: Click any leaf account row (or `Ctrl`/`Cmd` click category headers) in the Income/Expenses table to view transactions for that account (#265).
+  - **Balance Sheet Table**: Click any leaf account row (or `Ctrl`/`Cmd` click category headers) in Assets/Liabilities/Equity tables to jump to the Transactions tab pre-filtered to that account (#266).
+  - **Overview Tab**: Click KPI summary cards (Income, Expenses, Total Balance, Savings Rate) to open Transactions tab pre-filtered to that period & account type. Added a `"→ View"` button and clickable account chips on Budget and Target indicator cards (#267).
+  - **Sunburst Charts**: Click any arc segment on Sunburst charts across Income Statement and Balance Sheet tabs to navigate to Transactions for that account, featuring cursor pointer styling and enhanced tooltip hints (#268).
+  - **Transactions ↔ Journal**: Click any payee name in the Transactions tab table to jump to the Journal tab pre-filtered to that payee, and click the `"↗"` link or payee name on Journal `TransactionCard` headers to jump back to the Transactions tab (#269).
+  - **Journal Tab Tags**: Click any `#tag` chip on a `TransactionCard` header to jump to the Transactions tab pre-filtered to that tag.
+  - **Ctrl/Cmd+Click for Journal**: All account/tag/date-range/KPI clickables that navigate to Transactions now also support `Ctrl`/`Cmd`+click to open the Journal tab pre-filtered instead — Journal card account & tag chips, Overview KPI cards and Budget/Target indicators, Income Statement chart columns, and leaf account rows and Sunburst arcs on the Balance Sheet and Income Statement tabs. Category header rows on the Balance Sheet/Income Statement tables keep their existing `Ctrl`/`Cmd`+click behavior (jump to Transactions for that category) unchanged. Also fixed a bug where Sunburst arc clicks (#268) were never actually wired to navigation (`segment-click` had no listener), so that connection now works for the first time.
+
+- **Transactions Tab: Clear filters button** — Added a "Clear" button next to Refresh, matching the Journal tab.
+
+- **Commodities: "Update Prices" reflects real availability** — The button is now disabled (with an explanatory tooltip) when no `bean-price` command is configured, instead of failing silently on click. Also removed `bean-price`'s live auto-detect fallback so it always runs the exact command shown in Settings → Connection, matching `bean-query`'s existing behavior.
+
+- **Settings: Clearer command verification feedback** — Fixed the Verify button's success/error box, which was rendering a duplicate checkmark/✕ with low-contrast text; redesigned with a tinted background and left border accent.
+
+- **Currency-aware decimal precision** — Amounts across the dashboard now use each currency's actual precision (inferred from how it's written in the ledger), instead of a hardcoded 2 decimals everywhere. Fixes crypto/low-value commodity prices that were being rounded to `0.00`, and zero-decimal currencies (e.g. JPY) that were getting a padded `.00`.
+
+
+## 2.3.2 - 2026-08-07
+
+### Added 🚀
+
+- **Account Reconciliation Tracking** — Never lose track of which accounts are overdue for reconciliation. Assign a `reconcile: <days>` interval to any account's `open` directive and the plugin will continuously monitor how long ago each account last had a `balance` assertion — flagging any that exceed their interval or have never been reconciled at all. A new **Reconciliation tab** in the Snapshot sidebar shows an at-a-glance summary (overdue count vs. up-to-date count) and a per-account status list with clear ✅ / ⚠️ indicators. Setting up intervals is just as easy: the **Open Account** modal in the Accounts tab now includes an optional **"Reconciliation interval (days)"** field, so you can configure the schedule directly from the UI without touching your `.beancount` files.
+
+### Improved 🔨
+
+- **Custom Pill Dropdown Controls** — Redesigned the chart area selectors and filter controls across the "Accounts and Balances", "Income Statement", and "Commodities" tabs with a polished custom dropdown component. Primary selectors ("Net Worth Trend" / "Trends" / "All Commodities") use a vibrant purple accent with custom SVG icons, paired with cascading sub-option menus ("Balances", "Monthly", "Weekly", "Assets", "Liabilities", etc.). Popovers are 100% opaque across all Obsidian themes and support full keyboard navigation (`Escape`, `Enter`, Arrow keys) and click-outside dismissal.
+
+
+## 2.3.1 - 2026-07-26
+
+### Added 🚀
+
+- **Onboarding Wizard: Full redesign with connection probing** — Replaced the previous onboarding trigger (keyed on `structuredFolderName`) with a dedicated `onboardingCompleted` settings flag and a companion runtime connection probe (`probeConnection`) that non-blockingly verifies `bean-query` reachability on startup. The wizard Svelte component was rewritten with new step-based UI including dependency detection cards, folder-structure tree preview, setup-card selection, a polished summary/next-steps screen, and refined CSS using Obsidian design tokens throughout.
+
+- **Settings: Structured metadata definitions and Editor tab** — Added a `getSettingDefinitions()` method that returns human-readable names and descriptions for all settings, enabling programmatic access for onboarding and documentation. Reorganised the settings tabs: the former "Backup" tab was merged into "Performance", the "Named queries" help block was removed from the BQL tab, and a new dedicated **📝 Editor** tab was created to house autocomplete, snippets, format-on-save, and lint-mode settings.
+
+- **Documentation Site: Docusaurus-based docs-site** — Shipped a complete `docs-site/` directory containing a Docusaurus project with 20+ documentation pages covering installation, requirements, first-time setup, all dashboard tabs, adding data, advanced queries, Beancount syntax reference, settings, troubleshooting, plugin API, and the changelog. Includes screenshots, videos, and custom CSS theming.
+
+### Improved 🔨
+
+- **Journal Tab: Robust in-memory filtering for Balances and Notes** — Balance and Note directives now honour the search field, payee, and tag filters. Balances are filtered client-side by account, amount, and currency; Notes are filtered by account, comment, and tags. When a payee filter is active, Balances and Notes are correctly excluded since those directive types have no payee. Re-sort logic was extended to cover all three filter dimensions.
+
+- **UI Polish** — Changed the "Open Account" modal date field from a plain text input to a native `<input type="date">` picker. Aligned the Journal tab search debounce delay from 800 ms to 300 ms (matching the Transactions tab). Fixed double currency rendering on Balance cards where `{entry.diff_amount}` already included the currency symbol.
+
+- **BQL Processors: Obsidian-native DOM helpers** — Replaced all raw `activeDocument.createElement` calls in `BQLCodeBlockProcessor` and `InlineBQLProcessor` with Obsidian's native helpers (`createDiv`, `createSpan`, `createEl`). Refactored the file-download anchor creation to use `createEl('a', { attr: { … } })` with proper `detach()` cleanup and a feature-detection guard (`'download' in HTMLAnchorElement.prototype`).
+
+- **ESLint & Code Quality** — Updated the ESLint ignore path from `docs/` to `docs-site/`, renamed the npm script from `eslint` to `lint` for standardisation, pinned `@eslint/js` to `^9.0.0`, and upgraded `eslint-plugin-obsidianmd` to `latest`. Resolved all new linting issues raised by the updated ruleset (Obsidian-native DOM APIs, `createDiv`/`createSpan` usage, safe element creation patterns).
+
+### Fixed 🐛
+
+- **Settings DOM: Replace `createEl('div')` with `createDiv()`** — Updated three instances in the File Organisation settings tab (`pathDiv`, `descEl`, `validationEl`) to use Obsidian's `createDiv()` helper instead of `createEl('div', …)`, resolving lint warnings from `eslint-plugin-obsidianmd`.
+
+### Changed (internal) 🔧
+
+- **CI/CD: Release and deployment workflow fixes** — Restructured `release-finalize.yml` to prevent false failures, standardised the changelog-rewriting regex, fixed the docs directory path in `release-trigger.yml`, added `CHANGELOG.md` and workflow files to deploy triggers, and migrated the documentation deployment to direct GitHub Actions deployment.
+
+- **Licensing & Manifest** — Standardised `LICENSE` to MIT and converted `manifest.json` `fundingUrl` from a plain string to the multi-platform object format (`GitHub Sponsors` + `Buy Me a Coffee`).
+
+
+## 2.3.0 - 2026-07-15
+
+- **Transaction Modal: Layout improvements and UI fixes** — Moved Account fields in Balance/Note tabs and the Query name field in the Query tab adjacent to the Date field for a more compact form layout. Adjusted flag select box height and padding to prevent vertical text clipping, and properly escaped Svelte double curly braces in the cost section to prevent rendering of '[object Object]'.
+
+- **Editor & Dashboard: User-defined transaction snippets** — Added support for loading custom transaction templates from a standalone `snippets.beancount` file. Toggling the feature on-demand creates the template file with a `sampleSnippet` if missing. Supports real-time cache reloading via vault change events, folder rename safety hooks, and a command to open the snippets file. Also added a `📋 Snippet` button to transaction cards in the Journal tab to save existing transactions to the snippets file under a custom name, and a `📋 Load Snippet` button in the `Add Transaction` modal footer to search and populate the form fields.
+
+- **Transaction Modal: Polish delete button UI** — Replaced the trash can/bucket emoji (`🗑️`) with a standard `✕` (`&times;`) sign across the posting and metadata deletion buttons. Redesigned the button from a solid red block to a clean white/grey layout with a red cross that transitions to a soft red background on hover. Cleaned up redundant CSS rules to unify the button styling.
+
+
+- **Journal Tab: Icon-only actions & button reordering** — Switched action buttons for transactions, notes, and balances to compact icon-only layouts to save horizontal space. Reordered transaction actions to **Edit (✏️) → Save as snippet (📋) → Delete (❌)** and note/balance actions to **Edit (✏️) → Delete (❌)**. Added clear tooltips to all icon buttons.
+
+- **ESLint & Code Quality: Resolve all static analysis errors** — Resolved all ESLint errors by adjusting the configuration to ignore the standalone `docs/` directory instead of the obsolete `docs-site/` pathway, applying sentence-casing to UI labels, using window-scoped timer prefixes for popout window compatibility, and typing variables cleanly to prevent unsafe promise checks.
+
+- **Documentation: QoL improvements** — Removed outdated caution warning, added community store installation instructions, updated logo path to repository root, and pointed to online documentation for detailed requirements.
+
+## 2.2.6 - 2026-07-08
+
+## 2.2.5 - 2026-07-08
+
+- **Codebase Cleanup: Remove dead path-normalisation methods from SystemDetector** — Deleted `normalizeFilePath` and its private helper `convertWSLToWindowsPath` from `SystemDetector`. Both methods had zero external callers; WSL↔Windows path translation is already handled correctly at two dedicated call-sites: `convertWindowsPathToWsl` (in `fileEditor.ts`) is applied JIT in `queryRunner.ts` when the configured command includes `wsl`, and `convertWslPathToWindows` (also in `fileEditor.ts`) is used throughout `directives.ts` and `beancount-lint.ts` to normalise paths returned by Beancount tools before Obsidian vault writes.
+
+## 2.2.4 - 2026-07-07
+
+
+## 2.2.3 - 2026-07-07
+
+- **Settings: Remove redundant path fields for cross-device portability** — Removed `beancountFilePath` and `structuredFolderPath` from the plugin settings interface and `data.json`. Both fields stored absolute OS-level paths that broke portability when settings were synced across machines with different usernames or directory layouts. Since v2.0.0 enforces vault-only file access, the main ledger path can always be derived at runtime as `structuredFolderName + "/ledger.beancount"` via the existing `getMainLedgerPath()` utility. Updated all call sites (`directives.ts`, `sidebar-view.ts`, `beancount-lint.ts`, `ConnectionSettings.svelte`, `OnboardingModal.svelte`) to use `getMainLedgerPath()` or guard on `structuredFolderName` instead. Added an explicit `sourcePath` parameter to `migrateToStructuredLayout()` so onboarding no longer needs to write a temporary path into settings. The onboarding trigger in `main.ts` now checks `structuredFolderName` as the source of truth for setup completion. Addresses portability concern raised in discussion #245.
+
+## 2.2.2 - 2026-07-04
+
+- **Onboarding Wizard: Improve UI/UX flow and navigation gating** — Updated the setup wizard to allow users to skip or proceed past the Python/prerequisites check step. Added a warning callout if Beancount is missing while allowing layout setup to proceed, clarified that ledger files must be vault-relative, updated placeholders, and added Cancel/Exit button triggers to Step 2.
+
+- **File Organization: Safe Folder name renaming with validation** — Redesigned the **Folder name** setting field with an interactive Edit/Save/Cancel lifecycle. Added validation checks for folder existence and invalid characters, physically renaming the structured layout folder in the Obsidian vault, and dynamically updating configuration paths (`beancountFilePath` and `structuredFolderPath`) under the hood to prevent write/query path mismatches.
+
+- **Codebase Cleanup: Remove obsolete settings, unused parameters, and redundant scripts** — Removed dead advanced settings panels and file autocomplete modal helpers from the settings view, eliminated unused parameters and variables from controllers, processors, and layout utilities, and removed redundant script files (`test-build.js` and the checked-in detection script artifact) to simplify the codebase and improve maintainability.
+
+## 2.2.1 - 2026-07-04
+
+## 2.2.0 - 2026-06-21
+
 - **Multi-Currency Warning: Clarify warning column wording** — Updated the multi-currency warnings on the Balance Sheet and Income Statement to reference the specific reporting currency name instead of positional column descriptions like 'first column' and 'second column' to prevent user confusion. Merged PR #230.
 
 - **Income Statement: Fix Net Profit trend signs and show income as positive** — Updated the income statement and net profit trend charts to display conventional signs (positive values for profit and negative values for loss), negating credit accounts at the source so income balances render as positive. Adjusted chart colors (green for profit, red for loss) and fixed the anomalous stripes rendering on the Income Sunburst Chart. Merged PR #238.

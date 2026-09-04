@@ -131,6 +131,69 @@ export function parseCommodityDetailsCSV(csv: string): {
 }
 
 /**
+ * Parses CSV from getAccountDetailQuery into a single account detail object.
+ * Format: [account, open_date, close_date, currencies, reconcile_days, filename, lineno]
+ */
+export function parseAccountDetailCSV(csv: string): {
+    account: string;
+    openDate: string | null;
+    closeDate: string | null;
+    currencies: string[];
+    reconcileDays: number | null;
+    filename: string | null;
+    lineno: number | null;
+} {
+    const defaultResult = {
+        account: '',
+        openDate: null,
+        closeDate: null,
+        currencies: [] as string[],
+        reconcileDays: null,
+        filename: null,
+        lineno: null,
+    };
+
+    try {
+        const cleanCsv = csv.replace(/\r/g, '').trim();
+        if (!cleanCsv) return defaultResult;
+
+        const records: string[][] = parseCsv(cleanCsv, {
+            columns: false,
+            skip_empty_lines: true,
+            relax_column_count: true,
+        });
+
+        if (records.length < 2) return defaultResult;
+
+        const row = records[1];
+        if (row.length < 7) return defaultResult;
+
+        const account = row[0]?.trim() || '';
+        const openDate = row[1]?.trim() || null;
+        const closeDate = row[2]?.trim() || null;
+        // `open.currencies` renders as a Python list repr, e.g. "['USD', 'CAD']"
+        // (verified against real bean-query output) — strip the brackets, then
+        // each element's own quotes.
+        const currenciesRaw = (row[3] || '').trim().replace(/^\[|\]$/g, '');
+        const currencies = currenciesRaw
+            ? currenciesRaw.split(',').map(c => c.trim().replace(/^['"]|['"]$/g, '')).filter(c => c.length > 0)
+            : [];
+        const reconcileDaysStr = row[4]?.trim() || '';
+        const parsedReconcileDays = reconcileDaysStr ? parseInt(reconcileDaysStr, 10) : NaN;
+        const reconcileDays = isNaN(parsedReconcileDays) ? null : parsedReconcileDays;
+        const filename = row[5]?.trim() || null;
+        const linenoStr = row[6]?.trim() || '';
+        const parsedLineno = linenoStr ? parseInt(linenoStr, 10) : NaN;
+        const lineno = isNaN(parsedLineno) ? null : parsedLineno;
+
+        return { account, openDate, closeDate, currencies, reconcileDays, filename, lineno };
+    } catch (e) {
+        Logger.error('Error parsing account detail CSV:', e, 'CSV:', csv);
+        return defaultResult;
+    }
+}
+
+/**
  * Parses CSV from getCombinedCommodityDataQuery into a Map keyed by currency symbol.
  * Format: [currency_, displayname_, units_, valueOp_, price_, logo_]
  *

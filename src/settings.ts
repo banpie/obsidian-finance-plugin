@@ -1,10 +1,12 @@
 // src/settings.ts
 
-import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, TFolder } from 'obsidian';
 import type BeancountPlugin from './main';
 import ConnectionSettings from './ui/partials/settings/ConnectionSettings.svelte';
 import { updateOperatingCurrency } from './utils/index';
 import type { LintMode } from './lang/beancount-lint';
+import { Logger } from './utils/logger';
+
 
 /**
  * Interface defining the plugin settings.
@@ -16,8 +18,6 @@ export type DashboardDefaultPeriod = "this-month" | "last-month" | "this-year" |
 export type PriceFetchBackend = "bean-price" | "external";
 
 export interface BeancountPluginSettings {
-    /** Path to the main Beancount file. */
-    beancountFilePath: string;
     /** Command to run Beancount/Python (e.g. "bean-query", "python3"). */
     beancountCommand: string;
     /** The primary currency for reporting and defaults. */
@@ -43,8 +43,6 @@ export interface BeancountPluginSettings {
     // Structured Layout Settings
     /** Name of the folder for structured layout (e.g., "Finances"). */
     structuredFolderName: string;
-    /** Computed absolute path to the structured folder (set automatically). */
-    structuredFolderPath: string;
     /** How to organize transaction files. */
     fileOrganization: FileOrganization;
     // Price Fetching Settings
@@ -64,17 +62,20 @@ export interface BeancountPluginSettings {
     beanPriceCommand: string;
     /** Whether to enable account-name autocomplete in the Beancount editor. */
     accountAutocomplete: boolean;
+    /** Whether to enable user-defined transaction snippets. */
+    enableUserSnippets: boolean;
     /** Whether to format the Beancount file on every save (Format on save). */
     formatOnSave: boolean;
     /** Lint mode for inline bean-check diagnostics: 'off' | 'on-save' | 'on-change'. */
     lintMode: LintMode;
+    /** Whether the user has completed the onboarding wizard. */
+    onboardingCompleted: boolean;
 }
 
 /**
  * Default settings for the plugin.
  */
 export const DEFAULT_SETTINGS: BeancountPluginSettings = {
-    beancountFilePath: '',
     beancountCommand: '',
     operatingCurrency: 'USD',
     maxTransactionResults: 2000,
@@ -89,7 +90,6 @@ export const DEFAULT_SETTINGS: BeancountPluginSettings = {
     maxBackupFiles: 10,
     // Structured Layout Settings
     structuredFolderName: 'Finances',
-    structuredFolderPath: '',
     fileOrganization: 'yearly',
     // Price Fetching Settings
     autoPriceFetch: false,
@@ -101,8 +101,10 @@ export const DEFAULT_SETTINGS: BeancountPluginSettings = {
     beanPriceCommand: '',
     // Editor Settings
     accountAutocomplete: true,
+    enableUserSnippets: false,
     formatOnSave: false,
     lintMode: 'on-save',
+    onboardingCompleted: false,
 }
 
 /**
@@ -114,10 +116,31 @@ export const DEFAULT_SETTINGS: BeancountPluginSettings = {
 export class BeancountSettingTab extends PluginSettingTab {
     plugin: BeancountPlugin;
     private activeTab = 'general';
+    private isEditingFolderName = false;
+    private tempFolderName = '';
 
     constructor(app: App, plugin: BeancountPlugin) {
         super(app, plugin);
         this.plugin = plugin;
+    }
+
+    getSettingDefinitions(): Record<string, { name: string; description: string }> {
+        return {
+            operatingCurrency: { name: 'Operating currency', description: 'The currency to use for transaction defaults and for consolidating totals.' },
+            dashboardDefaultPeriod: { name: 'Default dashboard period', description: 'Choose the period shown by dashboard summaries when the dashboard first loads.' },
+            structuredFolderName: { name: 'Base folder name', description: 'The name of the root folder in your vault where Beancount files will be stored.' },
+            fileOrganization: { name: 'File organization', description: 'How transactions should be split into separate files.' },
+            accountAutocomplete: { name: 'Editor autocomplete', description: 'Show context-aware completions in .beancount files.' },
+            enableUserSnippets: { name: 'User-defined snippets', description: 'Enable user-defined transaction snippets loaded from snippets.beancount.' },
+            formatOnSave: { name: 'Format on save', description: 'Automatically format the Beancount file when saving.' },
+            lintMode: { name: 'Inline lint mode', description: 'Show Beancount validation errors as inline squiggly underlines.' },
+            bqlShowTools: { name: 'Show query tools', description: 'Display refresh, copy, and download buttons above BQL query results.' },
+            bqlShowQuery: { name: 'Show query text', description: 'Display the BQL query text above the results in a collapsible section.' },
+            maxTransactionResults: { name: 'Max transaction results', description: 'Maximum number of transactions to load at once.' },
+            maxJournalResults: { name: 'Max journal results', description: 'Maximum number of journal entries to load at once.' },
+            createBackups: { name: 'Create backups', description: 'Create timestamped backup files before modifying your Beancount file.' },
+            maxBackupFiles: { name: 'Max backup files', description: 'Maximum number of backup files to keep.' }
+        };
     }
 
     display(): void {
@@ -139,9 +162,9 @@ export class BeancountSettingTab extends PluginSettingTab {
             { id: 'general', label: '⚙️ General' },
             { id: 'connection', label: '🔌 Connection' },
             { id: 'files', label: '📁 File Organization' },
+            { id: 'editor', label: '📝 Editor' },
             { id: 'bql', label: '📊 BQL' },
-            { id: 'performance', label: '⚡ Performance' },
-            { id: 'backup', label: '💾 Backup' }
+            { id: 'performance', label: '⚡ Performance' }
         ];
 
         // Create tab buttons
@@ -168,14 +191,14 @@ export class BeancountSettingTab extends PluginSettingTab {
             case 'files':
                 this.renderFilesTab(tabsContent);
                 break;
+            case 'editor':
+                this.renderEditorTab(tabsContent);
+                break;
             case 'bql':
                 this.renderBQLTab(tabsContent);
                 break;
             case 'performance':
                 this.renderPerformanceTab(tabsContent);
-                break;
-            case 'backup':
-                this.renderBackupTab(tabsContent);
                 break;
         }
 
@@ -399,7 +422,9 @@ export class BeancountSettingTab extends PluginSettingTab {
                     this.plugin.settings.bqlShowQuery = value;
                     await this.plugin.saveSettings();
                 }));
+    }
 
+    private renderEditorTab(containerEl: HTMLElement): void {
         new Setting(containerEl).setName('Editor configuration').setHeading();
 
         new Setting(containerEl)
@@ -410,6 +435,21 @@ export class BeancountSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.accountAutocomplete = value;
                     await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('User-defined snippets')
+            .setDesc('Enable user-defined transaction snippets loaded from snippets.beancount. Start typing at the start of a line to autocomplete.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableUserSnippets)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableUserSnippets = value;
+                    await this.plugin.saveSettings();
+                    if (value) {
+                        await this.plugin.loadSnippets();
+                    } else {
+                        this.plugin.snippetCompletions = [];
+                    }
                 }));
 
         new Setting(containerEl)
@@ -434,36 +474,6 @@ export class BeancountSettingTab extends PluginSettingTab {
                     this.plugin.settings.lintMode = value as LintMode;
                     await this.plugin.saveSettings();
                 }));
-
-        new Setting(containerEl).setName('Named queries').setHeading();
-
-        const queryInfoEl = containerEl.createDiv({ cls: 'setting-item-description' });
-        queryInfoEl.setCssStyles({ marginBottom: '12px' });
-        
-        const p1 = queryInfoEl.createEl('p');
-        p1.textContent = 'Define reusable BQL queries using the Beancount ';
-        const codeQuery = p1.createEl('code');
-        const queryText = 'query';
-        codeQuery.textContent = queryText;
-        p1.appendText(' directive stored in ');
-        const codeQueries = p1.createEl('code');
-        const queriesText = 'queries.beancount';
-        codeQueries.textContent = queriesText;
-        p1.appendText('.');
-
-        const p2 = queryInfoEl.createEl('p');
-        p2.textContent = 'Use the ';
-        p2.createEl('strong', { text: 'Add' });
-        p2.appendText(' ribbon button → ');
-        p2.createEl('em', { text: '🔍 Query' });
-        p2.appendText(' tab to create named queries.');
-
-        const p3 = queryInfoEl.createEl('p');
-        p3.textContent = 'In your notes, use ';
-        const codeBqlq = p3.createEl('code');
-        const bqlqText = 'bql-q:name';
-        codeBqlq.textContent = bqlqText;
-        p3.appendText(' to insert the query result inline.');
     }
 
     private renderPerformanceTab(containerEl: HTMLElement): void {
@@ -496,9 +506,7 @@ export class BeancountSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }
                 }));
-    }
 
-    private renderBackupTab(containerEl: HTMLElement): void {
         new Setting(containerEl).setName('Backups').setHeading();
 
         new Setting(containerEl)
@@ -535,16 +543,65 @@ export class BeancountSettingTab extends PluginSettingTab {
         });
 
         // Folder name setting
-        new Setting(containerEl)
+        const folderNameSetting = new Setting(containerEl)
             .setName('Folder name')
-            .setDesc('Name of the folder containing your structured Beancount files.')
-            .addText(text => text
-                .setPlaceholder('Finances')
-                .setValue(this.plugin.settings.structuredFolderName)
-                .onChange(async (value) => {
-                    this.plugin.settings.structuredFolderName = value || 'Finances';
-                    await this.plugin.saveSettings();
-                }));
+            .setDesc('Name of the folder containing your structured Beancount files.');
+
+        if (this.isEditingFolderName) {
+            folderNameSetting.addText(text => {
+                text.setValue(this.tempFolderName)
+                    .setPlaceholder('Finances')
+                    .onChange(value => {
+                        this.tempFolderName = value.trim();
+                    });
+
+                // Add keydown listener to support Enter to Save, Escape to Cancel
+                text.inputEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void this.saveFolderNameRename();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        this.isEditingFolderName = false;
+                        this.displayTab();
+                    }
+                });
+
+                window.setTimeout(() => text.inputEl.focus(), 50);
+                return text;
+            });
+
+            folderNameSetting.addButton(btn => {
+                btn.setButtonText('Save')
+                   .setCta()
+                   .onClick(async () => {
+                       await this.saveFolderNameRename();
+                   });
+            });
+
+            folderNameSetting.addButton(btn => {
+                btn.setButtonText('Cancel')
+                   .onClick(() => {
+                       this.isEditingFolderName = false;
+                       this.displayTab();
+                   });
+            });
+        } else {
+            folderNameSetting.addText(text => {
+                text.setValue(this.plugin.settings.structuredFolderName)
+                    .setDisabled(true);
+                return text;
+            });
+
+            folderNameSetting.addButton(btn => {
+                btn.setButtonText('Edit')
+                   .onClick(() => {
+                       this.isEditingFolderName = true;
+                       this.tempFolderName = this.plugin.settings.structuredFolderName;
+                       this.displayTab();
+                   });
+            });
+        }
 
         // File organization setting
         new Setting(containerEl)
@@ -582,8 +639,9 @@ export class BeancountSettingTab extends PluginSettingTab {
             '📄 prices.beancount - Price directives',
             '📄 pads.beancount - Pad directives',
             '📄 balances.beancount - Balance assertions',
+            '📄 queries.beancount - Named query directives',
             '📄 notes.beancount - Note directives',
-            '📄 events.beancount - Event directives',
+            '📄 events.beancount - Event directives (+ holds financial indicator details)',
             '📁 transactions/ - Folder with transaction files organized by year or month'
         ];
 
@@ -593,8 +651,9 @@ export class BeancountSettingTab extends PluginSettingTab {
             li.textContent = file;
         });
 
-        // Show current path
-        if (this.plugin.settings.beancountFilePath) {
+        // Show current (derived) ledger path
+        const folderName = this.plugin.settings.structuredFolderName;
+        if (folderName) {
             const pathDiv = containerEl.createDiv({ cls: 'current-path-display' });
             pathDiv.setCssStyles({
                 marginTop: '15px',
@@ -603,33 +662,18 @@ export class BeancountSettingTab extends PluginSettingTab {
                 borderRadius: '5px'
             });
 
-            pathDiv.createEl('div', {
+            pathDiv.createDiv({
                 text: 'Main ledger file path:',
                 cls: 'setting-item-name'
             });
-            const descEl = pathDiv.createEl('div', {
-                text: this.plugin.settings.beancountFilePath,
+            const descEl = pathDiv.createDiv({
+                text: `${folderName}/ledger.beancount`,
                 cls: 'setting-item-description'
             });
             descEl.setCssStyles({ fontFamily: 'monospace' });
         }
     }
 
-    private renderAdvancedTab(containerEl: HTMLElement): void {
-        new Setting(containerEl).setName('Advanced').setHeading();
-
-        new Setting(containerEl)
-            .setName('Debug mode')
-            .setDesc('Enable detailed logging to the developer console for troubleshooting.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.debugMode)
-                .onChange(async (value) => {
-                    this.plugin.settings.debugMode = value;
-                    await this.plugin.saveSettings();
-                    const { Logger } = await import('./utils/logger');
-                    Logger.setDebugMode(value);
-                }));
-    }
 
     private validateCurrency(currency: string): { isValid: boolean; message: string } {
         if (!currency.trim()) {
@@ -647,7 +691,7 @@ export class BeancountSettingTab extends PluginSettingTab {
     }
 
     private createValidationElement(container: HTMLElement): HTMLElement {
-        const validationEl = container.createEl('div', {
+        const validationEl = container.createDiv({
             cls: 'beancount-validation-message'
         });
         return validationEl;
@@ -678,220 +722,79 @@ export class BeancountSettingTab extends PluginSettingTab {
         });
     }
 
-    private setupFileAutocomplete(input: HTMLInputElement) {
-        let suggestionContainer: HTMLElement | null = null;
+    private async saveFolderNameRename(): Promise<void> {
+        if (!this.tempFolderName) {
+            new Notice('Folder name cannot be empty.');
+            return;
+        }
 
-        const showSuggestions = (files: string[]) => {
-            this.hideSuggestions();
+        const oldFolderName = this.plugin.settings.structuredFolderName;
+        if (this.tempFolderName === oldFolderName) {
+            this.isEditingFolderName = false;
+            this.displayTab();
+            return;
+        }
 
-            if (files.length === 0) return;
+        // Validate illegal characters in folder name
+        const invalidCharsRegex = /[\\/:*?"<>|]/;
+        if (invalidCharsRegex.test(this.tempFolderName)) {
+            new Notice('Folder name contains invalid characters: \\ / : * ? " < > |');
+            return;
+        }
 
-            suggestionContainer = activeDocument.createElement('div');
-            suggestionContainer.className = 'bql-file-suggestions';
-            suggestionContainer.setCssStyles({
-                position: 'absolute',
-                top: '100%',
-                left: '0',
-                right: '0',
-                background: 'var(--background-primary)',
-                border: '1px solid var(--background-modifier-border)',
-                borderRadius: '6px',
-                boxShadow: 'var(--shadow-s)',
-                maxHeight: '200px',
-                overflowY: 'auto',
-                zIndex: '1000'
-            });
+        if (this.tempFolderName.startsWith('.') || this.tempFolderName.includes('..')) {
+            new Notice('Folder name cannot start with a dot or contain ".."');
+            return;
+        }
 
-            files.forEach((file, index) => {
-                const item = activeDocument.createElement('div');
-                item.className = 'bql-file-suggestion-item';
-                item.textContent = file;
-                item.setCssStyles({
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    borderBottom: '1px solid var(--background-modifier-border-hover)'
-                });
+        // Check if the target folder/file already exists in the vault
+        const targetExists = this.app.vault.getAbstractFileByPath(this.tempFolderName);
+        if (targetExists) {
+            new Notice(`Error: A folder or file named "${this.tempFolderName}" already exists in the vault. Please choose a different name.`);
+            return;
+        }
 
-                item.addEventListener('click', () => {
-                    input.value = file;
-                    input.dispatchEvent(new Event('input'));
-                    this.hideSuggestions();
-                });
-
-                if (index === files.length - 1) {
-                    item.setCssStyles({ borderBottom: 'none' });
+        // Check and rename the physical folder
+        const oldFolder = this.app.vault.getAbstractFileByPath(oldFolderName);
+        if (oldFolder) {
+            if (oldFolder instanceof TFolder) {
+                try {
+                    await this.app.vault.rename(oldFolder, this.tempFolderName);
+                    new Notice(`Folder renamed from "${oldFolderName}" to "${this.tempFolderName}"`);
+                } catch (renameError) {
+                    Logger.error('Failed to rename structured layout folder in vault:', renameError);
+                    new Notice(`Failed to rename folder: ${renameError instanceof Error ? renameError.message : String(renameError)}`);
+                    return;
                 }
-
-                suggestionContainer!.appendChild(item);
-            });
-
-            const parent = input.parentElement!;
-            parent.setCssStyles({ position: 'relative' });
-            parent.appendChild(suggestionContainer);
-        };
-
-        this.hideSuggestions = () => {
-            if (suggestionContainer) {
-                suggestionContainer.remove();
-                suggestionContainer = null;
-            }
-        };
-
-        input.addEventListener('input', () => {
-            const value = input.value.toLowerCase();
-            if (value.length < 1) {
-                this.hideSuggestions();
+            } else {
+                new Notice(`Error: "${oldFolderName}" exists but is not a folder.`);
                 return;
             }
+        } else {
+            Logger.log(`Structured folder "${oldFolderName}" not found in vault. Skipping physical rename.`);
+        }
 
-            const markdownFiles = this.app.vault.getMarkdownFiles()
-                .map(file => file.path)
-                .filter(path => path.toLowerCase().includes(value))
-                .slice(0, 10);
+        // Only the folder name needs updating; the ledger path is derived at runtime.
+        this.plugin.settings.structuredFolderName = this.tempFolderName;
+        await this.plugin.saveSettings();
 
-            showSuggestions(markdownFiles);
-        });
+        // Reload snippets with the new folder path
+        if (this.plugin.settings.enableUserSnippets) {
+            await this.plugin.loadSnippets();
+        }
 
-        activeDocument.addEventListener('click', (event) => {
-            if (!input.contains(event.target as Node) && !suggestionContainer?.contains(event.target as Node)) {
-                this.hideSuggestions();
+        // Refresh journal store if it exists
+        if (this.plugin.journalStore && typeof this.plugin.journalStore.refresh === 'function') {
+            try {
+                await this.plugin.journalStore.refresh();
+            } catch (err) {
+                Logger.error('Failed to refresh journal store after rename:', err);
             }
-        });
+        }
+
+        this.isEditingFolderName = false;
+        this.displayTab();
     }
 
-    private hideSuggestions: () => void = () => { };
 
-    private showFileSuggestModal(input: HTMLInputElement) {
-        const modal = activeDocument.createElement('div');
-        modal.className = 'bql-file-modal';
-        modal.setCssStyles({
-            position: 'fixed',
-            top: '0',
-            left: '0',
-            width: '100%',
-            height: '100%',
-            background: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: '9999'
-        });
-
-        const modalContent = modal.createEl('div', {
-            cls: 'bql-file-modal-content'
-        });
-        modalContent.setCssStyles({
-            background: 'var(--background-primary)',
-            padding: '24px',
-            borderRadius: '8px',
-            maxWidth: '600px',
-            width: '90%',
-            maxHeight: '80%',
-            overflowY: 'auto',
-            border: '1px solid var(--background-modifier-border)'
-        });
-
-        new Setting(modalContent).setName('Select template file').setHeading();
-
-        const searchInput = modalContent.createEl('input', {
-            type: 'text',
-            placeholder: 'Search markdown files...'
-        });
-        searchInput.setCssStyles({
-            width: '100%',
-            padding: '8px',
-            marginBottom: '16px',
-            border: '1px solid var(--background-modifier-border)',
-            borderRadius: '4px',
-            background: 'var(--background-secondary)',
-            color: 'var(--text-normal)'
-        });
-
-        const fileList = modalContent.createEl('div', {
-            cls: 'bql-file-list'
-        });
-        fileList.setCssStyles({
-            maxHeight: '300px',
-            overflowY: 'auto',
-            border: '1px solid var(--background-modifier-border)',
-            borderRadius: '4px'
-        });
-
-        const updateFileList = (filter = '') => {
-            fileList.empty();
-
-            const markdownFiles = this.app.vault.getMarkdownFiles()
-                .filter(file => filter === '' || file.path.toLowerCase().includes(filter.toLowerCase()))
-                .slice(0, 50);
-
-            if (markdownFiles.length === 0) {
-                const noFiles = fileList.createEl('div', {
-                    text: 'No Markdown files found',
-                    cls: 'bql-no-files'
-                });
-                noFiles.setCssStyles({
-                    padding: '16px',
-                    textAlign: 'center',
-                    color: 'var(--text-muted)',
-                    fontStyle: 'italic'
-                });
-                return;
-            }
-
-            markdownFiles.forEach(file => {
-                const item = fileList.createEl('div', {
-                    text: file.path,
-                    cls: 'bql-file-item'
-                });
-                item.setCssStyles({
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    borderBottom: '1px solid var(--background-modifier-border-hover)'
-                });
-
-                item.addEventListener('click', () => {
-                    input.value = file.path;
-                    input.dispatchEvent(new Event('input'));
-                    modal.remove();
-                });
-            });
-        };
-
-        updateFileList();
-
-        searchInput.addEventListener('input', () => {
-            updateFileList(searchInput.value);
-        });
-
-        const buttonContainer = modalContent.createEl('div');
-        buttonContainer.setCssStyles({
-            display: 'flex',
-            justifyContent: 'flex-end',
-            marginTop: '16px',
-            gap: '8px'
-        });
-
-        const closeButton = buttonContainer.createEl('button', {
-            text: 'Cancel'
-        });
-        closeButton.setCssStyles({
-            padding: '8px 16px',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            background: 'var(--interactive-normal)',
-            color: 'var(--text-normal)',
-            border: '1px solid var(--background-modifier-border)'
-        });
-        closeButton.addEventListener('click', () => {
-            modal.remove();
-        });
-
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.remove();
-            }
-        });
-
-        activeDocument.body.appendChild(modal);
-    }
 }

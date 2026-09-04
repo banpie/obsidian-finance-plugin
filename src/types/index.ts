@@ -2,6 +2,7 @@
 // Re-exporting models for backward compatibility
 export * from '../models/account';
 export * from '../models/journal';
+export * from './navigation';
 
 // Price-related types for bean-price integration
 export interface PriceData {

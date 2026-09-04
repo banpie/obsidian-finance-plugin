@@ -21,8 +21,8 @@ export class BQLCodeBlockProcessor {
 	}
 
 	getProcessor() {
-		return async (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
-			await this.processCodeBlock(source, el, ctx);
+		return async (source: string, el: HTMLElement, _ctx: MarkdownPostProcessorContext) => {
+			await this.processCodeBlock(source, el);
 		};
 	}
 	
@@ -33,7 +33,7 @@ export class BQLCodeBlockProcessor {
 			const source = (element as BQLHTMLElement)._bqlSource;
 			if (source) {
 				// Reprocess the block with current settings
-				void this.processCodeBlock(source, element, {} as MarkdownPostProcessorContext);
+				void this.processCodeBlock(source, element);
 			}
 		});
 	}
@@ -45,7 +45,7 @@ export class BQLCodeBlockProcessor {
 		this.activeBlocks.clear();
 	}
 
-	private async processCodeBlock(source: string, element: HTMLElement, context: MarkdownPostProcessorContext) {
+	private async processCodeBlock(source: string, element: HTMLElement) {
 		const query = source.trim();
 		if (!query) return;
 
@@ -75,8 +75,7 @@ export class BQLCodeBlockProcessor {
 		}
 
 		// Create container for the BQL result
-		const container = activeDocument.createElement('div');
-		container.className = 'bql-query-container';
+		const container = createDiv({ cls: 'bql-query-container' });
 		
 		// Get user preferences (with fallback to defaults if undefined)
 		const showTools = this.plugin.settings.bqlShowTools ?? true;
@@ -95,15 +94,15 @@ export class BQLCodeBlockProcessor {
 		let exportBtn: HTMLButtonElement | null = null;
 		
 		if (showTools || showQuery) {
-			header = container.createEl('div', { cls: 'bql-query-header' });
+			header = container.createDiv({ cls: 'bql-query-header' });
 			
 			if (showQuery) {
-				const queryLabel = header.createEl('div', { cls: 'bql-query-label' });
-				queryLabel.createEl('span', { text: 'BQL query', cls: 'bql-label' });
+				const queryLabel = header.createDiv({ cls: 'bql-query-label' });
+				queryLabel.createSpan({ text: 'BQL query', cls: 'bql-label' });
 			}
 			
 			if (showTools) {
-				controls = header.createEl('div', { cls: 'bql-query-controls' });
+				controls = header.createDiv({ cls: 'bql-query-controls' });
 
 				// Format selector
 				const formatSelect = controls.createEl('select', { cls: 'bql-format-select', title: 'Output format' });
@@ -113,8 +112,7 @@ export class BQLCodeBlockProcessor {
 					{ value: 'beancount', label: 'Beancount' },
 				];
 				formatOptions.forEach(opt => {
-					const option = formatSelect.createEl('option', { text: opt.label });
-					option.value = opt.value;
+					formatSelect.createEl('option', { text: opt.label, value: opt.value });
 				});
 				(container as BQLHTMLElement)._bqlFormat = 'csv';
 				formatSelect.value = 'csv';
@@ -153,7 +151,7 @@ export class BQLCodeBlockProcessor {
 		}
 		
 		// Create result area
-		const resultArea = container.createEl('div', { cls: 'bql-result-area' });
+		const resultArea = container.createDiv({ cls: 'bql-result-area' });
 		
 		// Function to execute query and update results
 		const executeQuery = async () => {
@@ -162,12 +160,12 @@ export class BQLCodeBlockProcessor {
 				resultArea.empty();
 				
 				if (showTools) {
-					const loadingEl = resultArea.createEl('div', { cls: 'bql-loading' });
-					loadingEl.createEl('span', { text: '⟳', cls: 'bql-loading-spinner' });
-					loadingEl.createEl('span', { text: 'Executing query...', cls: 'bql-loading-text' });
+					const loadingEl = resultArea.createDiv({ cls: 'bql-loading' });
+					loadingEl.createSpan({ text: '⟳', cls: 'bql-loading-spinner' });
+					loadingEl.createSpan({ text: 'Executing query...', cls: 'bql-loading-text' });
 				} else {
 					// Minimal loading for clean mode
-					const loadingEl = resultArea.createEl('div', { cls: 'bql-loading-minimal' });
+					const loadingEl = resultArea.createDiv({ cls: 'bql-loading-minimal' });
 					loadingEl.textContent = 'Loading...';
 				}
 				
@@ -179,7 +177,7 @@ export class BQLCodeBlockProcessor {
 				resultArea.empty();
 				
 				if (!queryResult || queryResult.trim() === '') {
-					resultArea.createEl('div', { 
+					resultArea.createDiv({
 						text: 'No results returned', 
 						cls: 'bql-no-results' 
 					});
@@ -255,17 +253,17 @@ export class BQLCodeBlockProcessor {
 	}
 	
 	private createCollapsibleError(container: HTMLElement, summary: string, fullError: string) {
-		const errorContainer = container.createEl('div', { cls: 'bql-error-container' });
+		const errorContainer = container.createDiv({ cls: 'bql-error-container' });
 		
 		// Create summary line with toggle
-		const summaryLine = errorContainer.createEl('div', { cls: 'bql-error-summary' });
+		const summaryLine = errorContainer.createDiv({ cls: 'bql-error-summary' });
 		
-		const toggleIcon = summaryLine.createEl('span', { 
+		const toggleIcon = summaryLine.createSpan({
 			text: '▶', 
 			cls: 'bql-error-toggle'
 		});
 		
-		const summaryText = summaryLine.createEl('span', { 
+		const summaryText = summaryLine.createSpan({
 			text: summary, 
 			cls: 'bql-error-summary-text'
 		});
@@ -279,7 +277,7 @@ export class BQLCodeBlockProcessor {
 		}
 		
 		// Create collapsible details
-		const details = errorContainer.createEl('div', { cls: 'bql-error-details' });
+		const details = errorContainer.createDiv({ cls: 'bql-error-details' });
 		details.setCssStyles({ display: 'none' });
 		
 		const fullErrorEl = details.createEl('pre', { cls: 'bql-error-full' });
@@ -332,8 +330,7 @@ export class BQLCodeBlockProcessor {
 			const rows = lines.slice(1).map(parseCSVLine);
 			
 			// Create table
-			const table = activeDocument.createElement('table');
-			table.className = 'bql-result-table';
+			const table = createEl('table', { cls: 'bql-result-table' });
 			
 			// Create header
 			const thead = table.createEl('thead');
@@ -376,15 +373,17 @@ export class BQLCodeBlockProcessor {
 	
 	private downloadFile(content: string, filename: string, mimeType: string) {
 		const blob = new Blob([content], { type: mimeType });
-		const link = activeDocument.createElement('a');
-		if (link.download !== undefined) {
+		if ('download' in HTMLAnchorElement.prototype) {
 			const url = URL.createObjectURL(blob);
-			link.setAttribute('href', url);
-			link.setAttribute('download', filename);
+			const link = activeDocument.body.createEl('a', {
+				attr: {
+					href: url,
+					download: filename
+				}
+			});
 			link.setCssStyles({ visibility: 'hidden' });
-			activeDocument.body.appendChild(link);
 			link.click();
-			activeDocument.body.removeChild(link);
+			link.detach();
 		}
 	}
 }

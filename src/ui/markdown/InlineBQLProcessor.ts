@@ -19,12 +19,12 @@ export class InlineBQLProcessor {
 	}
 
 	getProcessor() {
-		return async (element: HTMLElement, ctx: MarkdownPostProcessorContext) => {
-			await this.processInlineElements(element, ctx);
+		return async (element: HTMLElement, _ctx: MarkdownPostProcessorContext) => {
+			await this.processInlineElements(element);
 		};
 	}
 
-	private async processInlineElements(element: HTMLElement, context: MarkdownPostProcessorContext) {
+	private async processInlineElements(element: HTMLElement) {
 		// Fast path: avoid expensive querySelectorAll if the element definitely doesn't contain BQL
 		const textContent = element.textContent || '';
 		if (!textContent.includes('bql:') && !textContent.includes('bql-q:')) {
@@ -97,8 +97,7 @@ export class InlineBQLProcessor {
 		if (!query) return;
 
 		// Create wrapper for the inline BQL result
-		const wrapper = activeDocument.createElement('span');
-		wrapper.className = 'bql-inline-wrapper';
+		const wrapper = createSpan({ cls: 'bql-inline-wrapper' });
 
 		// Store original content for refresh capability
 		(wrapper as InlineBQLHTMLElement)._bqlQuery = query;

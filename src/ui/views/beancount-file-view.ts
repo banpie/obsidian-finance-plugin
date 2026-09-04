@@ -6,7 +6,7 @@ import { history, historyKeymap, defaultKeymap, indentWithTab } from '@codemirro
 import { searchKeymap } from '@codemirror/search';
 import { beancount } from '../../lang/beancount-language';
 import { beancountCompletionSource, invalidateAccountCache } from '../../lang/beancount-autocomplete';
-import { beancountSnippetSource } from '../../lang/beancount-snippets';
+import { beancountSnippetSource, beancountUserSnippetSource } from '../../lang/beancount-snippets';
 import { autocompletion } from '@codemirror/autocomplete';
 import { beancountIndent } from '../../lang/beancount-indent';
 import { formatBeancountCommand } from '../../lang/beancount-format';
@@ -81,6 +81,9 @@ export class BeancountFileView extends TextFileView {
 				autocompletion({
 					override: [
 						beancountSnippetSource,
+						...(this.plugin && this.plugin.settings.enableUserSnippets
+							? [beancountUserSnippetSource(this.plugin)]
+							: []),
 						...(autocompleteEnabled && this.plugin
 							? [beancountCompletionSource(this.plugin)]
 							: []),
@@ -153,5 +156,18 @@ export class BeancountFileView extends TextFileView {
 				insert: '',
 			},
 		});
+	}
+
+	/** Moves the cursor to and scrolls to the given 1-based line number (e.g. from a validation error). */
+	revealLine(lineNumber: number): void {
+		if (!this.editorView) return;
+		const totalLines = this.editorView.state.doc.lines;
+		const line = Math.min(Math.max(1, lineNumber), totalLines);
+		const linePos = this.editorView.state.doc.line(line);
+		this.editorView.dispatch({
+			selection: { anchor: linePos.from, head: linePos.from },
+			effects: EditorView.scrollIntoView(linePos.from, { y: 'center' }),
+		});
+		this.editorView.focus();
 	}
 }

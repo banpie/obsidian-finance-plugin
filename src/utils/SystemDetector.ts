@@ -1,4 +1,4 @@
-import { resolve, sep } from 'path';
+import { sep } from 'path';
 import { homedir, platform, arch, type, release } from 'os';
 import { execSafe } from './execSafe';
 
@@ -356,41 +356,6 @@ export class SystemDetector {
         };
     }
 
-    /**
-     * Normalize and resolve file paths for current system
-     * @param {string} filePath - The path to normalize.
-     * @returns {string} The normalized, resolved path.
-     */
-    normalizeFilePath(filePath: string): string {
-        if (!filePath) return '';
-
-        // Handle WSL path conversion
-        if (this._systemInfo?.isWSL && filePath.startsWith('/mnt/')) {
-            return this.convertWSLToWindowsPath(filePath);
-        }
-
-        // Handle Windows path conversion for WSL commands
-        if (platform() === 'win32' && filePath.includes(':\\')) {
-            return resolve(filePath);
-        }
-
-        return resolve(filePath);
-    }
-
-    /**
-     * Convert WSL path to Windows path
-     * @param {string} wslPath - The path in WSL format (/mnt/c/...)
-     * @returns {string} The path in Windows format (C:\...)
-     */
-    private convertWSLToWindowsPath(wslPath: string): string {
-        const match = wslPath.match(/^\/mnt\/([a-zA-Z])\/(.*)/);
-        if (match) {
-            const driveLetter = match[1].toUpperCase();
-            const restOfPath = match[2].replace(/\//g, '\\');
-            return `${driveLetter}:\\${restOfPath}`;
-        }
-        return wslPath;
-    }
 
     /**
      * Convert Windows path to WSL path format

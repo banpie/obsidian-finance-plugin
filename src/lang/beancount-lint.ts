@@ -147,8 +147,8 @@ export function beancountLinter(
         const filePath = getFilePath();
         if (!filePath) return []; // file not yet loaded
 
-        // Ensure the plugin is configured (has a beancountCommand set)
-        if (!plugin.settings.beancountCommand || !plugin.settings.beancountFilePath) {
+        // Ensure the plugin is configured (has a beancountCommand and folder set up)
+        if (!plugin.settings.beancountCommand || !plugin.settings.structuredFolderName) {
             return [];
         }
 

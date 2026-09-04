@@ -11,7 +11,8 @@ import {
     parseCommodityPriceHistoryCSV,
     validatePriceSource,
     validateLogoUrl,
-    saveCommodityMetadata
+    saveCommodityMetadata,
+    formatSignificantAmount
 } from '../utils/index';
 import { PriceService } from '../services/price.service';
 import { Notice } from 'obsidian';
@@ -134,6 +135,8 @@ export class CommoditiesController {
     public fetchingPrices: Writable<boolean> = writable(false);
     /** Store for last price fetch information. */
     public lastPriceFetch: Writable<{ date: Date, summary: string } | null> = writable(null);
+    /** Whether a bean-price command is configured in settings (required for price fetching). */
+    public beanPriceAvailable: Writable<boolean>;
 
     /**
      * Creates an instance of CommoditiesController.
@@ -142,8 +145,14 @@ export class CommoditiesController {
     constructor(plugin: BeancountPlugin) {
         this.plugin = plugin;
         this.priceService = new PriceService(plugin);
+        this.beanPriceAvailable = writable(this.priceService.hasBeanPriceCommand());
         this.setupReactivity();
         Logger.log('[CommoditiesController] initialized');
+    }
+
+    /** Re-checks bean-price availability against current settings and updates the store. */
+    public refreshBeanPriceAvailability(): void {
+        this.beanPriceAvailable.set(this.priceService.hasBeanPriceCommand());
     }
 
     /**
@@ -184,6 +193,11 @@ export class CommoditiesController {
         this.filteredCommodities.set(filtered);
     }
 
+    /** Returns the ledger-inferred decimal precision for a currency (see CurrencyPrecisionService). */
+    public getCurrencyDecimals(currency: string): number {
+        return this.plugin.currencyPrecisionService.getDecimals(currency);
+    }
+
     /** Returns the configured operating currency (e.g. "INR", "USD"). */
     public getOperatingCurrency(): string {
         return this.plugin.settings.operatingCurrency || 'USD';
@@ -202,10 +216,12 @@ export class CommoditiesController {
             // Get operating currency from settings
             const operatingCurrency = this.plugin.settings.operatingCurrency || 'USD';
 
-            // Execute two queries in parallel: combined holdings+price+logo, and price data for date/isLatest
+            // Execute two queries in parallel: combined holdings+price+logo, and price data for date/isLatest.
+            // Also ensure currency precision data is ready before we format any amounts below.
             const [combinedCSV, priceDataCSV] = await Promise.all([
                 this.plugin.runQuery(queries.getCombinedCommodityDataQuery(operatingCurrency)),
-                this.plugin.runQuery(queries.getCommoditiesPriceDataQuery(operatingCurrency))
+                this.plugin.runQuery(queries.getCommoditiesPriceDataQuery(operatingCurrency)),
+                this.plugin.currencyPrecisionService.ensureLoaded()
             ]);
 
             Logger.log('[CommoditiesController] loadData: received CSV data');
@@ -229,6 +245,7 @@ export class CommoditiesController {
                 // Prefer combined query values; fall back to priceDataMap for price/logo
                 const logoUrl = combined?.logo || priceData?.logo || null;
                 const price = combined?.price ?? priceData?.price ?? null;
+                const priceNum = price !== null ? parseFloat(price) : null;
                 const displayName = combined?.displayName || priceData?.displayName || null;
 
                 return {
@@ -245,7 +262,13 @@ export class CommoditiesController {
                         ...(displayName ? { name: displayName } : {}),
                         ...(logoUrl ? { logo: logoUrl } : {}),
                     },
-                    currentPrice: price ? `${price} ${operatingCurrency}` : undefined,
+                    // Query rounds price_ to a generous 10dp (see getCombinedCommodityDataQuery) so
+                    // it isn't truncated server-side; format here with only as many decimals as the
+                    // value needs (min 2, up to 8) so low-value commodities stay visible while
+                    // "clean" prices don't show trailing zeros.
+                    currentPrice: priceNum !== null && Number.isFinite(priceNum)
+                        ? `${formatSignificantAmount(priceNum)} ${operatingCurrency}`
+                        : undefined,
                     operatingCurrency,
                     logoUrl,
                     priceDate: priceData?.date || null,
@@ -625,8 +648,9 @@ export class CommoditiesController {
                 new Notice(`✓ Saved ${result.savedCount} new price(s) to prices.beancount`);
             }
 
-            // Refresh cards to show updated prices
-            await this.loadData();
+            // Refresh cards to show updated prices, and re-infer display precision
+            // now that new price directives may have been added.
+            await Promise.all([this.loadData(), this.plugin.currencyPrecisionService.refresh()]);
 
         } catch (error) {
             Logger.error('[CommoditiesController] fetchPrices error:', error);
