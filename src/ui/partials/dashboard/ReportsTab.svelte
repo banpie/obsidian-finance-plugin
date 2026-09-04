@@ -4,13 +4,26 @@
 	import ChartComponent from '../../common/ChartComponent.svelte';
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
+	import ReportFilterBar from '../../common/ReportFilterBar.svelte';
 	import PeriodNavigator from './PeriodNavigator.svelte';
 	import { getBalanceCategoryLabel } from '../../../utils/accountLabels';
+	import {
+		INVESTMENT_TYPE_LABELS,
+		getInvestmentTypeKey,
+		getInvestmentTypeLabel,
+		lifecycleFilterNeedsHistory,
+		matchesLifecycleFilter,
+		matchesReportSearch,
+		type ReportLifecycleFilter,
+	} from '../../../utils/reportFilters';
 
 	export let controller: ReportsController;
 
 	type DetailKind = 'income' | 'expense' | 'asset' | 'liability' | 'networth' | 'investment' | 'loan' | 'project';
 	type LoanDetailFilter = 'receivable' | 'payable' | 'net' | 'all';
+	type CashflowTypeFilter = 'all' | 'income' | 'expense';
+	type LoanDirectionFilter = 'all' | 'receivable' | 'payable';
+	type ProjectTransactionTypeFilter = 'all' | 'Income' | 'Expense';
 
 	interface DetailSelection {
 		kind: DetailKind;
@@ -85,6 +98,24 @@
 	let accountTransactions: ReportAccountTransaction[] = [];
 	let accountTransactionsLoading = false;
 	let accountTransactionsError: string | null = null;
+	let cashflowSearch = '';
+	let cashflowTypeFilter: CashflowTypeFilter = 'all';
+	let investmentSearch = '';
+	let investmentTypeFilter = 'all';
+	let investmentLifecycleFilter: ReportLifecycleFilter = 'current';
+	let loanSearch = '';
+	let loanDirectionFilter: LoanDirectionFilter = 'all';
+	let loanLifecycleFilter: ReportLifecycleFilter = 'current';
+	let projectSearch = '';
+	let projectTagFilter = 'all';
+	let projectLifecycleFilter: ReportLifecycleFilter = 'current';
+	let detailRowSearch = '';
+	let detailRowLifecycleFilter: ReportLifecycleFilter = 'all';
+	let detailTransactionSearch = '';
+	let detailTransactionTypeFilter: ProjectTransactionTypeFilter = 'all';
+	let holdingTransactionSearch = '';
+	let holdingTransactionTypeFilter = 'all';
+	let accountTransactionSearch = '';
 	$: stateStore = controller ? controller.state : placeholderState;
 	$: state = $stateStore;
 	$: canGoBack = detailBackStack.length > 0;
@@ -283,11 +314,6 @@
 		return getBalanceCategoryLabel(account);
 	}
 
-	function investmentType(account: string | undefined): string {
-		const segment = (account || '').split(':')[2] || account || 'Other';
-		return segment.split('-', 1)[0] || segment;
-	}
-
 	function detailAccountLabel(account: string | undefined): string {
 		const parts = (account || '').split(':');
 		return parts.slice(2).join(':') || parts[1] || account || 'Other';
@@ -300,7 +326,111 @@
 
 	function rowsForInvestmentType(rows: ReportRow[], type: string | null): ReportRow[] {
 		if (!type) return rows;
-		return rows.filter(row => investmentType(row.account) === type);
+		return rows.filter(row => (row.investmentType || getInvestmentTypeKey(row.account)) === type);
+	}
+
+	function reportRowSearchValues(row: ReportRow): Array<string | number | null | undefined> {
+		const type = row.investmentType || getInvestmentTypeKey(row.account);
+		return [row.label, row.account, row.commodity, row.commodityName, type, getInvestmentTypeLabel(type)];
+	}
+
+	function transactionSearchValues(transaction: ReportTransaction): Array<string | number | null | undefined> {
+		return [
+			transaction.date,
+			transaction.payee,
+			transaction.narration,
+			transaction.account,
+			...(transaction.counterpartAccounts || []),
+		];
+	}
+
+	function filterDetailGroups(groups: DetailGroup[]): DetailGroup[] {
+		return groups.flatMap(group => {
+			const groupMatches = matchesReportSearch(detailRowSearch, [group.label]);
+			const rows = group.rows.filter(row =>
+				matchesLifecycleFilter(row.status, detailRowLifecycleFilter)
+				&& (groupMatches || matchesReportSearch(detailRowSearch, reportRowSearchValues(row)))
+			);
+			return rows.length ? [{ ...group, rows }] : [];
+		});
+	}
+
+	function lifecycleFilterForView(view: ReportsView): ReportLifecycleFilter | null {
+		if (view === 'assets') return investmentLifecycleFilter;
+		if (view === 'loans') return loanLifecycleFilter;
+		if (view === 'projects') return projectLifecycleFilter;
+		return null;
+	}
+
+	async function syncHistoryForFilter(filter: ReportLifecycleFilter) {
+		const shouldLoadHistory = lifecycleFilterNeedsHistory(filter);
+		if (state.showClosedItems !== shouldLoadHistory) {
+			await controller?.setShowClosedItems(shouldLoadHistory);
+		}
+	}
+
+	function handleInvestmentLifecycleChange(event: Event) {
+		investmentLifecycleFilter = (event.currentTarget as HTMLSelectElement).value as ReportLifecycleFilter;
+		void syncHistoryForFilter(investmentLifecycleFilter);
+	}
+
+	function handleLoanLifecycleChange(event: Event) {
+		loanLifecycleFilter = (event.currentTarget as HTMLSelectElement).value as ReportLifecycleFilter;
+		void syncHistoryForFilter(loanLifecycleFilter);
+	}
+
+	function handleProjectLifecycleChange(event: Event) {
+		projectLifecycleFilter = (event.currentTarget as HTMLSelectElement).value as ReportLifecycleFilter;
+		void syncHistoryForFilter(projectLifecycleFilter);
+	}
+
+	function handleDetailLifecycleChange(event: Event) {
+		detailRowLifecycleFilter = (event.currentTarget as HTMLSelectElement).value as ReportLifecycleFilter;
+		void syncHistoryForFilter(detailRowLifecycleFilter);
+	}
+
+	function clearCashflowFilters() {
+		cashflowSearch = '';
+		cashflowTypeFilter = 'all';
+	}
+
+	function clearInvestmentFilters() {
+		investmentSearch = '';
+		investmentTypeFilter = 'all';
+		investmentLifecycleFilter = 'current';
+		void syncHistoryForFilter(investmentLifecycleFilter);
+	}
+
+	function clearLoanFilters() {
+		loanSearch = '';
+		loanDirectionFilter = 'all';
+		loanLifecycleFilter = 'current';
+		void syncHistoryForFilter(loanLifecycleFilter);
+	}
+
+	function clearProjectFilters() {
+		projectSearch = '';
+		projectTagFilter = 'all';
+		projectLifecycleFilter = 'current';
+		void syncHistoryForFilter(projectLifecycleFilter);
+	}
+
+	function clearDetailRowFilters() {
+		detailRowSearch = '';
+		detailRowLifecycleFilter = lifecycleFilterForView(state.activeView) || 'all';
+		if (detailSelection && detailSelection.kind !== 'income' && detailSelection.kind !== 'expense') {
+			void syncHistoryForFilter(detailRowLifecycleFilter);
+		}
+	}
+
+	function clearDetailTransactionFilters() {
+		detailTransactionSearch = '';
+		detailTransactionTypeFilter = 'all';
+	}
+
+	function clearHoldingTransactionFilters() {
+		holdingTransactionSearch = '';
+		holdingTransactionTypeFilter = 'all';
 	}
 
 	function asNetWorthLiabilityRow(row: ReportRow): ReportRow {
@@ -420,6 +550,11 @@
 	}
 
 	function pushDetailSelection(selection: DetailSelection) {
+		if (!detailSelection) {
+			clearDetailRowFilters();
+			clearDetailTransactionFilters();
+			detailRowLifecycleFilter = lifecycleFilterForView(state.activeView) || 'all';
+		}
 		if (detailSelection) {
 			detailBackStack = [...detailBackStack, detailSelection];
 		} else {
@@ -493,7 +628,7 @@
 
 	function closeOnBlankClick(event: MouseEvent, close: () => void) {
 		const target = event.target as HTMLElement | null;
-		const contentSelector = 'table, button, a, input, select, textarea, [role="button"], .chart-box, .metric-card, .breakdown-row';
+		const contentSelector = 'table, button, a, input, select, textarea, [role="button"], .chart-box, .metric-card, .breakdown-row, .report-filter-bar';
 		if (!target || !target.closest(contentSelector)) {
 			close();
 		}
@@ -529,11 +664,14 @@
 		detailSelection = null;
 		detailBackStack = [];
 		detailForwardStack = [];
+		const filter = lifecycleFilterForView(state.activeView);
+		if (filter) void syncHistoryForFilter(filter);
 	}
 
 	async function openHoldingTransactions(row: ReportRow) {
 		holdingSelection = row;
 		holdingTransactions = [];
+		clearHoldingTransactionFilters();
 		holdingTransactionsError = null;
 		holdingTransactionsLoading = true;
 		expandedHoldingTransactions = new Set();
@@ -558,6 +696,7 @@
 		if (!canOpenAccountTransactions(row)) return;
 		accountSelection = row;
 		accountTransactions = [];
+		accountTransactionSearch = '';
 		accountTransactionsError = null;
 		accountTransactionsLoading = true;
 		try {
@@ -763,19 +902,93 @@
 	$: loanNetTotal = loanReceivableTotal - loanPayableTotal;
 	$: activeLoanCount = state.loans.filter(row => row.status === 'active' || row.status === 'needs-review').length;
 	$: activeProjectCount = state.projects.filter(row => row.label !== 'Unassigned' && row.status === 'active').length;
-	$: displayedInvestmentRows = state.showClosedItems ? state.investmentsByAccount : state.topInvestments;
+	$: cashflowIncomeBaseRows = cashflowTypeFilter === 'expense' ? [] : state.incomeByCategory;
+	$: cashflowExpenseBaseRows = cashflowTypeFilter === 'income' ? [] : state.expensesByCategory;
+	$: filteredIncomeByCategory = cashflowIncomeBaseRows.filter(row => matchesReportSearch(cashflowSearch, [row.label, row.account]));
+	$: filteredExpensesByCategory = cashflowExpenseBaseRows.filter(row => matchesReportSearch(cashflowSearch, [row.label, row.account]));
+	$: cashflowShownCount = filteredIncomeByCategory.length + filteredExpensesByCategory.length;
+	$: cashflowTotalCount = cashflowIncomeBaseRows.length + cashflowExpenseBaseRows.length;
+
+	$: availableInvestmentTypes = Array.from(new Set([
+		...Object.keys(INVESTMENT_TYPE_LABELS),
+		...state.investmentsByAccount.map(row => row.investmentType || getInvestmentTypeKey(row.account)),
+	])).sort((a, b) => getInvestmentTypeLabel(a).localeCompare(getInvestmentTypeLabel(b)));
+	$: investmentFiltersActive = Boolean(investmentSearch.trim()) || investmentTypeFilter !== 'all' || investmentLifecycleFilter !== 'current';
+	$: investmentSourceRows = investmentFiltersActive ? state.investmentsByAccount : state.topInvestments;
+	$: investmentLifecycleRows = investmentSourceRows.filter(row => matchesLifecycleFilter(row.status, investmentLifecycleFilter));
+	$: displayedInvestmentRows = investmentLifecycleRows.filter(row => {
+		const type = row.investmentType || getInvestmentTypeKey(row.account);
+		return (investmentTypeFilter === 'all' || type === investmentTypeFilter)
+			&& matchesReportSearch(investmentSearch, reportRowSearchValues(row));
+	});
+
+	$: loanLifecycleRows = state.loans.filter(row => matchesLifecycleFilter(row.status, loanLifecycleFilter));
+	$: displayedLoanRows = loanLifecycleRows.filter(row =>
+		(loanDirectionFilter === 'all' || row.direction === loanDirectionFilter)
+		&& matchesReportSearch(loanSearch, [row.label, row.account, loanAccountLabel(row.account), loanDirectionLabel(row), statusLabel(row)])
+	);
+
+	$: availableProjectTags = Array.from(new Set(state.projects.map(project => project.tag).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+	$: projectLifecycleRows = state.projects.filter(project => matchesLifecycleFilter(project.status, projectLifecycleFilter));
+	$: displayedProjectRows = projectLifecycleRows.filter(project =>
+		(projectTagFilter === 'all' || project.tag === projectTagFilter)
+		&& matchesReportSearch(projectSearch, [project.label, project.tag, statusLabel(project)])
+	);
+
+	$: filteredDetailGroups = filterDetailGroups(detailGroups);
+	$: filteredDetailAccounts = detailAccounts.filter(row =>
+		matchesLifecycleFilter(row.status, detailRowLifecycleFilter)
+		&& matchesReportSearch(detailRowSearch, reportRowSearchValues(row))
+	);
+	$: detailRowTotalCount = detailGroups.length
+		? detailGroups.reduce((sum, group) => sum + group.rows.length, 0)
+		: detailAccounts.length;
+	$: detailRowShownCount = filteredDetailGroups.length
+		? filteredDetailGroups.reduce((sum, group) => sum + group.rows.length, 0)
+		: filteredDetailAccounts.length;
+	$: detailLoanBaseRows = loanRowsForDetail(detailSelection);
+	$: filteredDetailLoanRows = detailLoanBaseRows.filter(row =>
+		matchesLifecycleFilter(row.status, detailRowLifecycleFilter)
+		&& matchesReportSearch(detailRowSearch, [row.label, row.account, loanAccountLabel(row.account), loanDirectionLabel(row), statusLabel(row)])
+	);
+	$: filteredDetailTransactions = detailTransactions.filter(transaction =>
+		(detailTransactionTypeFilter === 'all' || transactionTypeLabel(transaction) === detailTransactionTypeFilter)
+		&& matchesReportSearch(detailTransactionSearch, transactionSearchValues(transaction))
+	);
+	$: holdingTransactionTypes = Array.from(new Set(holdingTransactions.map(transaction => transaction.type).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+	$: filteredHoldingTransactions = holdingTransactions.filter(transaction =>
+		(holdingTransactionTypeFilter === 'all' || transaction.type === holdingTransactionTypeFilter)
+		&& matchesReportSearch(holdingTransactionSearch, [
+			transaction.date,
+			transaction.payee,
+			transaction.narration,
+			transaction.type,
+			transaction.quantity,
+			transaction.unitCost,
+			transaction.cashAmount,
+			transaction.costBasis,
+			transaction.accounts,
+		])
+	);
+	$: filteredAccountTransactions = accountTransactions.filter(transaction => matchesReportSearch(accountTransactionSearch, [
+		transaction.date,
+		transaction.payee,
+		transaction.narration,
+		transaction.account,
+		transaction.position,
+		transaction.balance,
+	]));
 
 	function handleViewChange(view: ReportsView) {
 		controller?.setActiveView(view);
+		const filter = lifecycleFilterForView(view);
+		if (filter) void syncHistoryForFilter(filter);
 	}
 
 	async function handleRefresh() {
 		if (controller) await controller.loadData();
 	}
 
-	function toggleShowClosedItems() {
-		void controller?.setShowClosedItems(!state.showClosedItems);
-	}
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -813,17 +1026,6 @@
 				<button class:active={state.activeView === 'projects'} on:click={() => handleViewChange('projects')}>Projects</button>
 			</div>
 		</div>
-		<button
-			type="button"
-			class="toggle-button"
-			class:active={state.showClosedItems}
-			disabled={state.isLoading}
-			aria-pressed={state.showClosedItems}
-			on:click={toggleShowClosedItems}
-			title="Show closed, zero-balance, and inactive report rows for audit."
-		>
-			Show closed
-		</button>
 	</div>
 
 	{#if state.isLoading}
@@ -850,6 +1052,22 @@
 			</div>
 		</div>
 
+		<ReportFilterBar
+			bind:query={cashflowSearch}
+			placeholder="Search income or expense categories…"
+			searchLabel="Search cash flow categories"
+			shownCount={cashflowShownCount}
+			totalCount={cashflowTotalCount}
+			hasActiveFilters={Boolean(cashflowSearch.trim()) || cashflowTypeFilter !== 'all'}
+			on:clear={clearCashflowFilters}
+		>
+			<select bind:value={cashflowTypeFilter} aria-label="Cash flow type">
+				<option value="all">All cash flow</option>
+				<option value="income">Income</option>
+				<option value="expense">Expenses</option>
+			</select>
+		</ReportFilterBar>
+
 		<div class="two-column">
 			<section class="report-section">
 				<div class="section-header">
@@ -859,7 +1077,7 @@
 					<div class="chart-box"><ChartComponent config={state.incomeChartConfig} height="260px" /></div>
 				{/if}
 				<div class="breakdown-list">
-					{#each state.incomeByCategory as row}
+					{#each filteredIncomeByCategory as row}
 						<button
 							type="button"
 							class="breakdown-row interactive"
@@ -878,6 +1096,8 @@
 								<span>{formatPercent(row.percent)}</span>
 							</div>
 						</button>
+					{:else}
+						<div class="empty-state compact">No matching income categories.</div>
 					{/each}
 				</div>
 			</section>
@@ -890,7 +1110,7 @@
 					<div class="chart-box"><ChartComponent config={state.expensesChartConfig} height="260px" /></div>
 				{/if}
 				<div class="breakdown-list">
-					{#each state.expensesByCategory as row}
+					{#each filteredExpensesByCategory as row}
 						<button
 							type="button"
 							class="breakdown-row interactive"
@@ -909,6 +1129,8 @@
 								<span>{formatPercent(row.percent)}</span>
 							</div>
 						</button>
+					{:else}
+						<div class="empty-state compact">No matching expense categories.</div>
 					{/each}
 				</div>
 			</section>
@@ -1002,6 +1224,28 @@
 			<div class="section-header">
 				<h3>{state.showClosedItems ? 'Investment Holdings' : 'Top Holdings'}</h3>
 			</div>
+			<ReportFilterBar
+				bind:query={investmentSearch}
+				placeholder="Search holding, code, account, or type…"
+				searchLabel="Search investment holdings"
+				shownCount={displayedInvestmentRows.length}
+				totalCount={investmentLifecycleRows.length}
+				hasActiveFilters={investmentFiltersActive}
+				on:clear={clearInvestmentFilters}
+			>
+				<select bind:value={investmentTypeFilter} aria-label="Investment type">
+					<option value="all">All investment types</option>
+					{#each availableInvestmentTypes as type}
+						<option value={type}>{getInvestmentTypeLabel(type)}</option>
+					{/each}
+				</select>
+				<select value={investmentLifecycleFilter} on:change={handleInvestmentLifecycleChange} aria-label="Investment lifecycle">
+					<option value="current">Current</option>
+					<option value="closed">Closed / inactive</option>
+					<option value="needs-review">Needs review</option>
+					<option value="all">All records</option>
+				</select>
+			</ReportFilterBar>
 			<div class="detail-table-wrap">
 				<h4>{state.showClosedItems ? 'Current and Closed Holdings' : 'Current Holdings'}</h4>
 				<table class="reports-table">
@@ -1060,6 +1304,8 @@
 								{/if}
 								<td class="align-right">{formatPercent(row.percent)}</td>
 							</tr>
+						{:else}
+							<tr><td colspan={state.showClosedItems ? 15 : 11}>No matching holdings. Try clearing filters or selecting All records.</td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -1090,6 +1336,27 @@
 				<h3>Loan Balances</h3>
 				<span>{state.periodLabel}</span>
 			</div>
+			<ReportFilterBar
+				bind:query={loanSearch}
+				placeholder="Search loan name or account…"
+				searchLabel="Search loan balances"
+				shownCount={displayedLoanRows.length}
+				totalCount={loanLifecycleRows.length}
+				hasActiveFilters={Boolean(loanSearch.trim()) || loanDirectionFilter !== 'all' || loanLifecycleFilter !== 'current'}
+				on:clear={clearLoanFilters}
+			>
+				<select bind:value={loanDirectionFilter} aria-label="Loan direction">
+					<option value="all">All directions</option>
+					<option value="receivable">To receive</option>
+					<option value="payable">To pay</option>
+				</select>
+				<select value={loanLifecycleFilter} on:change={handleLoanLifecycleChange} aria-label="Loan lifecycle">
+					<option value="current">Current</option>
+					<option value="closed">Closed / settled</option>
+					<option value="needs-review">Needs review</option>
+					<option value="all">All records</option>
+				</select>
+			</ReportFilterBar>
 			<div class="detail-table-wrap">
 				<table class="reports-table">
 					<thead>
@@ -1105,7 +1372,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each state.loans as row}
+						{#each displayedLoanRows as row}
 							<tr
 								class="clickable-row"
 								class:inactive-row={isInactiveRow(row)}
@@ -1126,7 +1393,7 @@
 							</tr>
 						{:else}
 							<tr>
-								<td colspan="8">No open loan balances for this period.</td>
+							<td colspan="8">No matching loan balances. Try clearing filters or selecting All records.</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -1157,6 +1424,27 @@
 			<div class="section-header">
 				<h3>Project Performance</h3>
 			</div>
+			<ReportFilterBar
+				bind:query={projectSearch}
+				placeholder="Search project name or tag…"
+				searchLabel="Search projects"
+				shownCount={displayedProjectRows.length}
+				totalCount={projectLifecycleRows.length}
+				hasActiveFilters={Boolean(projectSearch.trim()) || projectTagFilter !== 'all' || projectLifecycleFilter !== 'current'}
+				on:clear={clearProjectFilters}
+			>
+				<select bind:value={projectTagFilter} aria-label="Project tag">
+					<option value="all">All tags</option>
+					{#each availableProjectTags as tag}
+						<option value={tag}>{tag}</option>
+					{/each}
+				</select>
+				<select value={projectLifecycleFilter} on:change={handleProjectLifecycleChange} aria-label="Project lifecycle">
+					<option value="current">Current</option>
+					<option value="closed">Inactive</option>
+					<option value="all">All records</option>
+				</select>
+			</ReportFilterBar>
 			<div class="detail-table-wrap">
 				<table class="reports-table project-table">
 					<thead>
@@ -1171,7 +1459,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each state.projects as project}
+						{#each displayedProjectRows as project}
 							<tr
 								class="clickable-row"
 								class:inactive-row={isInactiveRow(project)}
@@ -1189,6 +1477,8 @@
 								<td class={`align-right ${amountClass(project.netIncome)}`}>{formatCurrency(project.netIncome)}</td>
 								<td class="align-right">{project.transactionCount}</td>
 							</tr>
+						{:else}
+							<tr><td colspan="7">No matching projects. Try clearing filters or selecting All records.</td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -1225,6 +1515,22 @@
 						<div class="detail-section-heading">
 							<h4>{detailSectionTitle(detailSelection.kind)}</h4>
 						</div>
+						<ReportFilterBar
+							bind:query={detailRowSearch}
+							placeholder="Search loan name or account…"
+							searchLabel="Search loan detail rows"
+							shownCount={filteredDetailLoanRows.length}
+							totalCount={detailLoanBaseRows.length}
+							hasActiveFilters={Boolean(detailRowSearch.trim()) || detailRowLifecycleFilter !== loanLifecycleFilter}
+							on:clear={clearDetailRowFilters}
+						>
+							<select value={detailRowLifecycleFilter} on:change={handleDetailLifecycleChange} aria-label="Loan detail lifecycle">
+								<option value="current">Current</option>
+								<option value="closed">Closed / settled</option>
+								<option value="needs-review">Needs review</option>
+								<option value="all">All records</option>
+							</select>
+						</ReportFilterBar>
 						<table class="reports-table">
 							<thead>
 								<tr>
@@ -1239,7 +1545,7 @@
 								</tr>
 							</thead>
 							<tbody>
-								{#each loanRowsForDetail(detailSelection) as row}
+								{#each filteredDetailLoanRows as row}
 									<tr
 										class="clickable-row"
 										class:inactive-row={isInactiveRow(row)}
@@ -1271,6 +1577,24 @@
 					<div class="detail-section-heading">
 						<h4>{detailSectionTitle(detailSelection.kind)}</h4>
 					</div>
+					<ReportFilterBar
+						bind:query={detailRowSearch}
+						placeholder={detailSelection.kind === 'investment' ? 'Search holding, code, account, or type…' : 'Search category or account…'}
+						searchLabel="Search report detail rows"
+						shownCount={detailRowShownCount}
+						totalCount={detailRowTotalCount}
+						hasActiveFilters={Boolean(detailRowSearch.trim()) || detailRowLifecycleFilter !== (lifecycleFilterForView(state.activeView) || 'all')}
+						on:clear={clearDetailRowFilters}
+					>
+						{#if detailSelection.kind === 'investment'}
+							<select value={detailRowLifecycleFilter} on:change={handleDetailLifecycleChange} aria-label="Investment detail lifecycle">
+								<option value="current">Current</option>
+								<option value="closed">Closed / inactive</option>
+								<option value="needs-review">Needs review</option>
+								<option value="all">All records</option>
+							</select>
+						{/if}
+					</ReportFilterBar>
 					<table class="reports-table">
 						<thead>
 							<tr>
@@ -1291,7 +1615,7 @@
 						</thead>
 						<tbody>
 							{#if detailGroups.length}
-								{#each detailGroups as group}
+								{#each filteredDetailGroups as group}
 									<tr class="group-row">
 										<td colspan={detailSelection.kind === 'investment' ? 4 : 1}>{group.label}</td>
 										<td class={`align-right ${detailSelection.kind === 'investment' ? '' : amountClass(group.amount)}`}>{formatCurrency(group.amount)}</td>
@@ -1327,9 +1651,11 @@
 											<td class="align-right">{detailPercent(row.amount, detailSelection.amount)}</td>
 										</tr>
 									{/each}
+								{:else}
+									<tr><td colspan={detailSelection.kind === 'investment' ? 9 : 3}>No matching report rows.</td></tr>
 								{/each}
 							{:else}
-								{#each detailAccounts as row}
+								{#each filteredDetailAccounts as row}
 									<tr
 										class:clickable-row={canOpenDetailRow(row) || canOpenCashFlowCategory(row)}
 										class:inactive-row={isInactiveRow(row)}
@@ -1352,6 +1678,8 @@
 										{/if}
 										<td class="align-right">{detailPercent(row.amount, detailSelection.amount)}</td>
 									</tr>
+								{:else}
+									<tr><td colspan={detailSelection.kind === 'investment' ? 9 : 3}>No matching report rows.</td></tr>
 								{/each}
 							{/if}
 						</tbody>
@@ -1362,6 +1690,23 @@
 				{#if isCashFlowDetail(detailSelection.kind)}
 					<div class="detail-table-wrap">
 						<h4>{detailSelection.kind === 'project' ? 'Project Transactions' : 'Transactions'}</h4>
+						<ReportFilterBar
+							bind:query={detailTransactionSearch}
+							placeholder="Search date, payee, description, or account…"
+							searchLabel="Search report transactions"
+							shownCount={filteredDetailTransactions.length}
+							totalCount={detailTransactions.length}
+							hasActiveFilters={Boolean(detailTransactionSearch.trim()) || detailTransactionTypeFilter !== 'all'}
+							on:clear={clearDetailTransactionFilters}
+						>
+							{#if detailSelection.kind === 'project'}
+								<select bind:value={detailTransactionTypeFilter} aria-label="Project transaction type">
+									<option value="all">All transaction types</option>
+									<option value="Income">Income</option>
+									<option value="Expense">Expenses</option>
+								</select>
+							{/if}
+						</ReportFilterBar>
 						<table class="reports-table transaction-table">
 							<thead>
 								<tr>
@@ -1376,7 +1721,7 @@
 								</tr>
 							</thead>
 							<tbody>
-								{#each detailTransactions as transaction}
+								{#each filteredDetailTransactions as transaction}
 									<tr>
 										<td>{transaction.date}</td>
 										<td title={transaction.payee}>{transactionLabel(transaction)}</td>
@@ -1387,6 +1732,8 @@
 										<td title={transaction.account}>{detailAccountLabel(transaction.account)}</td>
 										<td class={`align-right ${amountClass(transaction.amount)}`}>{formatCurrency(transaction.amount)}</td>
 									</tr>
+								{:else}
+									<tr><td colspan={detailSelection.kind === 'project' ? 6 : 5}>No matching transactions.</td></tr>
 								{/each}
 							</tbody>
 						</table>
@@ -1419,7 +1766,25 @@
 						<SkeletonLoader rows={4} />
 					{:else if holdingTransactionsError}
 						<ErrorBanner message={holdingTransactionsError} />
-					{:else if holdingTransactions.length}
+					{:else}
+						<ReportFilterBar
+							bind:query={holdingTransactionSearch}
+							placeholder="Search date, transaction, type, or account…"
+							searchLabel="Search holding transactions"
+							shownCount={filteredHoldingTransactions.length}
+							totalCount={holdingTransactions.length}
+							hasActiveFilters={Boolean(holdingTransactionSearch.trim()) || holdingTransactionTypeFilter !== 'all'}
+							on:clear={clearHoldingTransactionFilters}
+						>
+							<select bind:value={holdingTransactionTypeFilter} aria-label="Holding transaction type">
+								<option value="all">All transaction types</option>
+								{#each holdingTransactionTypes as type}
+									<option value={type}>{type}</option>
+								{/each}
+							</select>
+						</ReportFilterBar>
+					{/if}
+					{#if !holdingTransactionsLoading && !holdingTransactionsError && filteredHoldingTransactions.length}
 						<table class="reports-table transaction-table">
 							<thead>
 								<tr>
@@ -1435,7 +1800,7 @@
 								</tr>
 							</thead>
 							<tbody>
-								{#each holdingTransactions as transaction}
+								{#each filteredHoldingTransactions as transaction}
 									<tr>
 										<td>{transaction.date}</td>
 										<td title={transaction.payee}>{holdingTransactionLabel(transaction)}</td>
@@ -1476,8 +1841,8 @@
 								{/each}
 							</tbody>
 						</table>
-					{:else}
-						<div class="empty-state">No transactions found for this holding.</div>
+					{:else if !holdingTransactionsLoading && !holdingTransactionsError}
+						<div class="empty-state">No matching transactions found for this holding.</div>
 					{/if}
 				</div>
 				</div>
@@ -1507,7 +1872,18 @@
 						<SkeletonLoader rows={4} />
 					{:else if accountTransactionsError}
 						<ErrorBanner message={accountTransactionsError} />
-					{:else if accountTransactions.length}
+					{:else}
+						<ReportFilterBar
+							bind:query={accountTransactionSearch}
+							placeholder="Search date, transaction, posting, or balance…"
+							searchLabel="Search account transactions"
+							shownCount={filteredAccountTransactions.length}
+							totalCount={accountTransactions.length}
+							hasActiveFilters={Boolean(accountTransactionSearch.trim())}
+							on:clear={() => accountTransactionSearch = ''}
+						/>
+					{/if}
+					{#if !accountTransactionsLoading && !accountTransactionsError && filteredAccountTransactions.length}
 						<table class="reports-table transaction-table">
 							<thead>
 								<tr>
@@ -1518,7 +1894,7 @@
 								</tr>
 							</thead>
 							<tbody>
-								{#each accountTransactions as transaction}
+								{#each filteredAccountTransactions as transaction}
 									<tr>
 										<td>{transaction.date}</td>
 										<td title={transaction.payee}>{accountTransactionLabel(transaction)}</td>
@@ -1528,8 +1904,8 @@
 								{/each}
 							</tbody>
 						</table>
-					{:else}
-						<div class="empty-state">No transactions found for this account in the selected period.</div>
+					{:else if !accountTransactionsLoading && !accountTransactionsError}
+						<div class="empty-state">No matching transactions found for this account in the selected period.</div>
 					{/if}
 				</div>
 				</div>

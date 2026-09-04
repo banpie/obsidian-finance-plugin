@@ -5,7 +5,6 @@ import type { PriceFetchResult, PriceData } from '../types';
 import { getTargetFile, getMainLedgerPath } from '../utils/structuredLayout';
 import { execSafe } from '../utils';
 import { Logger } from '../utils/logger';
-import { SystemDetector } from '../utils/SystemDetector';
 import { parseExternalPriceResult } from './external-price-result';
 
 /**
