@@ -7,6 +7,7 @@ import { Logger } from '../utils/logger';
 import { getBalanceCategoryLabel } from '../utils/accountLabels';
 import { findInvestmentLifecycle, parseInvestmentLifecycleCsv, type InvestmentLifecycleVerification } from '../utils/investmentLifecycle';
 import { getInvestmentTypeKey } from '../utils/reportFilters';
+import type { InvestmentGainLossColorConvention } from '../settings';
 
 export type ReportsPeriodMode = 'month' | 'year';
 export type ReportsPeriodPreset = 'this-month' | 'last-month' | 'this-year' | 'last-year' | 'custom-month' | 'custom-year';
@@ -113,6 +114,7 @@ export interface ReportsState {
 	isLoading: boolean;
 	error: string | null;
 	currency: string;
+	investmentGainLossColors: InvestmentGainLossColorConvention;
 	activeView: ReportsView;
 	showClosedItems: boolean;
 	periodPreset: ReportsPeriodPreset;
@@ -211,6 +213,7 @@ export class ReportsController {
 			isLoading: true,
 			error: null,
 			currency: plugin.settings.operatingCurrency || 'USD',
+			investmentGainLossColors: plugin.settings.investmentGainLossColors || 'china',
 			activeView: 'cashflow',
 			showClosedItems: false,
 			periodPreset: defaultPreset,
@@ -251,6 +254,10 @@ export class ReportsController {
 
 	setActiveView(activeView: ReportsView) {
 		this.state.update(s => ({ ...s, activeView }));
+	}
+
+	setInvestmentGainLossColors(investmentGainLossColors: InvestmentGainLossColorConvention) {
+		this.state.update(s => ({ ...s, investmentGainLossColors }));
 	}
 
 	async setShowClosedItems(showClosedItems: boolean) {

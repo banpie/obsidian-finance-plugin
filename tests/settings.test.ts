@@ -7,6 +7,7 @@ describe('Settings Defaults', () => {
 		expect(DEFAULT_SETTINGS.maxTransactionResults).toBe(2000);
 		expect(DEFAULT_SETTINGS.maxJournalResults).toBe(1000);
 		expect(DEFAULT_SETTINGS.dashboardDefaultPeriod).toBe('this-month');
+		expect(DEFAULT_SETTINGS.investmentGainLossColors).toBe('china');
 		expect(DEFAULT_SETTINGS.structuredFolderName).toBe('Finances');
 		expect(DEFAULT_SETTINGS.fileOrganization).toBe('yearly');
 		expect(DEFAULT_SETTINGS.createBackups).toBe(true);
