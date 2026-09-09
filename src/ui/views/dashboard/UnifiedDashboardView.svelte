@@ -29,6 +29,7 @@
     export let reportsController: ReportsController;
     export let journalStore: any;
     export let plugin: any = null; // Add plugin prop
+    export let ledgerProfileName = '';
 
     export let activeTab = 'overview';
 
@@ -65,6 +66,9 @@
 
 <div class="beancount-dashboard">
 
+    {#if ledgerProfileName}
+        <div class="ledger-profile-name">账套：{ledgerProfileName}</div>
+    {/if}
     <div class="tabs-header">
         <TabBar {tabs} bind:value={activeTab} fullWidth={false} ariaLabel="Dashboard sections" />
     </div>
@@ -107,6 +111,14 @@
         border-bottom: 1px solid var(--background-modifier-border);
         background: var(--background-secondary);
         overflow-x: auto;
+    }
+
+    .ledger-profile-name {
+        padding: var(--size-4-2) var(--size-4-3);
+        color: var(--text-muted);
+        font-size: var(--font-ui-small);
+        background: var(--background-secondary);
+        border-bottom: 1px solid var(--background-modifier-border);
     }
 
     .tab-content {

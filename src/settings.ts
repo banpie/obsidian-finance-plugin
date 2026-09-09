@@ -18,6 +18,18 @@ export type DashboardDefaultPeriod = "this-month" | "last-month" | "this-year" |
 export type PriceFetchBackend = "bean-price" | "external";
 export type InvestmentGainLossColorConvention = "china" | "international" | "accessible";
 
+/** A separately queryable Beancount entity inside the same Obsidian vault. */
+export interface LedgerProfile {
+    id: string;
+    name: string;
+    /** Vault-relative folder containing ledger.beancount. */
+    structuredFolderName: string;
+    operatingCurrency: string;
+    fileOrganization: FileOrganization;
+    /** Prevent plugin-initiated writes for generated or externally controlled ledgers. */
+    readOnly?: boolean;
+}
+
 export interface BeancountPluginSettings {
     /** Command to run Beancount/Python (e.g. "bean-query", "python3"). */
     beancountCommand: string;
@@ -71,6 +83,10 @@ export interface BeancountPluginSettings {
     lintMode: LintMode;
     /** Whether the user has completed the onboarding wizard. */
     onboardingCompleted: boolean;
+    /** Saved ledger entities. The active profile supplies the runtime ledger settings. */
+    ledgerProfiles: LedgerProfile[];
+    /** Id of the ledger entity currently used by queries and dashboard views. */
+    activeLedgerProfileId: string;
 }
 
 /**
@@ -106,6 +122,8 @@ export const DEFAULT_SETTINGS: BeancountPluginSettings = {
     formatOnSave: false,
     lintMode: 'on-save',
     onboardingCompleted: false,
+    ledgerProfiles: [],
+    activeLedgerProfileId: '',
 }
 
 /**
@@ -119,6 +137,10 @@ export class BeancountSettingTab extends PluginSettingTab {
     private activeTab = 'general';
     private isEditingFolderName = false;
     private tempFolderName = '';
+    private newLedgerName = '';
+    private newLedgerFolder = '';
+    private newLedgerCurrency = 'CNY';
+    private newLedgerReadOnly = false;
 
     constructor(app: App, plugin: BeancountPlugin) {
         super(app, plugin);
@@ -161,6 +183,7 @@ export class BeancountSettingTab extends PluginSettingTab {
         // Define tabs
         const tabs = [
             { id: 'general', label: '⚙️ General' },
+            { id: 'ledgers', label: '📚 Ledger profiles' },
             { id: 'connection', label: '🔌 Connection' },
             { id: 'files', label: '📁 File Organization' },
             { id: 'editor', label: '📝 Editor' },
@@ -186,6 +209,9 @@ export class BeancountSettingTab extends PluginSettingTab {
             case 'general':
                 this.renderGeneralTab(tabsContent);
                 break;
+            case 'ledgers':
+                this.renderLedgerProfilesTab(tabsContent);
+                break;
             case 'connection':
                 this.renderConnectionTab(tabsContent);
                 break;
@@ -204,6 +230,95 @@ export class BeancountSettingTab extends PluginSettingTab {
         }
 
 
+    }
+
+    private renderLedgerProfilesTab(containerEl: HTMLElement): void {
+        new Setting(containerEl).setName('账套切换').setHeading();
+        containerEl.createEl('p', {
+            text: '每个账套保留自己的主文件目录、币种与文件组织。切换只改变插件的查询对象，不会把两个主体的交易合并。',
+            cls: 'setting-item-description'
+        });
+
+        const profiles = this.plugin.settings.ledgerProfiles;
+        const activeId = this.plugin.settings.activeLedgerProfileId;
+        new Setting(containerEl)
+            .setName('当前账套')
+            .setDesc('仪表盘、BQL 与新增交易都会使用这个账套。')
+            .addDropdown(dropdown => {
+                profiles.forEach(profile => {
+                    dropdown.addOption(profile.id, `${profile.name}${profile.readOnly ? '（只读）' : ''}`);
+                });
+                dropdown.setValue(activeId);
+                dropdown.onChange(async (profileId) => {
+                    const result = await this.plugin.switchLedgerProfile(profileId);
+                    if (!result.success) new Notice(result.error || '无法切换账套。');
+                    this.displayTab();
+                });
+            });
+
+        profiles.forEach(profile => {
+            new Setting(containerEl)
+                .setName(profile.name)
+                .setDesc(`${profile.structuredFolderName}/ledger.beancount · ${profile.operatingCurrency}${profile.readOnly ? ' · 只读查看层' : ''}`)
+                .addButton(button => button
+                    .setButtonText(profile.id === activeId ? '当前使用中' : '切换')
+                    .setDisabled(profile.id === activeId)
+                    .onClick(async () => {
+                        const result = await this.plugin.switchLedgerProfile(profile.id);
+                        if (!result.success) new Notice(result.error || '无法切换账套。');
+                        this.displayTab();
+                    }));
+        });
+
+        new Setting(containerEl).setName('新增账套').setHeading();
+        containerEl.createEl('p', {
+            text: '填写 vault 内、包含 ledger.beancount 的目录。新增前会检查文件存在；“只读”适用于由外部系统或生成器维护的账套。',
+            cls: 'setting-item-description'
+        });
+        new Setting(containerEl)
+            .setName('名称')
+            .addText(text => text
+                .setPlaceholder('例如：叹号科技外账')
+                .setValue(this.newLedgerName)
+                .onChange(value => { this.newLedgerName = value; }));
+        new Setting(containerEl)
+            .setName('账套目录')
+            .setDesc('相对 vault 的目录，例如：02_财务/财务os/ledger')
+            .addText(text => text
+                .setPlaceholder('账套目录')
+                .setValue(this.newLedgerFolder)
+                .onChange(value => { this.newLedgerFolder = value; }));
+        new Setting(containerEl)
+            .setName('记账币种')
+            .addText(text => text
+                .setPlaceholder('CNY')
+                .setValue(this.newLedgerCurrency)
+                .onChange(value => { this.newLedgerCurrency = value.toUpperCase(); }))
+            .addToggle(toggle => toggle
+                .setValue(this.newLedgerReadOnly)
+                .setTooltip('只读查看层')
+                .onChange(value => { this.newLedgerReadOnly = value; }))
+            .addButton(button => button
+                .setButtonText('新增')
+                .setCta()
+                .onClick(async () => {
+                    const result = await this.plugin.addLedgerProfile({
+                        name: this.newLedgerName,
+                        structuredFolderName: this.newLedgerFolder,
+                        operatingCurrency: this.newLedgerCurrency,
+                        fileOrganization: this.plugin.settings.fileOrganization,
+                        readOnly: this.newLedgerReadOnly,
+                    });
+                    if (!result.success) {
+                        new Notice(result.error || '无法新增账套。');
+                        return;
+                    }
+                    this.newLedgerName = '';
+                    this.newLedgerFolder = '';
+                    this.newLedgerCurrency = 'CNY';
+                    this.newLedgerReadOnly = false;
+                    this.displayTab();
+                }));
     }
 
     private renderGeneralTab(containerEl: HTMLElement): void {
@@ -243,6 +358,7 @@ export class BeancountSettingTab extends PluginSettingTab {
                 .setButtonText('Save to ledger')
                 .setTooltip('Update the operating_currency option in your ledger.beancount file')
                 .onClick(async () => {
+					if (!this.plugin.requireActiveLedgerWritable('更新账本币种')) return;
                     const currency = this.plugin.settings.operatingCurrency;
                     if (!currency) {
                         new Notice('Operating currency is not set.');

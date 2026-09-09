@@ -82,6 +82,10 @@ export class UnifiedDashboardView extends ItemView {
 		}
 	}
 
+	setLedgerProfileName(name: string) {
+		this.component?.$set({ ledgerProfileName: name });
+	}
+
 	async onOpen() {
 		const container = this.containerEl.children[1];
 		container.empty();
@@ -97,7 +101,8 @@ export class UnifiedDashboardView extends ItemView {
 				reportsController: this.reportsController,
 				commoditiesController: this.commoditiesController,
 				journalStore: this.plugin.journalStore, // Pass store instead of controller
-				plugin: this.plugin // Pass plugin instance
+				plugin: this.plugin, // Pass plugin instance
+				ledgerProfileName: this.plugin.getActiveLedgerProfile()?.name || '',
 			}
 		}) as NavigableDashboardComponent;
 
@@ -134,4 +139,3 @@ export class UnifiedDashboardView extends ItemView {
 		}
 	}
 }
-
