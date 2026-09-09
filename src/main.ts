@@ -1,7 +1,7 @@
 // src/main.ts
 
 import { MarkdownPreviewRenderer, Plugin, Notice, TFile, type MarkdownPostProcessor } from 'obsidian';
-import { BeancountSettingTab, type BeancountPluginSettings, type LedgerProfile, DEFAULT_SETTINGS } from './settings';
+import { BeancountSettingTab, type BeancountPluginSettings, type LedgerProfile, type LedgerReportingMode, DEFAULT_SETTINGS } from './settings';
 import type { Completion } from '@codemirror/autocomplete';
 import { parseSnippetsFile } from './lang/beancount-snippets';
 import { BeancountView, BEANCOUNT_VIEW_TYPE } from './ui/views/sidebar/sidebar-view';
@@ -498,6 +498,10 @@ export default class BeancountPlugin extends Plugin {
 				&& typeof value.operatingCurrency === 'string'
 				&& (value.fileOrganization === 'yearly' || value.fileOrganization === 'monthly')
 				&& !!normalizeLedgerFolder(value.structuredFolderName);
+		}).map(profile => {
+			const reportingMode: LedgerReportingMode = profile.reportingMode === 'corporate' ? 'corporate' : 'personal';
+			if (profile.reportingMode !== reportingMode) needsSave = true;
+			return { ...profile, reportingMode };
 		});
 		if (profiles.length === 0) {
 			this.settings.ledgerProfiles = [createLegacyLedgerProfile(this.settings)];
@@ -551,9 +555,26 @@ export default class BeancountPlugin extends Plugin {
 				operatingCurrency: currency,
 				fileOrganization: draft.fileOrganization,
 				readOnly: draft.readOnly === true,
+				reportingMode: draft.reportingMode,
 			},
 		];
 		await this.saveSettings();
+		return { success: true };
+	}
+
+	/** Change only how period P&L is calculated; it never changes ledger entries. */
+	public async setLedgerProfileReportingMode(
+		profileId: string,
+		reportingMode: LedgerReportingMode,
+	): Promise<{ success: boolean; error?: string }> {
+		const index = this.settings.ledgerProfiles.findIndex(profile => profile.id === profileId);
+		if (index < 0) return { success: false, error: '未找到该账套。' };
+		this.settings.ledgerProfiles[index] = {
+			...this.settings.ledgerProfiles[index],
+			reportingMode,
+		};
+		await this.saveSettings();
+		await this.refreshLedgerViews();
 		return { success: true };
 	}
 
