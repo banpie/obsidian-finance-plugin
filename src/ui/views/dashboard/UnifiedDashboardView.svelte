@@ -65,6 +65,7 @@
         if (!result.success) {
             // The plugin keeps the active selection unchanged when it cannot switch.
             activeLedgerProfileId = plugin.settings.activeLedgerProfileId;
+            (event.currentTarget as HTMLSelectElement).value = activeLedgerProfileId;
         }
         isSwitchingLedger = false;
     }
@@ -87,7 +88,7 @@
             <label for="ledger-profile-switcher">账套</label>
             <select
                 id="ledger-profile-switcher"
-                bind:value={activeLedgerProfileId}
+                value={activeLedgerProfileId}
                 disabled={isSwitchingLedger}
                 on:change={handleLedgerProfileChange}
                 aria-label="切换账套"
