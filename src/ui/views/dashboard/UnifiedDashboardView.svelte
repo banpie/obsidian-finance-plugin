@@ -30,8 +30,11 @@
     export let journalStore: any;
     export let plugin: any = null; // Add plugin prop
     export let ledgerProfileName = '';
+    export let ledgerProfiles: Array<{ id: string; name: string; readOnly?: boolean }> = [];
+    export let activeLedgerProfileId = '';
 
     export let activeTab = 'overview';
+    let isSwitchingLedger = false;
 
     export function navigate(req: NavRequest) {
         if (!req || !req.tab) return;
@@ -53,6 +56,19 @@
         }
     }
 
+    async function handleLedgerProfileChange(event: Event) {
+        const profileId = (event.currentTarget as HTMLSelectElement).value;
+        if (!plugin || !profileId || profileId === activeLedgerProfileId || isSwitchingLedger) return;
+
+        isSwitchingLedger = true;
+        const result = await plugin.switchLedgerProfile(profileId);
+        if (!result.success) {
+            // The plugin keeps the active selection unchanged when it cannot switch.
+            activeLedgerProfileId = plugin.settings.activeLedgerProfileId;
+        }
+        isSwitchingLedger = false;
+    }
+
     const tabs = [
         { value: 'overview', label: 'Overview' },
         { value: 'reports', label: 'Reports' },
@@ -66,8 +82,23 @@
 
 <div class="beancount-dashboard">
 
-    {#if ledgerProfileName}
-        <div class="ledger-profile-name">账套：{ledgerProfileName}</div>
+    {#if ledgerProfiles.length > 0}
+        <div class="ledger-profile-bar">
+            <label for="ledger-profile-switcher">账套</label>
+            <select
+                id="ledger-profile-switcher"
+                bind:value={activeLedgerProfileId}
+                disabled={isSwitchingLedger}
+                on:change={handleLedgerProfileChange}
+                aria-label="切换账套"
+            >
+                {#each ledgerProfiles as profile}
+                    <option value={profile.id}>{profile.name}{profile.readOnly ? '（只读）' : ''}</option>
+                {/each}
+            </select>
+        </div>
+    {:else if ledgerProfileName}
+        <div class="ledger-profile-bar">账套：{ledgerProfileName}</div>
     {/if}
     <div class="tabs-header">
         <TabBar {tabs} bind:value={activeTab} fullWidth={false} ariaLabel="Dashboard sections" />
@@ -113,12 +144,22 @@
         overflow-x: auto;
     }
 
-    .ledger-profile-name {
+    .ledger-profile-bar {
+        display: flex;
+        align-items: center;
+        gap: var(--size-4-2);
         padding: var(--size-4-2) var(--size-4-3);
         color: var(--text-muted);
         font-size: var(--font-ui-small);
         background: var(--background-secondary);
         border-bottom: 1px solid var(--background-modifier-border);
+    }
+
+    .ledger-profile-bar select {
+        max-width: min(22rem, 70vw);
+        min-height: 30px;
+        color: var(--text-normal);
+        font: inherit;
     }
 
     .tab-content {

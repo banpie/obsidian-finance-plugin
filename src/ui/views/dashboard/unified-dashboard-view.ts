@@ -2,6 +2,7 @@
 
 import { ItemView, WorkspaceLeaf } from 'obsidian';
 import type BeancountPlugin from '../../../main';
+import type { LedgerProfile } from '../../../settings';
 import UnifiedDashboardComponent from './UnifiedDashboardView.svelte';
 import { CommodityDetailModal } from '../../modals/CommodityDetailModal';
 import { CommodityCreateModal } from '../../modals/CommodityCreateModal';
@@ -82,8 +83,12 @@ export class UnifiedDashboardView extends ItemView {
 		}
 	}
 
-	setLedgerProfileName(name: string) {
-		this.component?.$set({ ledgerProfileName: name });
+	setLedgerProfile(profile: LedgerProfile | null) {
+		this.component?.$set({
+			ledgerProfileName: profile?.name || '',
+			ledgerProfiles: this.plugin.settings.ledgerProfiles,
+			activeLedgerProfileId: profile?.id || '',
+		});
 	}
 
 	async onOpen() {
@@ -103,6 +108,8 @@ export class UnifiedDashboardView extends ItemView {
 				journalStore: this.plugin.journalStore, // Pass store instead of controller
 				plugin: this.plugin, // Pass plugin instance
 				ledgerProfileName: this.plugin.getActiveLedgerProfile()?.name || '',
+				ledgerProfiles: this.plugin.settings.ledgerProfiles,
+				activeLedgerProfileId: this.plugin.settings.activeLedgerProfileId,
 			}
 		}) as NavigableDashboardComponent;
 

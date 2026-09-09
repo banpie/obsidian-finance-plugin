@@ -557,6 +557,26 @@ export default class BeancountPlugin extends Plugin {
 		return { success: true };
 	}
 
+	/** Change only the user-facing profile label; its id and ledger location stay stable. */
+	public async renameLedgerProfile(profileId: string, nextName: string): Promise<{ success: boolean; error?: string }> {
+		const name = nextName.trim();
+		if (!name) return { success: false, error: '请输入账套名称。' };
+		if (this.settings.ledgerProfiles.some(profile => profile.id !== profileId && profile.name === name)) {
+			return { success: false, error: '已有同名账套，请使用不同名称。' };
+		}
+
+		const index = this.settings.ledgerProfiles.findIndex(profile => profile.id === profileId);
+		if (index < 0) return { success: false, error: '未找到该账套。' };
+
+		this.settings.ledgerProfiles[index] = {
+			...this.settings.ledgerProfiles[index],
+			name,
+		};
+		await this.saveSettings();
+		await this.refreshLedgerViews();
+		return { success: true };
+	}
+
 	public async switchLedgerProfile(profileId: string): Promise<{ success: boolean; error?: string }> {
 		const profile = this.settings.ledgerProfiles.find(candidate => candidate.id === profileId);
 		if (!profile) return { success: false, error: '未找到该账套。' };
@@ -611,7 +631,7 @@ export default class BeancountPlugin extends Plugin {
 		await Promise.all(leaves.map(async leaf => {
 			if (leaf.view instanceof UnifiedDashboardView) {
 				await leaf.view.refreshAllTabs();
-				leaf.view.setLedgerProfileName(this.getActiveLedgerProfile()?.name || '');
+				leaf.view.setLedgerProfile(this.getActiveLedgerProfile());
 			}
 		}));
 	}
