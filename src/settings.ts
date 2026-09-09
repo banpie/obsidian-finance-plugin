@@ -141,6 +141,8 @@ export class BeancountSettingTab extends PluginSettingTab {
     private newLedgerFolder = '';
     private newLedgerCurrency = 'CNY';
     private newLedgerReadOnly = false;
+    private editingLedgerProfileId: string | null = null;
+    private editingLedgerName = '';
 
     constructor(app: App, plugin: BeancountPlugin) {
         super(app, plugin);
@@ -257,6 +259,36 @@ export class BeancountSettingTab extends PluginSettingTab {
             });
 
         profiles.forEach(profile => {
+            if (this.editingLedgerProfileId === profile.id) {
+                new Setting(containerEl)
+                    .setName('账套名称')
+                    .setDesc('仅修改页面和设置中的显示名，不会移动文件或改变账套标识。')
+                    .addText(text => text
+                        .setValue(this.editingLedgerName)
+                        .onChange(value => { this.editingLedgerName = value; }))
+                    .addButton(button => button
+                        .setButtonText('保存')
+                        .setCta()
+                        .onClick(async () => {
+                            const result = await this.plugin.renameLedgerProfile(profile.id, this.editingLedgerName);
+                            if (!result.success) {
+                                new Notice(result.error || '无法重命名账套。');
+                                return;
+                            }
+                            this.editingLedgerProfileId = null;
+                            this.editingLedgerName = '';
+                            this.displayTab();
+                        }))
+                    .addButton(button => button
+                        .setButtonText('取消')
+                        .onClick(() => {
+                            this.editingLedgerProfileId = null;
+                            this.editingLedgerName = '';
+                            this.displayTab();
+                        }));
+                return;
+            }
+
             new Setting(containerEl)
                 .setName(profile.name)
                 .setDesc(`${profile.structuredFolderName}/ledger.beancount · ${profile.operatingCurrency}${profile.readOnly ? ' · 只读查看层' : ''}`)
@@ -266,6 +298,13 @@ export class BeancountSettingTab extends PluginSettingTab {
                     .onClick(async () => {
                         const result = await this.plugin.switchLedgerProfile(profile.id);
                         if (!result.success) new Notice(result.error || '无法切换账套。');
+                        this.displayTab();
+                    }))
+                .addButton(button => button
+                    .setButtonText('重命名')
+                    .onClick(() => {
+                        this.editingLedgerProfileId = profile.id;
+                        this.editingLedgerName = profile.name;
                         this.displayTab();
                     }));
         });
