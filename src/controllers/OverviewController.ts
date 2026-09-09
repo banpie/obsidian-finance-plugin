@@ -20,6 +20,8 @@ export interface OverviewState {
 	netWorth: string;
 	/** The reporting currency. */
 	currency: string;
+	/** Whether period KPIs are personal cash flow or corporate accrual P&L. */
+	reportingMode: 'personal' | 'corporate';
 	/** Selected period preset. */
 	periodPreset: OverviewPeriodPreset;
 	/** Selected summary period granularity. */
@@ -68,6 +70,7 @@ export class OverviewController {
 			error: null,
 			netWorth: '0.00 USD',
 			currency: plugin.settings.operatingCurrency || 'USD',
+			reportingMode: plugin.getActiveLedgerProfile()?.reportingMode === 'corporate' ? 'corporate' : 'personal',
 			periodPreset: defaultPreset,
 			periodMode: defaultPeriod.mode,
 			periodYear: defaultPeriod.year,
@@ -99,13 +102,15 @@ export class OverviewController {
 
 		try {
 			const period = this.getPeriodRange();
+			const reportingMode = this.plugin.getActiveLedgerProfile()?.reportingMode === 'corporate' ? 'corporate' : 'personal';
+			const reportingBasis = reportingMode === 'corporate' ? 'accrual' : 'cash-flow';
 			await this.plugin.currencyPrecisionService.ensureLoaded();
 			const decimals = this.plugin.currencyPrecisionService.getDecimals(reportingCurrency);
 			const [netWorthResult, periodIncomeResult, periodExpensesResult, periodSavingsResult] = await Promise.all([
 				this.plugin.runQuery(queries.getTotalWorthQuery(reportingCurrency, decimals, period.endDate, period.valuationDate)),
-				this.plugin.runQuery(queries.getPeriodIncomeQuery(reportingCurrency, decimals, period.startDate, period.endDate)),
-				this.plugin.runQuery(queries.getPeriodExpensesQuery(reportingCurrency, decimals, period.startDate, period.endDate)),
-				this.plugin.runQuery(queries.getPeriodSavingsQuery(reportingCurrency, decimals, period.startDate, period.endDate)),
+				this.plugin.runQuery(queries.getPeriodIncomeQuery(reportingCurrency, decimals, period.startDate, period.endDate, reportingBasis)),
+				this.plugin.runQuery(queries.getPeriodExpensesQuery(reportingCurrency, decimals, period.startDate, period.endDate, reportingBasis)),
+				this.plugin.runQuery(queries.getPeriodSavingsQuery(reportingCurrency, decimals, period.startDate, period.endDate, reportingBasis)),
 			]);
 
 			// Process KPI Data
@@ -116,6 +121,7 @@ export class OverviewController {
 			const newState: Partial<OverviewState> = {
 				netWorth: `${netWorthNum.toFixed(decimals)} ${reportingCurrency}`,
 				currency: reportingCurrency,
+				reportingMode,
 				periodLabel: period.label,
 				...this.formatPeriodResults(periodIncomeResult, periodExpensesResult, periodSavingsResult, reportingCurrency),
 			};

@@ -17,6 +17,8 @@ export type FileOrganization = "yearly" | "monthly";
 export type DashboardDefaultPeriod = "this-month" | "last-month" | "this-year" | "last-year";
 export type PriceFetchBackend = "bean-price" | "external";
 export type InvestmentGainLossColorConvention = "china" | "international" | "accessible";
+/** Determines how period income and expense cards are calculated for this ledger. */
+export type LedgerReportingMode = "personal" | "corporate";
 
 /** A separately queryable Beancount entity inside the same Obsidian vault. */
 export interface LedgerProfile {
@@ -28,6 +30,8 @@ export interface LedgerProfile {
     fileOrganization: FileOrganization;
     /** Prevent plugin-initiated writes for generated or externally controlled ledgers. */
     readOnly?: boolean;
+    /** Personal ledgers use cash flow; corporate ledgers use accrual P&L. */
+    reportingMode: LedgerReportingMode;
 }
 
 export interface BeancountPluginSettings {
@@ -141,6 +145,7 @@ export class BeancountSettingTab extends PluginSettingTab {
     private newLedgerFolder = '';
     private newLedgerCurrency = 'CNY';
     private newLedgerReadOnly = false;
+    private newLedgerReportingMode: LedgerReportingMode = 'personal';
     private editingLedgerProfileId: string | null = null;
     private editingLedgerName = '';
 
@@ -292,6 +297,18 @@ export class BeancountSettingTab extends PluginSettingTab {
             new Setting(containerEl)
                 .setName(profile.name)
                 .setDesc(`${profile.structuredFolderName}/ledger.beancount · ${profile.operatingCurrency}${profile.readOnly ? ' · 只读查看层' : ''}`)
+                .addDropdown(dropdown => dropdown
+                    .addOption('personal', '个人：现金流')
+                    .addOption('corporate', '企业：权责损益')
+                    .setValue(profile.reportingMode)
+                    .onChange(async value => {
+                        const result = await this.plugin.setLedgerProfileReportingMode(
+                            profile.id,
+                            value === 'corporate' ? 'corporate' : 'personal',
+                        );
+                        if (!result.success) new Notice(result.error || '无法更新账套报表口径。');
+                        this.displayTab();
+                    }))
                 .addButton(button => button
                     .setButtonText(profile.id === activeId ? '当前使用中' : '切换')
                     .setDisabled(profile.id === activeId)
@@ -337,6 +354,14 @@ export class BeancountSettingTab extends PluginSettingTab {
                 .setValue(this.newLedgerReadOnly)
                 .setTooltip('只读查看层')
                 .onChange(value => { this.newLedgerReadOnly = value; }))
+        new Setting(containerEl)
+            .setName('报表口径')
+            .setDesc('个人账本按真实现金流统计；企业账套按权责发生额统计，并排除月末损益结转凭证。')
+            .addDropdown(dropdown => dropdown
+                .addOption('personal', '个人：现金流')
+                .addOption('corporate', '企业：权责损益')
+                .setValue(this.newLedgerReportingMode)
+                .onChange(value => { this.newLedgerReportingMode = value === 'corporate' ? 'corporate' : 'personal'; }))
             .addButton(button => button
                 .setButtonText('新增')
                 .setCta()
@@ -347,6 +372,7 @@ export class BeancountSettingTab extends PluginSettingTab {
                         operatingCurrency: this.newLedgerCurrency,
                         fileOrganization: this.plugin.settings.fileOrganization,
                         readOnly: this.newLedgerReadOnly,
+                        reportingMode: this.newLedgerReportingMode,
                     });
                     if (!result.success) {
                         new Notice(result.error || '无法新增账套。');
@@ -356,6 +382,7 @@ export class BeancountSettingTab extends PluginSettingTab {
                     this.newLedgerFolder = '';
                     this.newLedgerCurrency = 'CNY';
                     this.newLedgerReadOnly = false;
+                    this.newLedgerReportingMode = 'personal';
                     this.displayTab();
                 }));
     }

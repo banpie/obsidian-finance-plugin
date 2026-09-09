@@ -35,5 +35,6 @@ export function createLegacyLedgerProfile(settings: {
 		operatingCurrency: settings.operatingCurrency,
 		fileOrganization: settings.fileOrganization,
 		readOnly: false,
+		reportingMode: 'personal',
 	};
 }

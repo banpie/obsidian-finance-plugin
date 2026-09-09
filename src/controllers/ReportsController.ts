@@ -338,6 +338,7 @@ export class ReportsController {
 		const normalizedYear = Number.isFinite(year) ? Math.max(1, Math.trunc(year)) : new Date().getFullYear();
 		const normalizedMonth = Number.isFinite(month) ? Math.min(12, Math.max(1, Math.trunc(month))) : new Date().getMonth() + 1;
 		const range = this.getPeriodRange(periodMode, normalizedYear, normalizedMonth);
+		const reportingBasis = this.plugin.getActiveLedgerProfile()?.reportingMode === 'corporate' ? 'accrual' : 'cash-flow';
 		const showClosedItems = get(this.state).showClosedItems;
 		this.state.update(s => ({
 			...s,
@@ -377,17 +378,17 @@ export class ReportsController {
 				investmentNativePricesCsv,
 				investmentLifecycleCsv,
 			] = await Promise.all([
-				this.plugin.runQuery(queries.getPeriodIncomeBreakdownQuery(currency, 2, range.startDate, range.endDate)),
-				this.plugin.runQuery(queries.getPeriodExpenseBreakdownQuery(currency, 2, range.startDate, range.endDate)),
+				this.plugin.runQuery(queries.getPeriodIncomeBreakdownQuery(currency, 2, range.startDate, range.endDate, reportingBasis)),
+				this.plugin.runQuery(queries.getPeriodExpenseBreakdownQuery(currency, 2, range.startDate, range.endDate, reportingBasis)),
 				this.plugin.runQuery(queries.getTotalAssetsQuery(currency, 2, range.endDate, range.valuationDate)),
 				this.plugin.runQuery(queries.getTotalLiabilitiesQuery(currency, 2, range.endDate, range.valuationDate)),
 				this.plugin.runQuery(queries.getTotalWorthQuery(currency, 2, range.endDate, range.valuationDate)),
-				this.plugin.runQuery(queries.getPeriodIncomeTransactionsQuery(currency, 2, range.startDate, range.endDate)),
-				this.plugin.runQuery(queries.getPeriodExpenseTransactionsQuery(currency, 2, range.startDate, range.endDate)),
-				this.plugin.runQuery(queries.getPeriodCounterpartAccountsQuery(range.startDate, range.endDate)),
-				this.plugin.runQuery(queries.getPeriodProjectIncomeQuery(currency, 2, range.startDate, range.endDate)),
-				this.plugin.runQuery(queries.getPeriodProjectExpenseQuery(currency, 2, range.startDate, range.endDate)),
-				this.plugin.runQuery(queries.getPeriodProjectTransactionsQuery(currency, 2, range.startDate, range.endDate)),
+				this.plugin.runQuery(queries.getPeriodIncomeTransactionsQuery(currency, 2, range.startDate, range.endDate, reportingBasis)),
+				this.plugin.runQuery(queries.getPeriodExpenseTransactionsQuery(currency, 2, range.startDate, range.endDate, reportingBasis)),
+				this.plugin.runQuery(queries.getPeriodCounterpartAccountsQuery(range.startDate, range.endDate, reportingBasis)),
+				this.plugin.runQuery(queries.getPeriodProjectIncomeQuery(currency, 2, range.startDate, range.endDate, reportingBasis)),
+				this.plugin.runQuery(queries.getPeriodProjectExpenseQuery(currency, 2, range.startDate, range.endDate, reportingBasis)),
+				this.plugin.runQuery(queries.getPeriodProjectTransactionsQuery(currency, 2, range.startDate, range.endDate, reportingBasis)),
 				this.plugin.runQuery(queries.getProjectNamesQuery(range.endDate)),
 				this.plugin.runQuery(queries.getAssetAllocationQuery(currency, 2, range.endDate, range.valuationDate)),
 				this.plugin.runQuery(queries.getLiabilityAllocationQuery(currency, 2, range.endDate, range.valuationDate)),

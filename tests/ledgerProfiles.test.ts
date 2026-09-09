@@ -9,7 +9,7 @@ describe('ledger profiles', () => {
 	});
 
 	it('migrates a configured ledger into the default profile', () => {
-		expect(createLegacyLedgerProfile({
+			expect(createLegacyLedgerProfile({
 			structuredFolderName: 'Finances',
 			operatingCurrency: 'USD',
 			fileOrganization: 'yearly',
@@ -20,6 +20,7 @@ describe('ledger profiles', () => {
 			operatingCurrency: 'USD',
 			fileOrganization: 'yearly',
 			readOnly: false,
+			reportingMode: 'personal',
 		});
 	});
 
