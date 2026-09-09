@@ -1,7 +1,7 @@
 // src/main.ts
 
 import { MarkdownPreviewRenderer, Plugin, Notice, TFile, type MarkdownPostProcessor } from 'obsidian';
-import { BeancountSettingTab, type BeancountPluginSettings, DEFAULT_SETTINGS } from './settings';
+import { BeancountSettingTab, type BeancountPluginSettings, type LedgerProfile, DEFAULT_SETTINGS } from './settings';
 import type { Completion } from '@codemirror/autocomplete';
 import { parseSnippetsFile } from './lang/beancount-snippets';
 import { BeancountView, BEANCOUNT_VIEW_TYPE } from './ui/views/sidebar/sidebar-view';
@@ -25,6 +25,7 @@ import { Logger } from './utils/logger';
 import { SystemDetector } from './utils/SystemDetector';
 import { resolveBeanQueryCommand } from './utils/beanQueryCommandRecovery';
 import { getMainLedgerPath } from './utils/structuredLayout';
+import { createLedgerProfileId, createLegacyLedgerProfile, normalizeLedgerFolder, type LedgerProfileDraft } from './utils/ledgerProfiles';
 
 // --------------------------------------------------
 
@@ -123,7 +124,11 @@ export default class BeancountPlugin extends Plugin {
 
 		// Add Ribbon Icons
 		this.addRibbonIcon('plus-circle', 'Add transaction', () => {
+			if (!this.requireActiveLedgerWritable('新增交易')) return;
 			new UnifiedTransactionModal(this.app, this, null, this.getDashboardRefreshCallback()).open();
+		});
+		this.addRibbonIcon('repeat-2', '切换账套', () => {
+			void this.switchToNextLedgerProfile();
 		});
 		this.addRibbonIcon('layout-dashboard', 'Open Beancount dashboard', () => {
 			void this.activateView(UNIFIED_DASHBOARD_VIEW_TYPE, 'tab'); // Open the NEW view
@@ -133,7 +138,15 @@ export default class BeancountPlugin extends Plugin {
 		this.addCommand({
 			id: 'add-beancount-transaction',
 			name: 'Add Beancount transaction',
-			callback: () => { new UnifiedTransactionModal(this.app, this, null, this.getDashboardRefreshCallback()).open(); }
+			callback: () => {
+				if (!this.requireActiveLedgerWritable('新增交易')) return;
+				new UnifiedTransactionModal(this.app, this, null, this.getDashboardRefreshCallback()).open();
+			}
+		});
+		this.addCommand({
+			id: 'switch-to-next-ledger-profile',
+			name: '切换至下一个账套',
+			callback: () => { void this.switchToNextLedgerProfile(); }
 		});
 		// 'Insert BQL Query Block' command removed — use manual insertion or BQL templates instead
 		this.addCommand({
@@ -182,6 +195,7 @@ export default class BeancountPlugin extends Plugin {
 			id: 'fetch-commodity-prices',
 			name: 'Fetch commodity prices',
 			callback: async () => {
+				if (!this.requireActiveLedgerWritable('更新价格')) return;
 				// Find the unified dashboard view and call fetchPrices on commodities controller
 				const leaves = this.app.workspace.getLeavesOfType(UNIFIED_DASHBOARD_VIEW_TYPE);
 				for (const leaf of leaves) {
@@ -292,6 +306,10 @@ export default class BeancountPlugin extends Plugin {
 		this.registerInterval(
 			window.setInterval(() => {
 				void (async () => {
+					if (this.isActiveLedgerReadOnly()) {
+						Logger.log('[Main] Skipping automatic price fetching for a read-only ledger profile.');
+						return;
+					}
 					Logger.log('[Main] Running automatic price fetch');
 					try {
 						const result = await this.priceService.fetchAndSavePrices();
@@ -452,6 +470,7 @@ export default class BeancountPlugin extends Plugin {
 	async loadSettings() {
 		const raw = (await this.loadData()) as Record<string, unknown> | null;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, raw);
+		let needsSave = false;
 
 		// Migration: consolidate legacy `reportingCurrency` / `defaultCurrency` into `operatingCurrency`
 		if (!this.settings.operatingCurrency) {
@@ -460,14 +479,141 @@ export default class BeancountPlugin extends Plugin {
 			const migrated = (legacyReporting || legacyDefault || DEFAULT_SETTINGS.operatingCurrency) as string;
 			this.settings.operatingCurrency = typeof migrated === 'string' ? migrated.toUpperCase() : DEFAULT_SETTINGS.operatingCurrency;
 			// Persist migrated value
-			await this.saveSettings();
+			needsSave = true;
 		}
 
 		// Migration: upgrade guard to infer onboarding completion for existing users
 		if (raw && !('onboardingCompleted' in raw) && this.settings.structuredFolderName) {
 			this.settings.onboardingCompleted = true;
-			await this.saveSettings();
+			needsSave = true;
 		}
+
+		const savedProfiles = Array.isArray(raw?.ledgerProfiles) ? raw.ledgerProfiles : [];
+		const profiles = savedProfiles.filter((profile): profile is LedgerProfile => {
+			if (!profile || typeof profile !== 'object') return false;
+			const value = profile as Partial<LedgerProfile>;
+			return typeof value.id === 'string'
+				&& typeof value.name === 'string'
+				&& typeof value.structuredFolderName === 'string'
+				&& typeof value.operatingCurrency === 'string'
+				&& (value.fileOrganization === 'yearly' || value.fileOrganization === 'monthly')
+				&& !!normalizeLedgerFolder(value.structuredFolderName);
+		});
+		if (profiles.length === 0) {
+			this.settings.ledgerProfiles = [createLegacyLedgerProfile(this.settings)];
+			this.settings.activeLedgerProfileId = this.settings.ledgerProfiles[0].id;
+			needsSave = true;
+		} else {
+			this.settings.ledgerProfiles = profiles;
+			const active = profiles.find(profile => profile.id === raw?.activeLedgerProfileId) || profiles[0];
+			this.settings.activeLedgerProfileId = active.id;
+			this.applyLedgerProfile(active);
+			if (raw?.activeLedgerProfileId !== active.id) needsSave = true;
+		}
+
+		if (needsSave) await this.saveSettings();
+	}
+
+	public getActiveLedgerProfile(): LedgerProfile | null {
+		return this.settings.ledgerProfiles.find(profile => profile.id === this.settings.activeLedgerProfileId) || null;
+	}
+
+	public isActiveLedgerReadOnly(): boolean {
+		return this.getActiveLedgerProfile()?.readOnly === true;
+	}
+
+	public requireActiveLedgerWritable(action: string): boolean {
+		const profile = this.getActiveLedgerProfile();
+		if (!profile?.readOnly) return true;
+		new Notice(`“${profile.name}”是只读账套，不能${action}。`);
+		return false;
+	}
+
+	public async addLedgerProfile(draft: LedgerProfileDraft): Promise<{ success: boolean; error?: string }> {
+		const name = draft.name.trim();
+		const folder = normalizeLedgerFolder(draft.structuredFolderName);
+		const currency = draft.operatingCurrency.trim().toUpperCase();
+		if (!name) return { success: false, error: '请输入账套名称。' };
+		if (!folder) return { success: false, error: '账套目录必须在当前 Vault 内，且不能包含 ..。' };
+		if (!/^[A-Z]{3}$/.test(currency)) return { success: false, error: '记账币种应为三位大写代码，例如 CNY。' };
+		if (this.settings.ledgerProfiles.some(profile => profile.structuredFolderName === folder)) {
+			return { success: false, error: '该账套目录已存在。' };
+		}
+		if (!(await this.app.vault.adapter.exists(`${folder}/ledger.beancount`))) {
+			return { success: false, error: '目录中未找到 ledger.beancount。' };
+		}
+		this.settings.ledgerProfiles = [
+			...this.settings.ledgerProfiles,
+			{
+				id: createLedgerProfileId(name, this.settings.ledgerProfiles.map(profile => profile.id)),
+				name,
+				structuredFolderName: folder,
+				operatingCurrency: currency,
+				fileOrganization: draft.fileOrganization,
+				readOnly: draft.readOnly === true,
+			},
+		];
+		await this.saveSettings();
+		return { success: true };
+	}
+
+	public async switchLedgerProfile(profileId: string): Promise<{ success: boolean; error?: string }> {
+		const profile = this.settings.ledgerProfiles.find(candidate => candidate.id === profileId);
+		if (!profile) return { success: false, error: '未找到该账套。' };
+		if (!(await this.app.vault.adapter.exists(`${profile.structuredFolderName}/ledger.beancount`))) {
+			return { success: false, error: `找不到 ${profile.name} 的 ledger.beancount。` };
+		}
+		this.settings.activeLedgerProfileId = profile.id;
+		this.applyLedgerProfile(profile);
+		await this.saveSettings();
+		if (this.settings.enableUserSnippets && !profile.readOnly) {
+			await this.loadSnippets();
+		} else if (profile.readOnly) {
+			this.snippetCompletions = [];
+		}
+		await this.refreshLedgerViews();
+		new Notice(`已切换到“${profile.name}”${profile.readOnly ? '（只读）' : ''}。`);
+		return { success: true };
+	}
+
+	private async switchToNextLedgerProfile(): Promise<void> {
+		const profiles = this.settings.ledgerProfiles;
+		if (profiles.length < 2) {
+			new Notice('请先在“ledger profiles”设置中新增另一个账套。');
+			return;
+		}
+		const currentIndex = Math.max(0, profiles.findIndex(profile => profile.id === this.settings.activeLedgerProfileId));
+		const next = profiles[(currentIndex + 1) % profiles.length];
+		const result = await this.switchLedgerProfile(next.id);
+		if (!result.success) new Notice(result.error || '无法切换账套。');
+	}
+
+	private applyLedgerProfile(profile: LedgerProfile): void {
+		this.settings.structuredFolderName = profile.structuredFolderName;
+		this.settings.operatingCurrency = profile.operatingCurrency;
+		this.settings.fileOrganization = profile.fileOrganization;
+	}
+
+	private syncActiveLedgerProfile(): void {
+		const index = this.settings.ledgerProfiles.findIndex(profile => profile.id === this.settings.activeLedgerProfileId);
+		if (index < 0) return;
+		const profile = this.settings.ledgerProfiles[index];
+		this.settings.ledgerProfiles[index] = {
+			...profile,
+			structuredFolderName: this.settings.structuredFolderName,
+			operatingCurrency: this.settings.operatingCurrency,
+			fileOrganization: this.settings.fileOrganization,
+		};
+	}
+
+	private async refreshLedgerViews(): Promise<void> {
+		const leaves = this.app.workspace.getLeavesOfType(UNIFIED_DASHBOARD_VIEW_TYPE);
+		await Promise.all(leaves.map(async leaf => {
+			if (leaf.view instanceof UnifiedDashboardView) {
+				await leaf.view.refreshAllTabs();
+				leaf.view.setLedgerProfileName(this.getActiveLedgerProfile()?.name || '');
+			}
+		}));
 	}
 
 	private async ensureBeancountCommand(): Promise<void> {
@@ -503,6 +649,7 @@ export default class BeancountPlugin extends Plugin {
 	}
 
 	async saveSettings() {
+		this.syncActiveLedgerProfile();
 		await this.saveData(this.settings);
 		// Refresh all BQL code blocks with new settings
 		if (this.bqlProcessor) {
