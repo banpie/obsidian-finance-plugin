@@ -121,6 +121,7 @@
 	$: state = $stateStore;
 	$: canGoBack = detailBackStack.length > 0;
 	$: canGoForward = detailForwardStack.length > 0;
+	$: cashflowHasActiveFilters = Boolean(cashflowSearch.trim()) || cashflowTypeFilter !== 'all';
 
 	function formatCurrency(value: number): string {
 		return `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${state.currency}`;
@@ -1100,7 +1101,7 @@
 			searchLabel="Search cash flow categories"
 			shownCount={cashflowShownCount}
 			totalCount={cashflowTotalCount}
-			hasActiveFilters={Boolean(cashflowSearch.trim()) || cashflowTypeFilter !== 'all'}
+			hasActiveFilters={cashflowHasActiveFilters}
 			on:clear={clearCashflowFilters}
 		>
 			<select bind:value={cashflowTypeFilter} aria-label="Cash flow type">
@@ -1139,7 +1140,9 @@
 							</div>
 						</button>
 					{:else}
-						<div class="empty-state compact">No matching income categories.</div>
+						<div class="empty-state compact">
+							{cashflowHasActiveFilters ? 'No matching income categories.' : 'No income records in the selected period.'}
+						</div>
 					{/each}
 				</div>
 			</section>
@@ -1172,7 +1175,9 @@
 							</div>
 						</button>
 					{:else}
-						<div class="empty-state compact">No matching expense categories.</div>
+						<div class="empty-state compact">
+							{cashflowHasActiveFilters ? 'No matching expense categories.' : 'No expense records in the selected period.'}
+						</div>
 					{/each}
 				</div>
 			</section>
@@ -2115,11 +2120,12 @@
 
 	.metric-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+		grid-template-columns: repeat(4, minmax(0, 1fr));
 		gap: var(--size-4-3);
 	}
 
 	.metric-card {
+		min-width: 0;
 		border: 1px solid var(--background-modifier-border);
 		border-radius: var(--radius-s);
 		padding: var(--size-4-3);
@@ -2160,7 +2166,7 @@
 	.two-column,
 	.detail-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: var(--size-4-4);
 	}
 
@@ -2168,6 +2174,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--size-4-3);
+		min-width: 0;
 	}
 
 	.section-header {
@@ -2187,6 +2194,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--size-4-2);
+		min-width: 0;
 	}
 
 	.breakdown-row {
@@ -2441,6 +2449,13 @@
 		font-size: var(--font-ui-small);
 	}
 
+	.empty-state.compact {
+		min-height: 48px;
+		margin-top: 0;
+		display: flex;
+		align-items: center;
+	}
+
 	.detail-modal-backdrop {
 		position: fixed;
 		inset: 0;
@@ -2624,6 +2639,12 @@
 		color: var(--text-muted);
 	}
 
+	@media (max-width: 1024px) {
+		.metric-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
 	@media (max-width: 720px) {
 		.reports-header {
 			flex-direction: column;
@@ -2641,7 +2662,8 @@
 		}
 
 		.two-column,
-		.detail-grid {
+		.detail-grid,
+		.metric-grid {
 			grid-template-columns: 1fr;
 		}
 
