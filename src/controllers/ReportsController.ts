@@ -200,6 +200,8 @@ const CHART_COLORS = [
 
 export class ReportsController {
 	private plugin: BeancountPlugin;
+	/** Prevent an older period/profile load from replacing the current report. */
+	private loadRevision = 0;
 	public state: Writable<ReportsState>;
 
 	constructor(plugin: BeancountPlugin) {
@@ -329,8 +331,11 @@ export class ReportsController {
 		month = get(this.state).month,
 		periodPreset = get(this.state).periodPreset
 	) {
+		const loadRevision = ++this.loadRevision;
+		const activeProfileId = this.plugin.settings.activeLedgerProfileId;
 		const currency = this.plugin.settings.operatingCurrency;
 		if (!currency) {
+			if (!this.isCurrentLoad(loadRevision, activeProfileId)) return;
 			this.state.update(s => ({ ...s, isLoading: false, error: 'Operating currency not set.' }));
 			return;
 		}
@@ -447,6 +452,8 @@ export class ReportsController {
 			const projects = this.buildProjectRows(projectIncomeCsv, projectExpensesCsv, projectTransactions, projectNamesCsv, showClosedItems);
 			const loans = this.parseLoanRows(loanBalancesCsv, loanNamesCsv, showClosedItems, range.endDate);
 
+			if (!this.isCurrentLoad(loadRevision, activeProfileId)) return;
+
 			this.state.update(s => ({
 				...s,
 				isLoading: false,
@@ -479,9 +486,15 @@ export class ReportsController {
 				investmentsChartConfig: this.buildDoughnutConfig('Investments', investmentsByType, investmentRows.reduce((sum, row) => sum + row.amount, 0), currency),
 			}));
 		} catch (e) {
+			if (!this.isCurrentLoad(loadRevision, activeProfileId)) return;
 			Logger.error('Error loading reports:', e);
 			this.state.update(s => ({ ...s, isLoading: false, error: e instanceof Error ? e.message : String(e) }));
 		}
+	}
+
+	private isCurrentLoad(loadRevision: number, activeProfileId: string): boolean {
+		return loadRevision === this.loadRevision
+			&& activeProfileId === this.plugin.settings.activeLedgerProfileId;
 	}
 
 	private async loadInvestmentLifecycleCsv(): Promise<string> {
