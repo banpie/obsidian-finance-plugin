@@ -651,8 +651,8 @@ export default class BeancountPlugin extends Plugin {
 		const leaves = this.app.workspace.getLeavesOfType(UNIFIED_DASHBOARD_VIEW_TYPE);
 		await Promise.all(leaves.map(async leaf => {
 			if (leaf.view instanceof UnifiedDashboardView) {
-				await leaf.view.refreshAllTabs();
 				leaf.view.setLedgerProfile(this.getActiveLedgerProfile());
+				await leaf.view.refreshAllTabs();
 			}
 		}));
 	}

@@ -63,7 +63,7 @@
 	// 3. Now, '$stateStore' will safely subscribe, starting with the
 	//    placeholder and then automatically switching to the real store.
 	$: state = $stateStore;
-	$: reportingBasisLabel = state.reportingMode === 'corporate' ? '权责损益' : '现金流';
+	$: reportingBasisLabel = state.reportingMode === 'corporate' ? 'Accrual P&L' : 'Cash Flow';
 	
 	// Add refresh functionality
 	function handleRefresh() {
@@ -87,7 +87,7 @@
 <div class="beancount-overview">
 	<div class="overview-header">
 		<div class="overview-title">
-			<h3>财务总览</h3>
+			<h3>Financial Overview</h3>
 			<p>{state.periodLabel} · {reportingBasisLabel}</p>
 		</div>
 		<div class="overview-actions">
@@ -122,10 +122,10 @@
 		</div>
 		
 		<div class="kpi-grid">
-			<CardComponent label="净资产" value={state.netWorth} comparison="资产减负债" clickable on:click={(e) => handleKpiClick(undefined, e.detail)} />
-			<CardComponent label="收入" value={state.periodIncome} comparison={state.periodLabel} clickable on:click={(e) => handleKpiClick('Income', e.detail)} />
-			<CardComponent label="支出" value={state.periodExpenses} comparison={state.periodLabel} clickable on:click={(e) => handleKpiClick('Expenses', e.detail)} />
-			<CardComponent label="本期净额" value={state.periodNetIncome} comparison={`净额率：${state.periodSavingsRate}`} clickable on:click={(e) => handleKpiClick(undefined, e.detail)} />
+			<CardComponent label="Total Balance" value={state.netWorth} comparison="Assets minus liabilities" clickable on:click={(e) => handleKpiClick(undefined, e.detail)} />
+			<CardComponent label="Income" value={state.periodIncome} comparison={state.periodLabel} clickable on:click={(e) => handleKpiClick('Income', e.detail)} />
+			<CardComponent label="Expenses" value={state.periodExpenses} comparison={state.periodLabel} clickable on:click={(e) => handleKpiClick('Expenses', e.detail)} />
+			<CardComponent label="Net Result" value={state.periodNetIncome} comparison={`Net result rate: ${state.periodSavingsRate}`} clickable on:click={(e) => handleKpiClick(undefined, e.detail)} />
 		</div>
 
 		<IndicatorsSection

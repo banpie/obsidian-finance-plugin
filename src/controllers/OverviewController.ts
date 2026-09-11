@@ -51,6 +51,8 @@ export interface OverviewState {
  */
 export class OverviewController {
 	private plugin: BeancountPlugin;
+	/** Monotonically increasing request id so an older ledger load cannot overwrite a newer profile. */
+	private loadRevision = 0;
 
 	// Create a Svelte store to hold the state
 	public state: Writable<OverviewState>;
@@ -88,6 +90,8 @@ export class OverviewController {
 	 * Fetches total assets, liabilities, monthly income/expenses, and historical data for the chart.
 	 */
 	async loadData() {
+		const loadRevision = ++this.loadRevision;
+		const activeProfileId = this.plugin.settings.activeLedgerProfileId;
 		this.state.update(s => ({ ...s, isLoading: true, error: null, chartError: null }));
 
 		const reportingCurrency = this.plugin.settings.operatingCurrency;
@@ -126,14 +130,24 @@ export class OverviewController {
 				...this.formatPeriodResults(periodIncomeResult, periodExpensesResult, periodSavingsResult, reportingCurrency),
 			};
 
+			// A profile switch starts a newer load. Do not let the previous
+			// ledger's result overwrite the currently selected profile.
+			if (!this.isCurrentLoad(loadRevision, activeProfileId)) return;
+
 			// Update the store with KPI data
 			this.state.update(s => ({ ...s, ...newState, isLoading: false, error: null }));
 
 		} catch (e) {
+			if (!this.isCurrentLoad(loadRevision, activeProfileId)) return;
 			Logger.error("Error loading overview data:", e);
 			const errMsg = e instanceof Error ? e.message : String(e);
 			this.state.update(s => ({ ...s, isLoading: false, error: `Failed to load data: ${errMsg}` }));
 		}
+	}
+
+	private isCurrentLoad(loadRevision: number, activeProfileId: string): boolean {
+		return loadRevision === this.loadRevision
+			&& activeProfileId === this.plugin.settings.activeLedgerProfileId;
 	}
 
 	async setPeriodPreset(preset: OverviewPeriodPreset) {
