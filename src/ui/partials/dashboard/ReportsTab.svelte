@@ -2441,6 +2441,13 @@
 	}
 
 	.empty-state {
+		/* Obsidian core defines `.empty-state` as a full-pane absolute layer.
+		 * Reports uses inline empty states, so that rule otherwise covers the
+		 * period navigator and prevents real pointer clicks from reaching it. */
+		position: relative;
+		width: auto;
+		height: auto;
+		box-sizing: border-box;
 		margin-top: var(--size-4-3);
 		padding: var(--size-4-3);
 		border: 1px dashed var(--background-modifier-border);
