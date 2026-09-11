@@ -45,7 +45,15 @@ export function runQuery(plugin: BeancountPlugin, query: string, filepath?: stri
         // 50 MB buffer – large ledgers can produce significant CSV output
         execSafe(commandName, args, { maxBuffer: 50 * 1024 * 1024 })
             .then(({ stdout, stderr }) => {
-                if (stderr) return reject(new Error(stderr));
+                // bean-query can emit loader/cache diagnostics to stderr while
+                // still completing successfully (exit code 0). This is common
+                // when several dashboard queries start together and one process
+                // has already removed a stale pickle cache. execSafe rejects all
+                // non-zero exits, so stderr here is diagnostic-only and must not
+                // turn valid query output into a dashboard loading failure.
+                if (stderr.trim()) {
+                    Logger.log(`[runQuery] Command stderr (informational): ${stderr.trim()}`);
+                }
 
                 // Strip lines that are exact query echoes (bean-query sometimes echoes the query back).
                 // Only match lines that are identical to the full query — NOT pattern-based filters
