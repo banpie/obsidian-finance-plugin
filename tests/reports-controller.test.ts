@@ -2,6 +2,7 @@ import { get } from 'svelte/store';
 import { describe, expect, it, vi } from 'vitest';
 import type BeancountPlugin from '../src/main';
 import { ReportsController } from '../src/controllers/ReportsController';
+import * as queries from '../src/queries';
 
 function deferred<T>() {
 	let resolve!: (value: T) => void;
@@ -12,6 +13,28 @@ function deferred<T>() {
 }
 
 describe('ReportsController', () => {
+    it('retains reverse asset and liability balances in the period detail rows', async () => {
+        const end = '2026-10-01', valuation = '2026-09-30';
+        const runQuery = vi.fn(async (query: string) => {
+            if (query === queries.getAssetAllocationQuery('CNY', 2, end, valuation)) return 'account,amount\nAssets:Cash:Wallet,100\nAssets:Loans:Receivable,-20\n';
+            if (query === queries.getLiabilityAllocationQuery('CNY', 2, end, valuation)) return 'account,amount\nLiabilities:Card:A,100\nLiabilities:Card:Prepaid,-5\n';
+            return 'value\n0\n';
+        });
+        const plugin = {
+            settings: { activeLedgerProfileId: 'personal', operatingCurrency: 'CNY', investmentGainLossColors: 'international' },
+            getActiveLedgerProfile: () => ({ reportingMode: 'personal' }),
+            app: { vault: { adapter: { read: vi.fn().mockResolvedValue('') } } },
+            runQuery,
+        } as unknown as BeancountPlugin;
+        const controller = new ReportsController(plugin);
+        await controller.loadData('month', 2026, 9, 'custom-month');
+        const state = get(controller.state);
+        expect(state.error).toBeNull();
+        expect(state.assetsByAccount.map(row => row.amount)).toEqual([100, -20]);
+        expect(state.assetsByCategory.reduce((sum, row) => sum + row.amount, 0)).toBe(80);
+        expect(state.liabilitiesByAccount.map(row => row.amount)).toEqual([100, -5]);
+    });
+
 	it('keeps the latest selected period when an earlier profile load finishes later', async () => {
 		const firstResult = deferred<string>();
 		let useFirstBatch = true;

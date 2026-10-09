@@ -43,7 +43,6 @@ export class ConfirmDueSchedulesModal extends Modal {
 		this.component = new (ConfirmDueSchedulesModalComponent)({
 			target: contentEl,
 			props: {
-				plugin: this.plugin,
 				dueOccurrences: this.dueOccurrences,
 			},
 		});

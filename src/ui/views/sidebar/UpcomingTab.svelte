@@ -1,5 +1,7 @@
 <!-- src/ui/views/sidebar/UpcomingTab.svelte -->
 <script lang="ts">
+	import Amount from '../../common/Amount.svelte';
+	import { presentScheduledAmount } from '../../../utils/transactionDisplay';
 	import { tr } from "../../../i18n";
 	import { onMount, createEventDispatcher } from 'svelte';
 	import { parse as parseCsv } from 'csv-parse/sync';
@@ -87,10 +89,6 @@
 		return toISO(new Date(d.getFullYear(), d.getMonth() + 1, 0));
 	}
 
-	function formatAmount(amount: number, currency: string): string {
-		const decimals = plugin?.currencyPrecisionService?.getDecimals(currency) ?? 2;
-		return `${amount.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} ${currency}`;
-	}
 
 	const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 	/** "2026-09-01" -> "Sep 1" — compact, locale-independent (matches this file's own date formatting elsewhere). */
@@ -253,7 +251,7 @@
 						<span class="upcoming-indicator" class:indicator-due={item.isDue} class:indicator-ok={!item.isDue}></span>
 						<span class="upcoming-name" title={item.name}>{item.name}</span>
 						<span class="upcoming-amount">
-							{item.displayAmount !== undefined && item.displayCurrency ? formatAmount(item.displayAmount, item.displayCurrency) : '—'}
+							<Amount display={presentScheduledAmount(item)} />
 						</span>
 						<div class="upcoming-actions">
 							<button type="button" class="btn-icon edit-btn" on:click={() => handleEdit(item)} title={$tr("Edit")}>✏️</button>

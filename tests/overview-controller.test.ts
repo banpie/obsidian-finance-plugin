@@ -12,6 +12,22 @@ function deferred<T>() {
 }
 
 describe('OverviewController', () => {
+    it('does not round CNY money to integers when typical ledger postings use zero decimals', async () => {
+        const runQuery = vi.fn().mockResolvedValue('value\n20.31\n');
+        const plugin = {
+            settings: { activeLedgerProfileId: 'personal', operatingCurrency: 'CNY' },
+            getActiveLedgerProfile: () => ({ reportingMode: 'personal' }),
+            currencyPrecisionService: { ensureLoaded: vi.fn().mockResolvedValue(undefined), getDecimals: () => 0 },
+            runQuery,
+        } as unknown as BeancountPlugin;
+        const controller = new OverviewController(plugin);
+        await controller.loadData();
+        expect(get(controller.state).error).toBeNull();
+        expect(get(controller.state).periodIncome).toBe('20.31 CNY');
+        expect(runQuery.mock.calls).toHaveLength(4);
+        for (const [query] of runQuery.mock.calls) expect(query).toContain(', 2)');
+    });
+
 	it('does not let a previous ledger request overwrite the newly selected profile', async () => {
 		const firstResult = deferred<string>();
 		let useFirstBatch = true;
@@ -44,7 +60,7 @@ describe('OverviewController', () => {
 
 		const state = get(controller.state);
 		expect(state.reportingMode).toBe('personal');
-		expect(state.netWorth).toBe('20.00 CNY');
+		expect(state.netWorth).toBe('20 CNY');
 		expect(state.error).toBeNull();
 	});
 });

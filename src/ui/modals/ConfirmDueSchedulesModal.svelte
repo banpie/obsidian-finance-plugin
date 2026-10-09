@@ -1,5 +1,6 @@
 <!-- src/ui/modals/ConfirmDueSchedulesModal.svelte -->
 <script lang="ts">
+	import Amount from '../common/Amount.svelte';
 	import { tr } from "../../i18n";
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { nativeDatePicker } from '../actions/nativeDatePicker';
@@ -7,7 +8,6 @@
 
 	const dispatch = createEventDispatcher();
 
-	export let plugin: any = null;
 	export let dueOccurrences: DueOccurrence[] = [];
 
 	type Decision = 'insert' | 'skip' | 'hold';
@@ -41,10 +41,6 @@
 		groups = [...byKey.values()];
 	});
 
-	function formatAmount(amount: number, currency: string): string {
-		const decimals = plugin?.currencyPrecisionService?.getDecimals(currency) ?? 2;
-		return `${amount.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} ${currency}`;
-	}
 
 	/** A Hold on an earlier occurrence blocks nextDate from advancing past it,
 	 * so later occurrences of the same schedule can't be resolved in this
@@ -110,7 +106,7 @@
 				{/if}
 				<div class="postings-summary">
 					{#each group.schedule.postings as posting, i}
-						<span class="posting-chip">{posting.account}: {posting.amount !== undefined ? formatAmount(posting.amount, posting.currency || '') : 'auto-balance'}</span>
+						<span class="posting-chip">{posting.account}: {#if posting.amount !== undefined}<Amount value={posting.amount} currency={posting.currency || ''} account={posting.account} title={$tr("Original posting amount: {0}", [`${posting.amount} ${posting.currency || ''}`])} />{:else}auto-balance{/if}</span>
 						{#if i < group.schedule.postings.length - 1}<span class="posting-sep">→</span>{/if}
 					{/each}
 				</div>

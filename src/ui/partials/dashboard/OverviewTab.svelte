@@ -123,10 +123,10 @@
 		</div>
 		
 		<div class="kpi-grid">
-			<CardComponent label={$tr("Total Balance")} value={state.netWorth} comparison={$tr("Assets minus liabilities")} clickable on:click={(e) => handleKpiClick(undefined, e.detail)} />
-			<CardComponent label={$tr("Income")} value={state.periodIncome} comparison={state.periodLabel} clickable on:click={(e) => handleKpiClick('Income', e.detail)} />
-			<CardComponent label={$tr("Expenses")} value={state.periodExpenses} comparison={state.periodLabel} clickable on:click={(e) => handleKpiClick('Expenses', e.detail)} />
-			<CardComponent label={$tr("Net Result")} value={state.periodNetIncome} comparison={$tr('Net result rate: {0}', [state.periodSavingsRate])} clickable on:click={(e) => handleKpiClick(undefined, e.detail)} />
+			<CardComponent monetary label={$tr("Total Balance")} value={state.netWorth} comparison={$tr("Assets minus liabilities")} clickable on:click={(e) => handleKpiClick(undefined, e.detail)} />
+			<CardComponent monetary label={$tr("Income")} value={state.periodIncome} comparison={state.periodLabel} clickable on:click={(e) => handleKpiClick('Income', e.detail)} />
+			<CardComponent monetary label={$tr("Expenses")} value={state.periodExpenses} amountDirection={-1} comparison={state.periodLabel} clickable on:click={(e) => handleKpiClick('Expenses', e.detail)} />
+			<CardComponent monetary label={$tr("Net Result")} value={state.periodNetIncome} comparison={$tr('Net result rate: {0}', [state.periodSavingsRate])} clickable on:click={(e) => handleKpiClick(undefined, e.detail)} />
 		</div>
 
 		<IndicatorsSection

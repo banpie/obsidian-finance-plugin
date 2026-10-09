@@ -135,6 +135,8 @@ export const zhCN: Record<string, string> = {
   "Net expenses": "累计净支出",
   "Income and refunds are positive; expenses and returned income are negative.": "收入和支出退款为正数；支出和退回收入为负数。",
   "Cumulative net amount of the filtered postings, shown separately by currency.": "当前筛选交易的累计净额，按币种分别显示。",
+  "Original posting amount: {0}": "原始分录金额：{0}",
+  "Income and expense postings use the same display direction as Transactions. Hover an amount to see the original posting.": "收支分录与交易页使用相同的展示方向，悬停金额可查看原始记账金额。",
   "Amount": "金额",
   "Amount *": "金额 *",
   "Amount ({0})": "金额（{0}）",

@@ -1,3 +1,4 @@
+import { presentAmount } from '../utils/transactionDisplay';
 import { t } from "../i18n";
 // src/controllers/IncomeStatementController.ts
 
@@ -271,7 +272,7 @@ export class IncomeStatementController {
 	/**
 	 * Parses raw BQL result into a bar chart config and updates the store.
 	 * Handles both monthly (3-col) and weekly (2-col) formats.
-	 * Income is negated (stored negative → show positive), expenses are kept as-is,
+	 * Income and expenses are negated to use the same display direction as Transactions,
 	 * and net profit is shown using the same conventional sign as the summary:
 	 * positive means profit, negative means loss.
 	 */
@@ -359,16 +360,8 @@ export class IncomeStatementController {
 	): ChartConfiguration {
 		const labelMap = { netprofit: 'Net Profit', income: 'Income', expense: 'Expense' };
 		const displayLabel = labelMap[trendType];
-		const bgColor = trendType === 'income'
-			? (v: number | null) => v === null ? 'rgba(180,180,180,0.4)' : 'rgba(75, 192, 130, 0.7)'
-			: trendType === 'expense'
-			? (v: number | null) => v === null ? 'rgba(180,180,180,0.4)' : 'rgba(255, 99, 99, 0.7)'
-			: (v: number | null) => v === null ? 'rgba(180,180,180,0.4)' : v >= 0 ? 'rgba(75, 192, 130, 0.7)' : 'rgba(255, 99, 99, 0.7)';
-		const borderColor = trendType === 'income'
-			? (v: number | null) => v === null ? 'rgba(180,180,180,0.6)' : 'rgba(75, 192, 130, 1)'
-			: trendType === 'expense'
-			? (v: number | null) => v === null ? 'rgba(180,180,180,0.6)' : 'rgba(255, 99, 99, 1)'
-			: (v: number | null) => v === null ? 'rgba(180,180,180,0.6)' : v >= 0 ? 'rgba(75, 192, 130, 1)' : 'rgba(255, 99, 99, 1)';
+		const bgColor = (v: number | null) => v === null || v === 0 ? 'rgba(180,180,180,0.4)' : v > 0 ? 'rgba(75, 192, 130, 0.7)' : 'rgba(255, 99, 99, 0.7)';
+		const borderColor = (v: number | null) => v === null || v === 0 ? 'rgba(180,180,180,0.6)' : v > 0 ? 'rgba(75, 192, 130, 1)' : 'rgba(255, 99, 99, 1)';
 		return {
 			type: 'bar',
 			data: {
@@ -413,7 +406,7 @@ export class IncomeStatementController {
 						mode: 'index',
 						intersect: false,
 						callbacks: {
-							label: (context: { parsed: { y: number | null } }) => `${displayLabel}: ${context.parsed.y !== null ? context.parsed.y.toLocaleString() : 0} ${currency}`,
+							label: (context: { parsed: { y: number | null } }) => `${displayLabel}: ${presentAmount(context.parsed.y, currency).text}`,
 						},
 					},
 				},
@@ -435,8 +428,8 @@ export class IncomeStatementController {
 		};
 	}
 
-	private displayChartValue(rawValue: number, trendType: 'netprofit' | 'income' | 'expense'): number {
-		return trendType === 'expense' ? rawValue : -rawValue;
+	private displayChartValue(rawValue: number, _trendType: 'netprofit' | 'income' | 'expense'): number {
+		return -rawValue;
 	}
 
 	/**

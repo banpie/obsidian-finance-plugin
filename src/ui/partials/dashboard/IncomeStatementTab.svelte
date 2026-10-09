@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Amount from '../../common/Amount.svelte';
+	import InventoryAmounts from '../../common/InventoryAmounts.svelte';
 	import { tr } from "../../../i18n";
 	import { createEventDispatcher } from 'svelte';
 	import { writable, type Writable } from 'svelte/store';
@@ -34,7 +36,6 @@
 	});
 	$: stateStore = controller ? controller.state : placeholderState;
 	$: state = $stateStore;
-	$: currencyDecimals = controller ? controller.plugin.currencyPrecisionService.getDecimals(state.currency) : 2;
 
 	$: if (controller) {
 		controller.onChartClick = (periodKey: string, interval: 'month' | 'week', ctrlKey?: boolean) => {
@@ -256,12 +257,12 @@
 				{#if selectedTotalSection === 'income'}
 					<!-- Income: expect positive (credit accounts). Pass as assets→green, with assetsExpectNegative -->
 					<SunburstChart
+						signColors
 						title={$tr("Income")}
 						assets={state.income}
 						liabilities={[]}
 						equity={[]}
 						currency={state.currency}
-						decimals={currencyDecimals}
 						totalAssets={state.totalIncome}
 						totalLiabilities={0}
 						totalEquity={0}
@@ -272,16 +273,17 @@
 				{:else}
 					<!-- Expenses: expect positive (debit accounts). Pass as liabilities→red, with liabilitiesExpectNegative=false -->
 					<SunburstChart
+						signColors
 						title={$tr("Expenses")}
 						assets={[]}
 						liabilities={state.expenses}
 						equity={[]}
 						currency={state.currency}
-						decimals={currencyDecimals}
 						totalAssets={0}
 						totalLiabilities={state.totalExpenses}
 						totalEquity={0}
 						liabilitiesLabel="Expenses"
+						amountDirection={-1}
 						liabilitiesExpectNegative={false}
 						on:segment-click={handleSegmentClick}
 					/>
@@ -336,11 +338,11 @@
 										{getIndentation(item.level)}{item.displayName}
 									</td>
 									<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
-										{item.amount}
+										<Amount value={item.amountNumber} currency={state.currency} direction={1} />
 									</td>
 									{#if showOtherCurrenciesColumn}
 										<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
-											{item.otherCurrencies || ''}
+											<InventoryAmounts value={item.otherCurrencies || ''} account={item.account} />
 										</td>
 									{/if}
 								</tr>
@@ -349,7 +351,7 @@
 					</table>
 					<div class="section-total">
 						<span>{$tr("Total Income")}</span>
-						<span class="total-amount">{state.totalIncome.toFixed(currencyDecimals)} {state.currency}</span>
+						<span class="total-amount"><Amount value={state.totalIncome} currency={state.currency} /></span>
 					</div>
 				</div>
 
@@ -378,11 +380,11 @@
 										{getIndentation(item.level)}{item.displayName}
 									</td>
 									<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
-										{item.amount}
+										<Amount value={item.amountNumber} currency={state.currency} direction={-1} />
 									</td>
 									{#if showOtherCurrenciesColumn}
 										<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
-											{item.otherCurrencies || ''}
+											<InventoryAmounts value={item.otherCurrencies || ''} account={item.account} />
 										</td>
 									{/if}
 								</tr>
@@ -391,7 +393,7 @@
 					</table>
 					<div class="section-total">
 						<span>{$tr("Total Expenses")}</span>
-						<span class="total-amount">{state.totalExpenses.toFixed(currencyDecimals)} {state.currency}</span>
+						<span class="total-amount"><Amount value={state.totalExpenses} currency={state.currency} direction={-1} /></span>
 					</div>
 				</div>
 			</div>
@@ -400,7 +402,7 @@
 			<div class="net-profit-row">
 				<span class="net-profit-label">{$tr("Net Profit")}</span>
 				<span class="net-profit-value {netProfitClass(state.netProfit)}">
-					{state.netProfit.toFixed(currencyDecimals)} {state.currency}
+					<Amount value={state.netProfit} currency={state.currency} />
 				</span>
 			</div>
 		</div>

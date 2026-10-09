@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { tr } from "../../i18n";
 	import { createEventDispatcher } from 'svelte';
+	import Amount from './Amount.svelte';
 
 	// Props for the card content
 	export let label: string;
@@ -8,6 +9,8 @@
 	export let comparison: string | null = null; // Optional comparison text (e.g., "+5% vs last month")
 	export let icon: string | null = null; // Optional icon name (Lucide icon)
 	export let clickable = false;
+	export let monetary = false;
+	export let amountDirection: 1 | -1 = 1;
 
 	const dispatch = createEventDispatcher();
 
@@ -37,7 +40,7 @@
 		<div class="kpi-icon">{icon}</div>
 	{/if}
 	<div class="kpi-label">{label}</div>
-	<div class="kpi-value">{value}</div>
+	<div class="kpi-value">{#if monetary}<Amount {value} direction={amountDirection} />{:else}{value}{/if}</div>
 	<div class="kpi-comparison">{comparison || '&nbsp;'}</div>
 </div>
 

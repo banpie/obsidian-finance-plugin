@@ -135,6 +135,8 @@ export const en: Record<string, string> = {
   "Net expenses": "Net expenses",
   "Income and refunds are positive; expenses and returned income are negative.": "Income and refunds are positive; expenses and returned income are negative.",
   "Cumulative net amount of the filtered postings, shown separately by currency.": "Cumulative net amount of the filtered postings, shown separately by currency.",
+  "Original posting amount: {0}": "Original posting amount: {0}",
+  "Income and expense postings use the same display direction as Transactions. Hover an amount to see the original posting.": "Income and expense postings use the same display direction as Transactions. Hover an amount to see the original posting.",
   "Amount": "Amount",
   "Amount *": "Amount *",
   "Amount ({0})": "Amount ({0})",

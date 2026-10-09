@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Amount from '../../common/Amount.svelte';
 	import { tr } from "../../../i18n";
 	import { onMount, createEventDispatcher } from 'svelte';
 	import type { AccountNode } from '../../../models/account';
@@ -229,9 +230,9 @@
 								{/if}
 							</td>
 							<td>{narration}</td>
-							<td class="align-right {amount.color}">{amount.text}</td>
+							<td class="align-right {amount.color}"><Amount display={amount} /></td>
 							<td class="align-right">
-								{#each balance as part}<span class="balance-amount {part.color}">{part.text}</span>{:else}—{/each}
+								{#each balance as part}<span class="balance-amount {part.color}"><Amount display={part} /></span>{:else}—{/each}
 							</td>
 						</tr>
 					{/each}

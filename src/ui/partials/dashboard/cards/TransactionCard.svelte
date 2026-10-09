@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { tr } from "../../../../i18n";
     import { createEventDispatcher } from 'svelte';
+    import Amount from '../../../common/Amount.svelte';
     import type { JournalTransaction } from '../../../../models/journal';
 
     export let entry: JournalTransaction;
@@ -54,8 +55,8 @@
                 <button class="account account-link" type="button" on:click={(e) => dispatch('account-click', { account: posting.account, ctrlKey: e.ctrlKey || e.metaKey })} title={$tr("Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal")}>
                     {posting.account}
                 </button>
-                <div class="amount" class:negative={posting.amount && posting.amount.startsWith('-')}>
-                    {formatAmount(posting.amount, posting.currency)}
+                <div class="amount" >
+                    <Amount value={posting.amount} currency={posting.currency || ''} account={posting.account} title={$tr("Original posting amount: {0}", [formatAmount(posting.amount, posting.currency)])} />
                 </div>
             </div>
         {/each}
