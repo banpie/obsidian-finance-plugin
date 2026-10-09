@@ -20,6 +20,7 @@ describe('CSV Parsers', () => {
 			'QQQ,Invesco QQQ,12.5 QQQ,1000.25 USD,80.02,https://example.com/qqq.png',
 			'CLOSED,Closed Account,-0.125 CLOSED,-10.50 USD,84,None',
 			'UNPRICED,Unpriced Item,-2 UNPRICED,-2 UNPRICED,None,None',
+			'BTC,Bitcoin,(0.00000001 BTC),(0.0031 USD),310000,None',
 		].join('\n');
 
 		const result = parseCombinedCommodityDataCSV(csv, 'USD');
@@ -37,5 +38,7 @@ describe('CSV Parsers', () => {
 		expect(result.get('UNPRICED')?.valueOp).toBe(0);
 		expect(result.get('UNPRICED')?.price).toBeNull();
 		expect(result.get('UNPRICED')?.logo).toBeNull();
+		expect(result.get('BTC')?.holdings).toBe(0.00000001);
+		expect(result.get('BTC')?.valueOp).toBe(0.0031);
 	});
 });

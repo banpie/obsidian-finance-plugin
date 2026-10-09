@@ -422,7 +422,7 @@ export function getCommoditiesPriceDataQuery(currency: string): string {
 export function getCombinedCommodityDataQuery(operatingCurrency: string): string {
 	const safeOperatingCurrency = escapeBqlString(operatingCurrency);
 	// See getCommoditiesPriceDataQuery — 10 decimals to avoid truncating price_ server-side.
-	return `SELECT currency AS currency_, currency_meta(last(currency), 'name') AS displayname_, units(sum(position)) AS units_, convert(sum(position), '${safeOperatingCurrency}') AS valueOp_, round(getprice(last(currency), '${safeOperatingCurrency}'), 10) AS price_, currency_meta(last(currency), 'logo') AS logo_ WHERE account ~ '^Assets' GROUP BY currency`;
+	return `SELECT currency AS currency_, currency_meta(last(currency), 'name') AS displayname_, str(units(sum(position))) AS units_, str(convert(sum(position), '${safeOperatingCurrency}')) AS valueOp_, round(getprice(last(currency), '${safeOperatingCurrency}'), 10) AS price_, currency_meta(last(currency), 'logo') AS logo_ WHERE account ~ '^Assets' GROUP BY currency`;
 }
 
 

@@ -1,6 +1,7 @@
 <!-- src/ui/partials/dashboard/cards/CommodityCard.svelte -->
 <script lang="ts">
 	import Amount from '../../../common/Amount.svelte';
+	import { presentAmount } from '../../../../utils/transactionDisplay';
 	import { tr } from "../../../../i18n";
 	import { createEventDispatcher } from "svelte";
 	import type { CommodityInfo } from "../../../../controllers/CommoditiesController";
@@ -12,15 +13,9 @@
 	export let operatingCurrency: string = 'USD';
 	export let operatingCurrencyDecimals: number = 2;
 
-	function formatValue(n: number): string {
-		if (!n) return formatAmount(0, operatingCurrencyDecimals, true);
-		if (n >= 10_000_000) return (n / 1_000_000).toFixed(2) + 'M';
-		return formatAmount(n, operatingCurrencyDecimals, true);
-	}
-
 	function formatQuantity(n: number | null | undefined): string {
 		if (!n) return '0';
-		return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+		return presentAmount(n, commodity.symbol).text.slice(0, -(commodity.symbol.length + 1));
 	}
 
 	const fiatCurrencySymbols = new Set([
@@ -168,7 +163,7 @@
 		<div class="card-body">
 			<!-- Value (primary) -->
 			{#if (commodity?.valueInOperatingCurrency ?? 0) !== 0}
-				<div class="value-container" title={`${formatAmount(commodity.valueInOperatingCurrency ?? 0, operatingCurrencyDecimals, true)} ${operatingCurrency}`}>
+				<div class="value-container" title={presentAmount(commodity.valueInOperatingCurrency ?? 0, operatingCurrency).text}>
 					<span class="value-main"><Amount value={commodity.valueInOperatingCurrency ?? 0} currency={operatingCurrency} /></span>
 
 				</div>
