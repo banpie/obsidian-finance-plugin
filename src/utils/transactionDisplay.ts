@@ -25,9 +25,16 @@ export function displayTransactionAmount(raw: string, account: string): Transact
     const [, number, currency, annotation] = match;
     const value = Number(number) * transactionDisplayDirection(account);
     const [integer, fraction = ''] = number.replace(/^[+-]/, '').split('.');
-    // Pad fiat amounts without rounding away small cash receipts or commodity quantities.
-    const decimals = isFiatCurrencyCode(currency) ? fraction.padEnd(2, '0') : fraction;
-    const magnitude = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (decimals ? `.${decimals}` : '');
+    let magnitude = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (fraction ? `.${fraction}` : '');
+    if (isFiatCurrencyCode(currency)) {
+        const decimals = new Intl.NumberFormat('en-US', { style: 'currency', currency }).resolvedOptions().maximumFractionDigits ?? 2;
+        const absolute = Math.abs(value);
+        // Monetary totals may contain long calculated decimals. Use currency precision, but
+        // retain genuinely tiny nonzero receipts instead of presenting them as signed zero.
+        magnitude = absolute > 0 && absolute < 0.5 * 10 ** -decimals
+            ? `${integer}.${fraction.padEnd(decimals, '0')}`
+            : absolute.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    }
     const sign = value > 0 ? '+' : value < 0 ? '-' : '';
     return {
         text: `${sign}${magnitude} ${currency}${annotation}`,

@@ -34,6 +34,12 @@ describe('transaction cash direction display', () => {
         expect(row).toEqual(before);
     });
 
+    it('keeps calculated totals readable and respects currency precision without hiding tiny receipts', () => {
+        expect(displayTransactionAmount('-20492.63465679409025466778278 CNY', 'Income:Investments').text).toBe('+20,492.63 CNY');
+        expect(displayTransactionAmount('-0.001 CNY', 'Income:Interest').text).toBe('+0.001 CNY');
+        expect(displayTransactionAmount('2400 JPY', 'Expenses:Travel').text).toBe('-2,400 JPY');
+    });
+
     it('keeps precise CSV and the posting account through controller loading, including mixed filters', async () => {
         const plugin = {
             settings: { maxTransactionResults: 1000 },
