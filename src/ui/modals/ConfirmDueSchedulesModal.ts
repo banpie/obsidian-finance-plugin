@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 // src/ui/modals/ConfirmDueSchedulesModal.ts
 
 import { App, Modal, Notice } from 'obsidian';
@@ -37,7 +38,7 @@ export class ConfirmDueSchedulesModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		this.modalEl.setCssStyles({ maxWidth: '640px', width: '90vw' });
-		this.setTitle('Transactions due');
+		this.setTitle(t('Transactions due'));
 
 		this.component = new (ConfirmDueSchedulesModalComponent)({
 			target: contentEl,

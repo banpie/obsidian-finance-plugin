@@ -33,7 +33,7 @@ export class AddBudgetModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         this.modalEl.setCssStyles({ maxWidth: '560px', width: '90vw' });
-        this.setTitle(this.editingIndicator ? '编辑预算' : '新增预算');
+        this.setTitle(t(this.editingIndicator ? '编辑预算' : '新增预算'));
 
         const operatingCurrency = this.plugin.settings.operatingCurrency || 'USD';
         // Fetch accounts and currencies from the ledger, fall back silently on error

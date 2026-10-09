@@ -37,7 +37,7 @@ export class AccountDetailModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		this.modalEl.setCssStyles({ maxWidth: '600px', width: '85vw' });
-		this.setTitle('Account details');
+		this.setTitle(t('Account details'));
 
 		let detail;
 		try {

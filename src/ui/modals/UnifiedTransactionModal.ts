@@ -71,7 +71,7 @@ export class UnifiedTransactionModal extends Modal {
         this.modalEl.setCssStyles({ maxWidth: '1200px', width: '95vw' });
 
         // Set initial title (fallback, component will update it)
-        this.setTitle(this.mode === 'edit' ? 'Edit Transaction' : 'Add Transaction');
+        this.setTitle(t(this.mode === 'edit' ? 'Edit transaction' : 'Add transaction'));
 
         // Initialize with empty data
         const accounts: string[] = [];

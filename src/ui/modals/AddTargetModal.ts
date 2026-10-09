@@ -33,7 +33,7 @@ export class AddTargetModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         this.modalEl.setCssStyles({ maxWidth: '560px', width: '90vw' });
-        this.setTitle(this.editingIndicator ? '编辑目标' : '新增目标');
+        this.setTitle(t(this.editingIndicator ? '编辑目标' : '新增目标'));
 
         const operatingCurrency = this.plugin.settings.operatingCurrency || 'USD';
         // Fetch accounts and currencies from the ledger, fall back silently on error
