@@ -45,7 +45,7 @@ export class AddScheduleModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		this.modalEl.setCssStyles({ maxWidth: '800px', width: '92vw' });
-		this.setTitle(this.editingSchedule ? 'Edit Scheduled Transaction' : 'Add Scheduled Transaction');
+		this.setTitle(t(this.editingSchedule ? 'Edit Scheduled Transaction' : 'Add Scheduled Transaction'));
 
 		const operatingCurrency = this.plugin.settings.operatingCurrency || 'USD';
 		let accounts: string[] = [];

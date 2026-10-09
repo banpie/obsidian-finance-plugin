@@ -1153,5 +1153,6 @@ export const en: Record<string, string> = {
   "逆回购 / Repo": "Reverse repo",
   "智能投顾 / RoboAdvisor": "Robo advisor",
   "股票 / Stock": "Stock",
-  "银行理财 / Wealth": "Wealth management"
+  "银行理财 / Wealth": "Wealth management",
+  "Account details": "Account details"
 };

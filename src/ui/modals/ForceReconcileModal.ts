@@ -54,7 +54,7 @@ export class ForceReconcileModal extends Modal {
 	async onOpen() {
 		const { contentEl } = this;
 		contentEl.empty();
-		this.setTitle('Force reconcile');
+		this.setTitle(t('Force reconcile'));
 
 		let openAccounts: string[] = [];
 		try {

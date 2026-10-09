@@ -1153,5 +1153,6 @@ export const zhCN: Record<string, string> = {
   "逆回购 / Repo": "逆回购",
   "智能投顾 / RoboAdvisor": "智能投顾",
   "股票 / Stock": "股票",
-  "银行理财 / Wealth": "银行理财"
+  "银行理财 / Wealth": "银行理财",
+  "Account details": "账户详情"
 };
