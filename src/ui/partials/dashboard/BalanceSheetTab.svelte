@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import { createEventDispatcher } from 'svelte';
 	// --- REMOVED onMount, parseCsv, queries, plugin imports ---
 	import { writable, type Writable } from 'svelte/store';
@@ -106,10 +107,10 @@
 	// Get display label for the current valuation method
 	function getValuationMethodLabel(method: string): string {
 		switch (method) {
-			case 'convert': return 'Market Value';
-			case 'cost': return 'At Cost';
-			case 'units': return 'Units';
-			default: return 'Market Value';
+			case 'convert': return $tr("Market Value");
+			case 'cost': return $tr("At Cost");
+			case 'units': return $tr("Units");
+			default: return $tr("Market Value");
 		}
 	}
 
@@ -242,17 +243,17 @@
 <div class="balance-sheet-container">
 	<!-- Header: Title + Account Management buttons + Refresh -->
 	<div class="balance-sheet-header">
-		<h2>Accounts and Balances</h2>
+		<h2>{$tr("Accounts and Balances")}</h2>
 		<div class="header-controls">
 			<div class="account-management-section">
 				<button class="account-action-btn open-account-btn" on:click={handleOpenAccount}>
-					➕ Open Account
+					{$tr("➕ Open Account")}
 				</button>
 				<button class="account-action-btn close-account-btn" on:click={handleCloseAccount}>
-					❌ Close Account
+					{$tr("❌ Close Account")}
 				</button>
 			</div>
-			<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading}>Refresh</button>
+			<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading}>{$tr("Refresh")}</button>
 		</div>
 	</div>
 
@@ -277,12 +278,12 @@
 						variant="primary"
 						position="left"
 						options={[
-							{ value: 'trend', label: 'Net Worth Trend', icon: 'line-chart' },
-							{ value: 'balances', label: 'Balances', icon: 'pie-chart' }
+							{ value: 'trend', label: $tr("Net Worth Trend"), icon: 'line-chart' },
+							{ value: 'balances', label: $tr("Balances"), icon: 'pie-chart' }
 						]}
 						bind:value={selectedChart}
 						on:change={(e) => selectedChart = e.detail}
-						ariaLabel="Select chart view"
+						ariaLabel={$tr("Select chart view")}
 					/>
 
 					{#if selectedChart === 'trend'}
@@ -290,37 +291,37 @@
 							variant="secondary"
 							position="right"
 							options={[
-								{ value: 'month', label: 'Monthly', icon: 'calendar' },
-								{ value: 'week', label: 'Weekly', icon: 'clock' }
+								{ value: 'month', label: $tr("Monthly"), icon: 'calendar' },
+								{ value: 'week', label: $tr("Weekly"), icon: 'clock' }
 							]}
 							value={state.chartInterval}
 							on:change={(e) => handleIntervalChange(e.detail === 'week' ? 'week' : 'month')}
 							disabled={state.chartLoading}
-							ariaLabel="Select chart interval"
+							ariaLabel={$tr("Select chart interval")}
 						/>
 					{:else if selectedChart === 'balances'}
 						<CustomSelect
 							variant="secondary"
 							position="right"
 							options={[
-								{ value: 'assets', label: 'Assets', icon: 'briefcase' },
-								{ value: 'liabilities', label: 'Liabilities', icon: 'credit-card' },
-								{ value: 'equity', label: 'Equity', icon: 'scale' }
+								{ value: 'assets', label: $tr("Assets"), icon: 'briefcase' },
+								{ value: 'liabilities', label: $tr("Liabilities"), icon: 'credit-card' },
+								{ value: 'equity', label: $tr("Equity"), icon: 'scale' }
 							]}
 							bind:value={selectedBalanceSection}
 							on:change={(e) => selectedBalanceSection = e.detail}
-							ariaLabel="Select balance section"
+							ariaLabel={$tr("Select balance section")}
 						/>
 						<CustomSelect
 							variant="secondary"
 							position="right"
 							options={[
-								{ value: 'sunburst', label: 'Sunburst', icon: 'pie-chart' },
-								{ value: 'icicle', label: 'Icicle', icon: 'layers' }
+								{ value: 'sunburst', label: $tr("Sunburst"), icon: 'pie-chart' },
+								{ value: 'icicle', label: $tr("Icicle"), icon: 'layers' }
 							]}
 							bind:value={selectedBalanceChartType}
 							on:change={(e) => selectedBalanceChartType = e.detail}
-							ariaLabel="Select chart type"
+							ariaLabel={$tr("Select chart type")}
 						/>
 					{/if}
 				</div>
@@ -329,20 +330,20 @@
 			{#if selectedChart === 'trend'}
 				<div class="trend-chart-container">
 					{#if state.chartError}
-						<p class="error-message">Chart Error: {state.chartError}</p>
+						<p class="error-message">{$tr("Chart Error:")} {state.chartError}</p>
 					{:else if state.chartLoading}
-						<p class="chart-loading">Loading chart...</p>
+						<p class="chart-loading">{$tr("Loading chart...")}</p>
 					{:else if state.chartConfig}
 						<ChartComponent config={state.chartConfig} height="300px"/>
 					{:else}
-						<p class="chart-loading">Not enough data to display chart.</p>
+						<p class="chart-loading">{$tr("Not enough data to display chart.")}</p>
 					{/if}
 				</div>
 			{:else if selectedChart === 'balances'}
 				{#if selectedBalanceSection === 'assets'}
 					<svelte:component
 						this={selectedBalanceChartType === 'icicle' ? IcicleChart : SunburstChart}
-						title="Assets"
+						title={$tr("Assets")}
 						assets={state.assets}
 						liabilities={[]}
 						equity={[]}
@@ -356,7 +357,7 @@
 				{:else if selectedBalanceSection === 'liabilities'}
 					<svelte:component
 						this={selectedBalanceChartType === 'icicle' ? IcicleChart : SunburstChart}
-						title="Liabilities"
+						title={$tr("Liabilities")}
 						assets={[]}
 						liabilities={state.liabilities}
 						equity={[]}
@@ -370,7 +371,7 @@
 				{:else}
 					<svelte:component
 						this={selectedBalanceChartType === 'icicle' ? IcicleChart : SunburstChart}
-						title="Equity"
+						title={$tr("Equity")}
 						assets={[]}
 						liabilities={[]}
 						equity={state.equity}
@@ -388,34 +389,34 @@
 		<!-- Balance Sheet (always visible) -->
 		<div class="balance-sheet-section">
 			<div class="balance-sheet-section-header">
-				<h3>Balance Sheet</h3>
+				<h3>{$tr("Balance Sheet")}</h3>
 				<div class="valuation-method-selector">
-					<span class="valuation-method-label">Valuation:</span>
+					<span class="valuation-method-label">{$tr("Valuation:")}</span>
 					<CustomSelect
 						variant="secondary"
 						position="single"
 						options={[
 							{ value: 'convert', label: `Market Value (Convert to ${state.currency})` },
-							{ value: 'cost', label: 'At Cost' },
-							{ value: 'units', label: 'Units' },
+							{ value: 'cost', label: $tr("At Cost") },
+							{ value: 'units', label: $tr("Units") },
 						]}
 						value={state.valuationMethod || 'convert'}
 						on:change={(e) => handleValuationMethodChange(e.detail)}
-						ariaLabel="Valuation method"
+						ariaLabel={$tr("Valuation method")}
 					/>
 				</div>
 			</div>
 
 		<div class="balance-sheet-grid">
 			<div class="column">
-				<h4>Assets</h4>
+				<h4>{$tr("Assets")}</h4>
 				<table class="beancount-table">
 					<thead>
 						<tr class="header-row">
-							<th class="account-header">Account</th>
+							<th class="account-header">{$tr("Account")}</th>
 							<th class="amount-header">{state.currency}</th>
 							{#if showOtherCurrenciesColumn}
-								<th class="other-currencies-header">Other Currencies</th>
+								<th class="other-currencies-header">{$tr("Other Currencies")}</th>
 							{/if}
 						</tr>
 					</thead>
@@ -425,7 +426,7 @@
 							<td class="account-name"
 								on:click={(e) => handleAccountRowClick(item, e)}
 								on:contextmenu={(e) => handleAccountContextMenu(item, e)}
-								title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal · Right-click: account details' : undefined}>
+								title={!item.isCategory ? $tr("Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal · Right-click: account details") : undefined}>
 								{#if item.isCategory}
 									<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 								{/if}
@@ -446,14 +447,14 @@
 			</div>
 
 			<div class="column">
-				<h4>Liabilities</h4>
+				<h4>{$tr("Liabilities")}</h4>
 				<table class="beancount-table">
 					<thead>
 						<tr class="header-row">
-							<th class="account-header">Account</th>
+							<th class="account-header">{$tr("Account")}</th>
 							<th class="amount-header">{state.currency}</th>
 							{#if showOtherCurrenciesColumn}
-								<th class="other-currencies-header">Other Currencies</th>
+								<th class="other-currencies-header">{$tr("Other Currencies")}</th>
 							{/if}
 						</tr>
 					</thead>
@@ -463,7 +464,7 @@
 							<td class="account-name"
 								on:click={(e) => handleAccountRowClick(item, e)}
 								on:contextmenu={(e) => handleAccountContextMenu(item, e)}
-								title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal · Right-click: account details' : undefined}>
+								title={!item.isCategory ? $tr("Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal · Right-click: account details") : undefined}>
 								{#if item.isCategory}
 									<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 								{/if}
@@ -484,14 +485,14 @@
 			</div>
 
 			<div class="column">
-				<h4 class="section-spacer">Equity</h4>
+				<h4 class="section-spacer">{$tr("Equity")}</h4>
 				<table class="beancount-table">
 					<thead>
 						<tr class="header-row">
-							<th class="account-header">Account</th>
+							<th class="account-header">{$tr("Account")}</th>
 							<th class="amount-header">{state.currency}</th>
 							{#if showOtherCurrenciesColumn}
-								<th class="other-currencies-header">Other Currencies</th>
+								<th class="other-currencies-header">{$tr("Other Currencies")}</th>
 							{/if}
 						</tr>
 					</thead>
@@ -501,7 +502,7 @@
 							<td class="account-name"
 								on:click={(e) => handleAccountRowClick(item, e)}
 								on:contextmenu={(e) => handleAccountContextMenu(item, e)}
-								title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal · Right-click: account details' : undefined}>
+								title={!item.isCategory ? $tr("Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal · Right-click: account details") : undefined}>
 								{#if item.isCategory}
 									<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 								{/if}

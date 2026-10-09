@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../i18n";
 	import { onMount, createEventDispatcher } from "svelte";
 	import type {
 		JournalTransaction,
@@ -147,10 +148,7 @@
 
 	// Reactive title update
 	$: {
-		const titleMode = mode === "edit" ? "Edit" : "Add";
-		const titleType =
-			activeTab.charAt(0).toUpperCase() + activeTab.slice(1);
-		dispatch("titleChange", `${titleMode} ${titleType}`);
+		dispatch('titleChange', $tr(`${mode === 'edit' ? 'Edit' : 'Add'} ${activeTab}`));
 	}
 
 	// Common fields for all entry types
@@ -437,16 +435,16 @@
 	function validateForm(): boolean {
 		errors = [];
 
-		if (!date) errors.push("Date is required");
+		if (!date) errors.push($tr("Date is required"));
 
 		if (activeTab === "transaction") {
 			// Removed narration requirement
 			if (postings.length < 2)
-				errors.push("At least 2 postings are required");
+				errors.push($tr("At least 2 postings are required"));
 
 			for (let i = 0; i < postings.length; i++) {
 				if (!postings[i].account) {
-					errors.push(`Posting ${i + 1}: Account is required`);
+					errors.push($tr("Posting {0}: Account is required", [i + 1]));
 				}
 
 				const posting = postings[i];
@@ -461,7 +459,7 @@
 					// Cost requires amount and currency on posting
 					if (!posting.amount || !posting.currency) {
 						errors.push(
-							`Posting ${i + 1}: Cost requires an amount and currency`,
+							$tr("Posting {0}: Cost requires an amount and currency", [i + 1]),
 						);
 					}
 
@@ -470,7 +468,7 @@
 						const costNum = parseFloat(posting.cost.number);
 						if (isNaN(costNum) || costNum <= 0) {
 							errors.push(
-								`Posting ${i + 1}: Cost amount must be a positive number`,
+								$tr("Posting {0}: Cost amount must be a positive number", [i + 1]),
 							);
 						}
 					}
@@ -479,7 +477,7 @@
 					if (posting.cost.date) {
 						if (posting.cost.date > date) {
 							errors.push(
-								`Posting ${i + 1}: Cost date cannot be after transaction date`,
+								$tr("Posting {0}: Cost date cannot be after transaction date", [i + 1]),
 							);
 						}
 					}
@@ -487,7 +485,7 @@
 					// Cost currency is required if cost number is specified
 					if (posting.cost.number && !posting.cost.currency) {
 						errors.push(
-							`Posting ${i + 1}: Cost currency is required`,
+							$tr("Posting {0}: Cost currency is required", [i + 1]),
 						);
 					}
 				}
@@ -497,7 +495,7 @@
 					// Price requires amount and currency on posting
 					if (!posting.amount || !posting.currency) {
 						errors.push(
-							`Posting ${i + 1}: Price requires an amount and currency`,
+							$tr("Posting {0}: Price requires an amount and currency", [i + 1]),
 						);
 					}
 
@@ -505,14 +503,14 @@
 					const priceNum = parseFloat(posting.price.amount);
 					if (isNaN(priceNum) || priceNum <= 0) {
 						errors.push(
-							`Posting ${i + 1}: Price amount must be a positive number`,
+							$tr("Posting {0}: Price amount must be a positive number", [i + 1]),
 						);
 					}
 
 					// Price currency is required
 					if (!posting.price.currency) {
 						errors.push(
-							`Posting ${i + 1}: Price currency is required`,
+							$tr("Posting {0}: Price currency is required", [i + 1]),
 						);
 					}
 				}
@@ -523,7 +521,7 @@
 					posting.flag !== "*" &&
 					posting.flag !== "!"
 				) {
-					errors.push(`Posting ${i + 1}: Flag must be either * or !`);
+					errors.push($tr("Posting {0}: Flag must be either * or !", [i + 1]));
 				}
 
 				// Validate posting metadata keys
@@ -531,7 +529,7 @@
 					for (const key of Object.keys(posting.metadata)) {
 						if (!/^[a-z0-9_-]+$/.test(key)) {
 							errors.push(
-								`Posting ${i + 1}: Metadata key "${key}" must be lowercase with only letters, numbers, hyphens, or underscores`,
+								$tr("Posting {0}: Metadata key \"{1}\" must be lowercase with only letters, numbers, hyphens, or underscores", [i + 1, key]),
 							);
 						}
 					}
@@ -542,7 +540,7 @@
 			for (const key of Object.keys(transactionMetadata)) {
 				if (!/^[a-z0-9_-]+$/.test(key)) {
 					errors.push(
-						`Transaction metadata key "${key}" must be lowercase with only letters, numbers, hyphens, or underscores`,
+						$tr("Transaction metadata key \"{0}\" must be lowercase with only letters, numbers, hyphens, or underscores", [key]),
 					);
 				}
 			}
@@ -551,12 +549,12 @@
 			for (const tag of selectedTags) {
 				if (/\s/.test(tag)) {
 					errors.push(
-						`Tag "${tag}" contains spaces (not allowed in Beancount)`,
+						$tr("Tag \"{0}\" contains spaces (not allowed in Beancount)", [tag]),
 					);
 				}
 				if (!/^[a-zA-Z0-9_-]+$/.test(tag)) {
 					errors.push(
-						`Tag "${tag}" contains invalid characters (use only letters, numbers, hyphens, underscores)`,
+						$tr("Tag \"{0}\" contains invalid characters (use only letters, numbers, hyphens, underscores)", [tag]),
 					);
 				}
 			}
@@ -565,12 +563,12 @@
 			for (const link of selectedLinks) {
 				if (/\s/.test(link)) {
 					errors.push(
-						`Link "${link}" contains spaces (not allowed in Beancount)`,
+						$tr("Link \"{0}\" contains spaces (not allowed in Beancount)", [link]),
 					);
 				}
 				if (!/^[a-zA-Z0-9_-]+$/.test(link)) {
 					errors.push(
-						`Link "${link}" contains invalid characters (use only letters, numbers, hyphens, underscores)`,
+						$tr("Link \"{0}\" contains invalid characters (use only letters, numbers, hyphens, underscores)", [link]),
 					);
 				}
 			}
@@ -581,27 +579,27 @@
 			);
 			if (emptyAmountPostings.length > 1) {
 				errors.push(
-					"Only one posting can have an empty amount (to be auto-calculated)",
+					$tr("Only one posting can have an empty amount (to be auto-calculated)"),
 				);
 			}
 		} else if (activeTab === "balance") {
 			if (!balanceAccount)
-				errors.push("Account is required for balance assertion");
+				errors.push($tr("Account is required for balance assertion"));
 			if (
 				balanceAmount === "" ||
 				balanceAmount === null ||
 				balanceAmount === undefined
 			)
-				errors.push("Amount is required for balance assertion");
+				errors.push($tr("Amount is required for balance assertion"));
 			if (!balanceCurrency)
-				errors.push("Currency is required for balance assertion");
+				errors.push($tr("Currency is required for balance assertion"));
 		} else if (activeTab === "note") {
-			if (!noteAccount) errors.push("Account is required for note");
-			if (!noteComment) errors.push("Comment is required for note");
+			if (!noteAccount) errors.push($tr("Account is required for note"));
+			if (!noteComment) errors.push($tr("Comment is required for note"));
 		} else if (activeTab === "query") {
-			if (!queryName.trim()) errors.push("Query name is required");
-			if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(queryName.trim())) errors.push("Query name must start with a letter and contain only letters, numbers, hyphens, or underscores");
-			if (!querySql.trim()) errors.push("SQL is required");
+			if (!queryName.trim()) errors.push($tr("Query name is required"));
+			if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(queryName.trim())) errors.push($tr("Query name must start with a letter and contain only letters, numbers, hyphens, or underscores"));
+			if (!querySql.trim()) errors.push($tr("SQL is required"));
 		}
 
 		return errors.length === 0;
@@ -934,7 +932,7 @@
 
 		const snippets = plugin.snippetCompletions || [];
 		if (snippets.length === 0) {
-			new Notice("No snippets found. Please enable snippets and define them in snippets.beancount first.");
+			new Notice($tr("No snippets found. Please enable snippets and define them in snippets.beancount first."));
 			return;
 		}
 
@@ -961,7 +959,7 @@
 				showPostingComment = postings.map(p => !!p.comment);
 				showPostingMetadata = postings.map(p => p.metadata && Object.keys(p.metadata).length > 0);
 
-				new Notice(`Loaded snippet: ${item.label}`);
+				new Notice($tr("Loaded snippet: {0}", [item.label]));
 			}
 		}).open();
 	}
@@ -1045,14 +1043,14 @@
 			<div class="entry-tabs">
 				<TabBar
 					tabs={[
-						{ value: 'transaction', label: '💰 Transaction' },
-						{ value: 'balance', label: '⚖️ Balance' },
-						{ value: 'note', label: '📝 Note' },
-						{ value: 'query', label: '🔍 Query' },
+						{ value: 'transaction', label: $tr("💰 Transaction") },
+						{ value: 'balance', label: $tr("⚖️ Balance") },
+						{ value: 'note', label: $tr("📝 Note") },
+						{ value: 'query', label: $tr("🔍 Query") },
 					]}
 					bind:value={activeTab}
 					fullWidth={false}
-					ariaLabel="Entry type"
+					ariaLabel={$tr("Entry type")}
 				/>
 			</div>
 		{/if}
@@ -1070,26 +1068,26 @@
 			<!-- Transaction Header: Date | Flag | Payee | Narration | Metadata -->
 			<div class="transaction-header-row">
 				<div class="form-group header-date">
-					<label for="date">Date *</label>
+					<label for="date">{$tr("Date *")}</label>
 					<input type="date" id="date" bind:value={date} required use:nativeDatePicker />
 				</div>
 
 				<div class="form-group header-flag">
-					<label for="flag">Flag</label>
+					<label for="flag">{$tr("Flag")}</label>
 					<select id="flag" bind:value={flag}>
-						<option value="*">* Complete</option>
-						<option value="!">! Incomplete</option>
+						<option value="*">{$tr("* Complete")}</option>
+						<option value="!">{$tr("! Incomplete")}</option>
 					</select>
 				</div>
 
 				<div class="form-group header-payee">
-					<label for="payee">Payee</label>
+					<label for="payee">{$tr("Payee")}</label>
 					<input
 						type="text"
 						id="payee"
 						bind:value={payee}
 						list="payees-list"
-						placeholder="Store name"
+						placeholder={$tr("Store name")}
 					/>
 					<datalist id="payees-list">
 						{#each payees as payeeOption}
@@ -1099,12 +1097,12 @@
 				</div>
 
 				<div class="form-group header-narration">
-					<label for="narration">Narration</label>
+					<label for="narration">{$tr("Narration")}</label>
 					<input
 						type="text"
 						id="narration"
 						bind:value={narration}
-						placeholder="Description"
+						placeholder={$tr("Description")}
 					/>
 				</div>
 
@@ -1114,7 +1112,7 @@
 						class="metadata-toggle-btn"
 						class:active={showTransactionMetadata}
 						on:click={toggleTransactionMetadata}
-						title="Transaction Metadata"
+						title={$tr("Transaction Metadata")}
 					>
 						📋
 					</button>
@@ -1124,14 +1122,14 @@
 			<!-- Transaction Metadata Section (expandable) -->
 			{#if showTransactionMetadata}
 				<div class="transaction-metadata-section">
-					<h5>Transaction Metadata</h5>
+					<h5>{$tr("Transaction Metadata")}</h5>
 					<div class="metadata-list">
 						{#each Object.keys(transactionMetadata) as key}
 							<div class="metadata-item">
 								<input
 									type="text"
 									value={key}
-									placeholder="key"
+									placeholder={$tr("key")}
 									class="metadata-key"
 									on:change={(e) =>
 										updateTransactionMetadataKey(
@@ -1142,7 +1140,7 @@
 								<input
 									type="text"
 									bind:value={transactionMetadata[key]}
-									placeholder="value"
+									placeholder={$tr("value")}
 									class="metadata-value"
 								/>
 								<button
@@ -1160,7 +1158,7 @@
 							class="add-metadata-btn"
 							on:click={addTransactionMetadata}
 						>
-							+ Add Metadata
+							{$tr("+ Add Metadata")}
 						</button>
 					</div>
 				</div>
@@ -1193,7 +1191,7 @@
 				{/each}
 
 				<button type="button" class="add-posting" on:click={addPosting}>
-					+ Add Posting
+					{$tr("+ Add Posting")}
 				</button>
 			</div>
 
@@ -1265,7 +1263,7 @@
 					on:click={confirmDelete}
 					disabled={deleting}
 				>
-					{deleting ? "Deleting..." : "Delete"}
+					{deleting ? $tr("Deleting...") : $tr("Delete")}
 				</button>
 			{/if}
 			{#if mode === "add" && activeTab === "transaction" && plugin?.settings?.enableUserSnippets}
@@ -1274,14 +1272,14 @@
 					class="btn-secondary"
 					on:click={openLoadSnippetModal}
 				>
-					📋 Load Snippet
+					{$tr("📋 Load Snippet")}
 				</button>
 			{/if}
 		</div>
 
 		<div class="footer-right">
 			<button type="button" class="btn-secondary" on:click={cancel}>
-				Cancel
+				{$tr("Cancel")}
 			</button>
 			<button
 				type="button"
@@ -1290,12 +1288,10 @@
 				disabled={saving}
 			>
 				{saving
-					? "Saving..."
+					? $tr("Saving...")
 					: mode === "edit"
-						? "Save Changes"
-						: "Add " +
-							activeTab.charAt(0).toUpperCase() +
-							activeTab.slice(1)}
+						? $tr("Save Changes")
+						: $tr(`Add ${activeTab}`)}
 			</button>
 		</div>
 	</div>
@@ -1306,14 +1302,13 @@
 <!-- Delete Confirmation Dialog -->
 {#if showDeleteConfirm}
 	<div class="confirm-overlay">
-		<button class="confirm-backdrop" type="button" on:click={cancelDelete} aria-label="Close dialog"></button>
+		<button class="confirm-backdrop" type="button" on:click={cancelDelete} aria-label={$tr("Close dialog")}></button>
 		<div class="confirm-dialog" role="dialog" aria-modal="true" tabindex="-1">
 			<h4>
-				Delete {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+				{$tr("Delete {0}", [$tr(activeTab.charAt(0).toUpperCase() + activeTab.slice(1))])}
 			</h4>
 			<p>
-				Are you sure you want to delete this {activeTab}? This action
-				cannot be undone.
+				{$tr("Are you sure you want to delete this")} {activeTab}{$tr("? This action\n\t\t\t\tcannot be undone.")}
 			</p>
 			<div class="confirm-actions">
 				<button
@@ -1321,10 +1316,10 @@
 					class="btn-secondary"
 					on:click={cancelDelete}
 				>
-					Cancel
+					{$tr("Cancel")}
 				</button>
 				<button type="button" class="btn-danger" on:click={deleteEntry}>
-					Delete
+					{$tr("Delete")}
 				</button>
 			</div>
 		</div>

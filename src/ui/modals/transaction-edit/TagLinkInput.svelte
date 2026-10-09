@@ -1,5 +1,6 @@
 <!-- src/ui/modals/transaction-edit/TagLinkInput.svelte -->
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	export let selectedTags: string[] = [];
 	export let selectedLinks: string[] = [];
 	export let tags: string[] = [];
@@ -41,14 +42,14 @@
 <div class="tags-links-section">
 	<div class="tags-links-row">
 		<div class="form-group">
-			<label for="tags">Tags</label>
+			<label for="tags">{$tr("Tags")}</label>
 			<input
 				type="text"
 				id="tags"
 				bind:value={tagInputValue}
 				on:keydown={handleTagInput}
 				list="tags-list"
-				placeholder="Tag + Enter"
+				placeholder={$tr("Tag + Enter")}
 			/>
 			<datalist id="tags-list">
 				{#each tags as tag}
@@ -67,13 +68,13 @@
 			{/if}
 		</div>
 		<div class="form-group">
-			<label for="links">Links</label>
+			<label for="links">{$tr("Links")}</label>
 			<input
 				type="text"
 				id="links"
 				bind:value={linkInputValue}
 				on:keydown={handleLinkInput}
-				placeholder="Link + Enter"
+				placeholder={$tr("Link + Enter")}
 			/>
 			{#if selectedLinks.length > 0}
 				<div class="selected-links">

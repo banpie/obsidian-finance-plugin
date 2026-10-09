@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import { createEventDispatcher } from 'svelte';
 	import { writable, type Writable } from 'svelte/store';
 	import type { IncomeStatementController, IncomeStatementState } from '../../../controllers/IncomeStatementController';
@@ -161,9 +162,9 @@
 <div class="income-statement-container">
 	<!-- Header -->
 	<div class="income-statement-header">
-		<h2>Income Statement</h2>
+		<h2>{$tr("Income Statement")}</h2>
 		<div class="header-controls">
-			<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading}>Refresh</button>
+			<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading}>{$tr("Refresh")}</button>
 		</div>
 	</div>
 
@@ -188,12 +189,12 @@
 						variant="primary"
 						position="left"
 						options={[
-							{ value: 'trend', label: 'Trends', icon: 'line-chart' },
-							{ value: 'total', label: 'Totals Breakdown', icon: 'pie-chart' }
+							{ value: 'trend', label: $tr("Trends"), icon: 'line-chart' },
+							{ value: 'total', label: $tr("Totals Breakdown"), icon: 'pie-chart' }
 						]}
 						bind:value={selectedChart}
 						on:change={(e) => selectedChart = e.detail}
-						ariaLabel="Select chart view"
+						ariaLabel={$tr("Select chart view")}
 					/>
 
 					{#if selectedChart === 'trend'}
@@ -201,39 +202,39 @@
 							variant="secondary"
 							position="middle"
 							options={[
-								{ value: 'netprofit', label: 'Net Profit', icon: 'dollar-sign' },
-								{ value: 'income', label: 'Income', icon: 'plus-circle' },
-								{ value: 'expense', label: 'Expense', icon: 'minus-circle' }
+								{ value: 'netprofit', label: $tr("Net Profit"), icon: 'dollar-sign' },
+								{ value: 'income', label: $tr("Income"), icon: 'plus-circle' },
+								{ value: 'expense', label: $tr("Expense"), icon: 'minus-circle' }
 							]}
 							value={state.chartTrendType}
 							on:change={(e) => handleTrendTypeChange(e.detail)}
 							disabled={state.chartLoading}
-							ariaLabel="Select trend type"
+							ariaLabel={$tr("Select trend type")}
 						/>
 
 						<CustomSelect
 							variant="secondary"
 							position="right"
 							options={[
-								{ value: 'month', label: 'Monthly', icon: 'calendar' },
-								{ value: 'week', label: 'Weekly', icon: 'clock' }
+								{ value: 'month', label: $tr("Monthly"), icon: 'calendar' },
+								{ value: 'week', label: $tr("Weekly"), icon: 'clock' }
 							]}
 							value={state.chartInterval}
 							on:change={(e) => handleIntervalChange(e.detail === 'week' ? 'week' : 'month')}
 							disabled={state.chartLoading}
-							ariaLabel="Select chart interval"
+							ariaLabel={$tr("Select chart interval")}
 						/>
 					{:else if selectedChart === 'total'}
 						<CustomSelect
 							variant="secondary"
 							position="right"
 							options={[
-								{ value: 'income', label: 'Income', icon: 'plus-circle' },
-								{ value: 'expenses', label: 'Expenses', icon: 'minus-circle' }
+								{ value: 'income', label: $tr("Income"), icon: 'plus-circle' },
+								{ value: 'expenses', label: $tr("Expenses"), icon: 'minus-circle' }
 							]}
 							bind:value={selectedTotalSection}
 							on:change={(e) => selectedTotalSection = e.detail}
-							ariaLabel="Select totals section"
+							ariaLabel={$tr("Select totals section")}
 						/>
 					{/if}
 				</div>
@@ -242,20 +243,20 @@
 			{#if selectedChart === 'trend'}
 				<div class="trend-chart-container">
 					{#if state.chartError}
-						<p class="error-message">Chart Error: {state.chartError}</p>
+						<p class="error-message">{$tr("Chart Error:")} {state.chartError}</p>
 					{:else if state.chartLoading}
-						<p class="chart-loading">Loading chart...</p>
+						<p class="chart-loading">{$tr("Loading chart...")}</p>
 					{:else if state.chartConfig}
 						<ChartComponent config={state.chartConfig} height="300px"/>
 					{:else}
-						<p class="chart-loading">Not enough data to display chart.</p>
+						<p class="chart-loading">{$tr("Not enough data to display chart.")}</p>
 					{/if}
 				</div>
 			{:else if selectedChart === 'total'}
 				{#if selectedTotalSection === 'income'}
 					<!-- Income: expect positive (credit accounts). Pass as assets→green, with assetsExpectNegative -->
 					<SunburstChart
-						title="Income"
+						title={$tr("Income")}
 						assets={state.income}
 						liabilities={[]}
 						equity={[]}
@@ -271,7 +272,7 @@
 				{:else}
 					<!-- Expenses: expect positive (debit accounts). Pass as liabilities→red, with liabilitiesExpectNegative=false -->
 					<SunburstChart
-						title="Expenses"
+						title={$tr("Expenses")}
 						assets={[]}
 						liabilities={state.expenses}
 						equity={[]}
@@ -291,20 +292,20 @@
 		<!-- Income Statement Table -->
 		<div class="income-statement-section">
 			<div class="income-statement-section-header">
-				<h3>Income Statement</h3>
+				<h3>{$tr("Income Statement")}</h3>
 				<div class="valuation-method-selector">
-					<span class="valuation-method-label">Valuation:</span>
+					<span class="valuation-method-label">{$tr("Valuation:")}</span>
 					<CustomSelect
 						variant="secondary"
 						position="single"
 						options={[
 							{ value: 'convert', label: `Market Value (Convert to ${state.currency})` },
-							{ value: 'cost', label: 'At Cost' },
-							{ value: 'units', label: 'Units' },
+							{ value: 'cost', label: $tr("At Cost") },
+							{ value: 'units', label: $tr("Units") },
 						]}
 						value={state.valuationMethod || 'convert'}
 						on:change={(e) => handleValuationMethodChange(e.detail)}
-						ariaLabel="Valuation method"
+						ariaLabel={$tr("Valuation method")}
 					/>
 				</div>
 			</div>
@@ -312,14 +313,14 @@
 			<div class="income-statement-grid">
 				<!-- Income Column -->
 				<div class="column">
-					<h4>Income</h4>
+					<h4>{$tr("Income")}</h4>
 					<table class="beancount-table">
 						<thead>
 							<tr class="header-row">
-								<th class="account-header">Account</th>
+								<th class="account-header">{$tr("Account")}</th>
 								<th class="amount-header">{state.currency}</th>
 								{#if showOtherCurrenciesColumn}
-									<th class="other-currencies-header">Other Currencies</th>
+									<th class="other-currencies-header">{$tr("Other Currencies")}</th>
 								{/if}
 							</tr>
 						</thead>
@@ -328,7 +329,7 @@
 								<tr class={getAccountClass(item)}>
 									<td class="account-name"
 										on:click={(e) => handleAccountRowClick(item, e)}
-										title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal' : undefined}>
+										title={!item.isCategory ? $tr("Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal") : undefined}>
 										{#if item.isCategory}
 											<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 										{/if}
@@ -347,21 +348,21 @@
 						</tbody>
 					</table>
 					<div class="section-total">
-						<span>Total Income</span>
+						<span>{$tr("Total Income")}</span>
 						<span class="total-amount">{state.totalIncome.toFixed(currencyDecimals)} {state.currency}</span>
 					</div>
 				</div>
 
 				<!-- Expenses Column -->
 				<div class="column">
-					<h4>Expenses</h4>
+					<h4>{$tr("Expenses")}</h4>
 					<table class="beancount-table">
 						<thead>
 							<tr class="header-row">
-								<th class="account-header">Account</th>
+								<th class="account-header">{$tr("Account")}</th>
 								<th class="amount-header">{state.currency}</th>
 								{#if showOtherCurrenciesColumn}
-									<th class="other-currencies-header">Other Currencies</th>
+									<th class="other-currencies-header">{$tr("Other Currencies")}</th>
 								{/if}
 							</tr>
 						</thead>
@@ -370,7 +371,7 @@
 								<tr class={getAccountClass(item)}>
 									<td class="account-name"
 										on:click={(e) => handleAccountRowClick(item, e)}
-										title={!item.isCategory ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal' : undefined}>
+										title={!item.isCategory ? $tr("Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal") : undefined}>
 										{#if item.isCategory}
 											<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 										{/if}
@@ -389,7 +390,7 @@
 						</tbody>
 					</table>
 					<div class="section-total">
-						<span>Total Expenses</span>
+						<span>{$tr("Total Expenses")}</span>
 						<span class="total-amount">{state.totalExpenses.toFixed(currencyDecimals)} {state.currency}</span>
 					</div>
 				</div>
@@ -397,7 +398,7 @@
 
 			<!-- Net Profit Summary -->
 			<div class="net-profit-row">
-				<span class="net-profit-label">Net Profit</span>
+				<span class="net-profit-label">{$tr("Net Profit")}</span>
 				<span class="net-profit-value {netProfitClass(state.netProfit)}">
 					{state.netProfit.toFixed(currencyDecimals)} {state.currency}
 				</span>

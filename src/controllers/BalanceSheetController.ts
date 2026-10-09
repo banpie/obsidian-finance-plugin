@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // src/controllers/BalanceSheetController.ts
 
 import { writable, type Writable, get } from 'svelte/store';
@@ -274,7 +275,7 @@ export class BalanceSheetController {
 		try {
 			const clean = rawResult.replace(/\r/g, '').trim();
 			const records: string[][] = parseCsv(clean, { columns: false, skip_empty_lines: true, relax_column_count: true });
-			if (records.length === 0) throw new Error('No data available for chart.');
+			if (records.length === 0) throw new Error(t("No data available for chart."));
 
 			const dataMap = new Map<string, number>();
 			const labels: string[] = [];
@@ -309,7 +310,7 @@ export class BalanceSheetController {
 					dataMap.set(dateStr, nw);
 					dates.push(d);
 				}
-				if (dates.length === 0) throw new Error('No weekly data.');
+				if (dates.length === 0) throw new Error(t("No weekly data."));
 				const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
 				const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
 				const cur = new Date(minDate);
@@ -396,7 +397,7 @@ export class BalanceSheetController {
 		const reportingCurrency = this.plugin.settings.operatingCurrency;
 		
 		if (valuationMethod === 'convert' && !reportingCurrency) {
-			this.state.update(s => ({ ...s, isLoading: false, error: "Operating currency not set." }));
+			this.state.update(s => ({ ...s, isLoading: false, error: t("Operating currency not set.") }));
 			return;
 		}
 

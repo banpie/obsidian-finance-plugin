@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import { createEventDispatcher } from 'svelte';
 	import { Notice } from 'obsidian'; // Ensure Notice is imported
 	import UpcomingTab from './UpcomingTab.svelte';
@@ -103,7 +104,7 @@
 </script>
 
 <div class="beancount-header">
-	<h2>Snapshot</h2>
+	<h2>{$tr("Snapshot")}</h2>
 
 	<div class="header-controls">
 		<button
@@ -111,17 +112,17 @@
 			class:status-error={fileStatus === 'error'}
 			class:status-checking={fileStatus === 'checking'}
 			on:click={handleStatusClick}
-			title={fileStatus === 'error' ? 'Click to see error details' : 'File Status'}
+			title={fileStatus === 'error' ? $tr("Click to see error details") : $tr("File Status")}
 			disabled={fileStatus === 'checking'} >
 			{#if fileStatus === 'checking'}
 				<span class="status-dot"></span>
-				<span>Checking…</span>
+				<span>{$tr("Checking…")}</span>
 			{:else if fileStatus === 'ok'}
 				<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
 				<span>OK</span>
 			{:else if fileStatus === 'error'}
 				<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-				<span>{errorCount} Error{errorCount !== 1 ? 's' : ''}</span>
+				<span>{errorCount} {$tr("Error")}{errorCount !== 1 ? 's' : ''}</span>
 			{/if}
 		</button>
 
@@ -130,7 +131,7 @@
 				<svg class="loading-spinner" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<path d="M21 12a9 9 0 11-6.219-8.56"/>
 				</svg>
-				Refreshing...
+				{$tr("Refreshing...")}
 			{:else}
 				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<path d="M3 12a9 9 0 013.5-7.1"/>
@@ -138,7 +139,7 @@
 					<path d="M3 12a9 9 0 016.5 8.1"/>
 					<path d="M20.5 18.5a9 9 0 01-6.5-5.5"/>
 				</svg>
-				Refresh
+				{$tr("Refresh")}
 			{/if}
 		</button>
 	</div>
@@ -148,12 +149,12 @@
 <div class="upper-tab-strip">
 	<TabBar
 		tabs={[
-			{ value: 'metrics', label: 'Key Metrics' },
-			{ value: 'upcoming', label: 'Upcoming', ...(upcomingDueCount > 0 ? { count: upcomingDueCount, tone: 'warning' } : {}) },
+			{ value: 'metrics', label: $tr("Key Metrics") },
+			{ value: 'upcoming', label: $tr("Upcoming"), ...(upcomingDueCount > 0 ? { count: upcomingDueCount, tone: 'warning' } : {}) },
 		]}
 		value={activeUpperTab}
 		on:change={(e) => switchUpperTab(e.detail)}
-		ariaLabel="Snapshot upper section"
+		ariaLabel={$tr("Snapshot upper section")}
 	/>
 </div>
 
@@ -163,15 +164,15 @@
 			<div class="beancount-error-message">{kpiError}</div>
 		{:else}
 			<div class="kpi-metric">
-				<span class="kpi-label">Net Worth</span>
+				<span class="kpi-label">{$tr("Net Worth")}</span>
 				<span class="kpi-value net-worth">{netWorth}</span>
 			</div>
 			<div class="kpi-metric">
-				<span class="kpi-label">Assets</span>
+				<span class="kpi-label">{$tr("Assets")}</span>
 				<span class="kpi-value">{assets}</span>
 			</div>
 			<div class="kpi-metric">
-				<span class="kpi-label">Liabilities</span>
+				<span class="kpi-label">{$tr("Liabilities")}</span>
 				<span class="kpi-value">{liabilities}</span>
 			</div>
 		{/if}
@@ -179,7 +180,7 @@
 
 	{#if !kpiError}
 		<div class="conversion-note">
-			<span>Commodities without price data are excluded from totals</span>
+			<span>{$tr("Commodities without price data are excluded from totals")}</span>
 		</div>
 	{/if}
 </div>
@@ -195,12 +196,12 @@
 <div class="bottom-tab-strip">
 	<TabBar
 		tabs={[
-			{ value: 'errors', label: 'Errors', ...(errorCount > 0 ? { count: errorCount, tone: 'error' } : {}) },
-			{ value: 'reconciliation', label: 'Reconciliation', ...(reconciliationOverdue > 0 ? { count: reconciliationOverdue, tone: 'warning' } : {}) },
+			{ value: 'errors', label: $tr("Errors"), ...(errorCount > 0 ? { count: errorCount, tone: 'error' } : {}) },
+			{ value: 'reconciliation', label: $tr("Reconciliation"), ...(reconciliationOverdue > 0 ? { count: reconciliationOverdue, tone: 'warning' } : {}) },
 		]}
 		value={activeTab}
 		on:change={(e) => switchTab(e.detail)}
-		ariaLabel="Snapshot bottom section"
+		ariaLabel={$tr("Snapshot bottom section")}
 	/>
 </div>
 
@@ -243,7 +244,7 @@
 				<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
 				<polyline points="22 4 12 14.01 9 11.01"/>
 			</svg>
-			<span>No errors</span>
+			<span>{$tr("No errors")}</span>
 		</div>
 	{/if}
 {:else if activeTab === 'reconciliation'}
@@ -254,28 +255,28 @@
 				<line x1="12" y1="16" x2="12" y2="12"/>
 				<line x1="12" y1="8" x2="12.01" y2="8"/>
 			</svg>
-			<span>No accounts configured for reconciliation.<br>Add <code>reconcile: 30</code> metadata to an open directive.</span>
+			<span>{$tr("No accounts configured for reconciliation.")}<br>{$tr("Add")} <code>reconcile: 30</code> metadata to an open directive.</span>
 		</div>
 	{:else}
 		<div class="reconciliation-section">
 			<!-- Summary row -->
 			<div class="reconciliation-summary">
 				<span class="reconciliation-summary-text">
-					<span class="recon-summary-count" class:recon-summary-warning={reconciliationOverdue > 0}>{reconciliationOverdue} overdue</span>
+					<span class="recon-summary-count" class:recon-summary-warning={reconciliationOverdue > 0}>{reconciliationOverdue} {$tr("overdue")}</span>
 					<span class="recon-sep">·</span>
-					<span class="recon-summary-count">{reconciliationUpToDate} up to date</span>
+					<span class="recon-summary-count">{reconciliationUpToDate} {$tr("up to date")}</span>
 				</span>
 				<label class="recon-toggle">
 					<input type="checkbox" bind:checked={showOnlyOverdue} />
 					<span class="recon-toggle-track"><span class="recon-toggle-thumb"></span></span>
-					<span class="recon-toggle-label">Only overdue</span>
+					<span class="recon-toggle-label">{$tr("Only overdue")}</span>
 				</label>
 			</div>
 
 			<!-- Per-account list -->
 			{#if visibleReconciliationAccounts.length === 0}
 				<div class="tab-empty-state">
-					<span>No overdue accounts.</span>
+					<span>{$tr("No overdue accounts.")}</span>
 				</div>
 			{:else}
 			<div class="reconciliation-list">
@@ -286,7 +287,7 @@
 								type="button"
 								class="recon-account-row recon-account-row-clickable"
 								on:click={(e) => handleReconcileClick(acct, e)}
-								title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal — filtered from {acct.lastBalanceDate ?? 'the beginning'}"
+								title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal — filtered from {acct.lastBalanceDate ?? $tr("the beginning")}"
 							>
 								<span class="recon-indicator" class:indicator-overdue={acct.isOverdue} class:indicator-ok={!acct.isOverdue}></span>
 								<span class="recon-account-name" title={acct.account}>{shortAccount(acct.account)}</span>
@@ -294,37 +295,37 @@
 							<div class="recon-detail-row">
 								{#if acct.isFailing}
 									<span class="recon-detail recon-failing"
-										>Failing{#if acct.failingDiscrepancy} — off by {acct.failingDiscrepancy}{/if}</span
+										>{$tr("Failing")}{#if acct.failingDiscrepancy} {$tr("— off by")} {acct.failingDiscrepancy}{/if}</span
 									>
 								{:else if acct.lastBalanceDate}
 									<span class="recon-detail">
-										{acct.daysSinceLastBalance}d ago
+										{acct.daysSinceLastBalance}{$tr("d ago")}
 										<span class="recon-sep">·</span>
-										every {acct.reconcileDays}d
+										{$tr("every")} {acct.reconcileDays}d
 									</span>
 								{:else}
-									<span class="recon-detail recon-never">Never reconciled</span>
+									<span class="recon-detail recon-never">{$tr("Never reconciled")}</span>
 								{/if}
 							</div>
 						</div>
 						<div class="recon-actions">
 							<button type="button" class="recon-action-btn recon-action-edit" on:click={() => handleEditAccount(acct)}>
 								<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-								Edit
+								{$tr("Edit")}
 							</button>
 							<button type="button" class="recon-action-btn recon-action-balance" on:click={() => handleAddBalance(acct)}>
 								<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
-								Balance
+								{$tr("Balance")}
 							</button>
 							<button
 								type="button"
 								class="recon-action-btn recon-action-force"
 								disabled={!acct.isFailing}
-								title={acct.isFailing ? '' : 'No failing balance assertion to fix'}
+								title={acct.isFailing ? '' : $tr("No failing balance assertion to fix")}
 								on:click={() => handleForceReconcile(acct)}
 							>
 								<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-								Force reconcile
+								{$tr("Force reconcile")}
 							</button>
 						</div>
 					</div>

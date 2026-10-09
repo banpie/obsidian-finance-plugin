@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 // src/ui/modals/AddScheduleModal.ts
 
 import { App, Modal, Notice } from 'obsidian';
@@ -128,11 +129,11 @@ export class AddScheduleModal extends Modal {
 						this.close();
 						if (this.onSuccess) this.onSuccess();
 					} else {
-						new Notice(`Failed to save schedule: ${result.error || 'Unknown error'}`);
+						new Notice(t("Failed to save schedule: {0}", [result.error || 'Unknown error']));
 					}
 				} catch (error) {
 					Logger.error('[AddScheduleModal] Error saving schedule:', error);
-					new Notice(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+					new Notice(t("Error: {0}", [error instanceof Error ? error.message : 'Unknown error']));
 				}
 			})();
 		});

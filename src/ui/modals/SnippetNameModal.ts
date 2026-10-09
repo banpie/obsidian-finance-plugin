@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { App, Modal, Setting, TextComponent, Notice } from 'obsidian';
 
 export class SnippetNameModal extends Modal {
@@ -14,12 +15,12 @@ export class SnippetNameModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
 
-        contentEl.createEl('h2', { text: 'Save as transaction snippet' });
-        contentEl.createEl('p', { text: 'Enter a name for this transaction snippet. This name will be suggested when autocompleting.' });
+        contentEl.createEl('h2', { text: t("Save as transaction snippet") });
+        contentEl.createEl('p', { text: t("Enter a name for this transaction snippet. This name will be suggested when autocompleting.") });
 
         let textComponent: TextComponent | null = null;
         new Setting(contentEl)
-            .setName('Snippet name')
+            .setName(t("Snippet name"))
             .addText(text => {
                 textComponent = text;
                 text.setValue(this.snippetName)
@@ -30,17 +31,17 @@ export class SnippetNameModal extends Modal {
 
         new Setting(contentEl)
             .addButton(btn => btn
-                .setButtonText('Cancel')
+                .setButtonText(t("Cancel"))
                 .onClick(() => {
                     this.close();
                 }))
             .addButton(btn => btn
-                .setButtonText('Save snippet')
+                .setButtonText(t("Save snippet"))
                 .setCta()
                 .onClick(() => {
                     const trimmed = this.snippetName.trim();
                     if (!trimmed) {
-                        new Notice('Snippet name cannot be empty.');
+                        new Notice(t("Snippet name cannot be empty."));
                         return;
                     }
                     this.onSubmit(trimmed);

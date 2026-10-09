@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../i18n";
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 
 	export let options: { value: string; label: string; icon?: string }[] = [];
@@ -6,7 +7,7 @@
 	export let variant: 'primary' | 'secondary' = 'secondary';
 	export let position: 'left' | 'middle' | 'right' | 'single' = 'single';
 	export let disabled: boolean = false;
-	export let ariaLabel: string = 'Select option';
+	export let ariaLabel: string = $tr("Select option");
 
 	const dispatch = createEventDispatcher<{ change: string }>();
 

@@ -1,3 +1,4 @@
+import { t } from "../../../i18n";
 // src/views/sidebar-view.ts
 import { ItemView, WorkspaceLeaf, Notice, TFile } from 'obsidian';
 import type BeancountPlugin from '../../../main';
@@ -121,7 +122,7 @@ export class BeancountView extends ItemView {
 	// --- Main data update function ---
 	async updateView() {
 		this.updateProps({ isLoading: true, kpiError: null, fileStatus: "checking", fileStatusMessage: null });
-		new Notice('Refreshing snapshot...');
+		new Notice(t("Refreshing snapshot..."));
 		const reportingCurrency = this.plugin.settings.operatingCurrency;
 		if (!reportingCurrency) {
 			this.updateProps({ kpiError: "Operating currency is not set in settings.", isLoading: false });
@@ -201,8 +202,8 @@ export class BeancountView extends ItemView {
 		Logger.log('[runBeanCheck] File path:', filePath);
 		Logger.log('[runBeanCheck] Command base:', commandBase);
 		
-		if (!filePath) return { status: "error", message: "File path not set.", errorCount: 0, errorList: [] };
-		if (!commandBase) return { status: "error", message: "Command not set.", errorCount: 0, errorList: [] };
+		if (!filePath) return { status: "error", message: t("File path not set."), errorCount: 0, errorList: [] };
+		if (!commandBase) return { status: "error", message: t("Command not set."), errorCount: 0, errorList: [] };
 
 		// Convert Windows path to WSL path if using WSL
 		let checkFilePath = filePath;
@@ -234,7 +235,7 @@ export class BeancountView extends ItemView {
 					Logger.log('[runBeanCheck] Command execution failed');
 					resolve({ 
 						status: "error", 
-						message: `Failed to run validation: ${stderr}`,
+						message: t("Failed to run validation: {0}", [stderr]),
 						errorCount: 0,
 						errorList: []
 					});
@@ -252,7 +253,7 @@ export class BeancountView extends ItemView {
 					if (errorLines.length > 0) {
 						const result = { 
 							status: "error" as const, 
-							message: `Found ${errorLines.length} validation error(s)`,
+							message: t("Found {0} validation error(s)", [errorLines.length]),
 							errorCount: errorLines.length,
 							errorList: errorLines
 						};
@@ -263,7 +264,7 @@ export class BeancountView extends ItemView {
 						Logger.log('[runBeanCheck] No parseable errors found in output');
 						resolve({ 
 							status: "ok", 
-							message: "File OK",
+							message: t("File OK"),
 							errorCount: 0,
 							errorList: []
 						});
@@ -273,7 +274,7 @@ export class BeancountView extends ItemView {
 					Logger.log('[runBeanCheck] No stdout output, assuming OK');
 					resolve({ 
 						status: "ok", 
-						message: "File OK",
+						message: t("File OK"),
 						errorCount: 0,
 						errorList: []
 					});
@@ -350,7 +351,7 @@ export class BeancountView extends ItemView {
 			const relativePath = getVaultRelativePath(this.plugin, windowsPath);
 			const file = this.plugin.app.vault.getAbstractFileByPath(relativePath);
 			if (!(file instanceof TFile)) {
-				new Notice(`Could not locate file in vault: ${relativePath}`);
+				new Notice(t("Could not locate file in vault: {0}", [relativePath]));
 				return;
 			}
 			const leaf = this.plugin.app.workspace.getLeaf(true);
@@ -360,7 +361,7 @@ export class BeancountView extends ItemView {
 			}
 		} catch (err) {
 			Logger.error('[openErrorLocation] Failed to open error location:', err);
-			new Notice('Failed to open file at error location.');
+			new Notice(t("Failed to open file at error location."));
 		}
 	}
 

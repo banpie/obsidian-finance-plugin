@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../i18n";
 	import { createEventDispatcher } from "svelte";
 	import type { ChartConfiguration } from "chart.js/auto";
 	import type { AccountDetail } from "../../services/accountDetail.service";
@@ -76,7 +77,7 @@
 				labels: history.map((point) => point.label),
 				datasets: [
 					{
-						label: `Balance (${currency})`,
+						label: $tr("Balance ({0})", [currency]),
 						data: history.map((point) => point.value),
 						borderColor: "rgb(75, 192, 192)",
 						backgroundColor: "rgba(75, 192, 192, 0.12)",
@@ -126,56 +127,56 @@
 			<div class="account-full-name">{account}</div>
 		</div>
 		{#if detail.isClosed}
-			<span class="badge badge-muted">Closed</span>
+			<span class="badge badge-muted">{$tr("Closed")}</span>
 		{:else}
-			<span class="badge badge-ok">Open</span>
+			<span class="badge badge-ok">{$tr("Open")}</span>
 		{/if}
 	</div>
 
 	<div class="tab-bar-row">
 		<TabBar
 			tabs={[
-				{ value: 'details', label: 'Metadata' },
-				{ value: 'balance-history', label: 'Balance History' },
+				{ value: 'details', label: $tr("Metadata") },
+				{ value: 'balance-history', label: $tr("Balance History") },
 			]}
 			bind:value={activeTab}
 			fullWidth={false}
-			ariaLabel="Account detail sections"
+			ariaLabel={$tr("Account detail sections")}
 		/>
 	</div>
 
 	{#if activeTab === "balance-history"}
 		<div class="section">
 			<div class="section-heading">
-				<p class="section-title">Balance History</p>
+				<p class="section-title">{$tr("Balance History")}</p>
 				<div class="pill-dropdown-group">
 					<CustomSelect
 						variant="primary"
 						position={balanceHistory.length > 0 ? 'left' : 'single'}
 						options={[
-							{ value: 'month', label: 'Monthly', icon: 'calendar' },
-							{ value: 'week', label: 'Weekly', icon: 'clock' },
+							{ value: 'month', label: $tr("Monthly"), icon: 'calendar' },
+							{ value: 'week', label: $tr("Weekly"), icon: 'clock' },
 						]}
 						bind:value={balanceHistoryInterval}
-						ariaLabel="Balance history interval"
+						ariaLabel={$tr("Balance history interval")}
 					/>
 					{#if balanceHistory.length > 0}
 						<CustomSelect
 							variant="secondary"
 							position="right"
 							options={[
-								{ value: 'chart', label: 'Chart', icon: 'trend' },
-								{ value: 'table', label: 'Table', icon: 'table' },
+								{ value: 'chart', label: $tr("Chart"), icon: 'trend' },
+								{ value: 'table', label: $tr("Table"), icon: 'table' },
 							]}
 							bind:value={balanceHistoryView}
-							ariaLabel="Balance history view"
+							ariaLabel={$tr("Balance history view")}
 						/>
 					{/if}
 				</div>
 			</div>
 			<div class="section-card history-card">
 				{#if balanceHistory.length === 0}
-					<div class="empty-history">No balance history found for this account.</div>
+					<div class="empty-history">{$tr("No balance history found for this account.")}</div>
 				{:else if balanceHistoryView === "chart" && balanceHistoryChartConfig}
 					<div class="balance-history-chart">
 						<ChartComponent config={balanceHistoryChartConfig} height="240px" />
@@ -185,8 +186,8 @@
 						<table class="balance-history-table">
 							<thead>
 								<tr>
-									<th>{balanceHistoryInterval === "week" ? "Week ending" : "Month"}</th>
-									<th>Balance ({detail.balanceHistoryCurrency})</th>
+									<th>{balanceHistoryInterval === "week" ? "Week ending" : $tr("Month")}</th>
+									<th>{$tr("Balance (")}{detail.balanceHistoryCurrency})</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -204,59 +205,59 @@
 		</div>
 	{:else}
 		<div class="section">
-			<p class="section-title">Details</p>
+			<p class="section-title">{$tr("Details")}</p>
 			<div class="section-card">
 				<div class="kv-row">
-					<span class="kv-key">Open date</span>
+					<span class="kv-key">{$tr("Open date")}</span>
 					<span class="kv-value">{detail.openDate || "—"}</span>
 				</div>
 				{#if detail.isClosed}
 					<div class="kv-row">
-						<span class="kv-key">Close date</span>
+						<span class="kv-key">{$tr("Close date")}</span>
 						<span class="kv-value">{detail.closeDate}</span>
 					</div>
 				{/if}
 				<div class="kv-row">
-					<span class="kv-key">Currencies</span>
+					<span class="kv-key">{$tr("Currencies")}</span>
 					<span class="kv-value">{detail.currencies.length ? detail.currencies.join(", ") : "—"}</span>
 				</div>
 			</div>
 		</div>
 
 		<div class="section">
-			<p class="section-title">Reconciliation</p>
+			<p class="section-title">{$tr("Reconciliation")}</p>
 			<div class="section-card">
 				<div class="kv-row">
-					<span class="kv-key">Status</span>
+					<span class="kv-key">{$tr("Status")}</span>
 					<span class="kv-value">
 						{#if detail.isFailing}
 							<span class="badge badge-error"
-								>Failing{#if detail.failingDiscrepancy} — off by {detail.failingDiscrepancy}{/if}{#if detail.failingDate} as of {detail.failingDate}{/if}</span
+								>{$tr("Failing")}{#if detail.failingDiscrepancy} {$tr("— off by")} {detail.failingDiscrepancy}{/if}{#if detail.failingDate} {$tr("as of")} {detail.failingDate}{/if}</span
 							>
 						{:else if !detail.reconcileDays}
-							<span class="text-muted">No interval set</span>
+							<span class="text-muted">{$tr("No interval set")}</span>
 						{:else if detail.lastBalanceDate}
 							<span class="badge" class:badge-warning={detail.isOverdue} class:badge-ok={!detail.isOverdue}
-								>{detail.isOverdue ? "Overdue" : "Up to date"}</span
+								>{detail.isOverdue ? $tr("Overdue") : $tr("Up to date")}</span
 							>
-							<span class="status-detail">last reconciled {detail.lastBalanceDate} ({detail.daysSinceLastBalance}d ago)</span>
+							<span class="status-detail">{$tr("last reconciled")} {detail.lastBalanceDate} ({detail.daysSinceLastBalance}{$tr("d ago)")}</span>
 						{:else}
-							<span class="badge badge-warning">Never reconciled</span>
+							<span class="badge badge-warning">{$tr("Never reconciled")}</span>
 						{/if}
 					</span>
 				</div>
 
 				{#if detail.isClosed}
 					<div class="kv-row">
-						<span class="kv-key">Reconciliation interval (days)</span>
+						<span class="kv-key">{$tr("Reconciliation interval (days)")}</span>
 						<span class="kv-value">{detail.reconcileDays ? `${detail.reconcileDays} days (account closed)` : "—"}</span>
 					</div>
 				{:else}
 					<div class="kv-row">
-						<span class="kv-key">Reconciliation interval (days)</span>
+						<span class="kv-key">{$tr("Reconciliation interval (days)")}</span>
 						<span class="kv-value">
 							<div class="edit-area">
-								<input type="number" min="1" bind:value={reconcileInput} placeholder="e.g. 30 (blank to clear)" />
+								<input type="number" min="1" bind:value={reconcileInput} placeholder={$tr("e.g. 30 (blank to clear)")} />
 								{#if errorMessage}
 									<span class="error-text">{errorMessage}</span>
 								{/if}
@@ -270,19 +271,19 @@
 
 	<div class="footer">
 		<div class="footer-group">
-			<button class="btn" on:click={handleBalance}>Add Balance</button>
+			<button class="btn" on:click={handleBalance}>{$tr("Add Balance")}</button>
 			<button
 				class="btn"
 				disabled={!detail.isFailing}
-				title={detail.isFailing ? "" : "No failing balance assertion to fix"}
-				on:click={handleForceReconcile}>Force reconcile</button
+				title={detail.isFailing ? "" : $tr("No failing balance assertion to fix")}
+				on:click={handleForceReconcile}>{$tr("Force reconcile")}</button
 			>
 		</div>
 		<div class="footer-group">
 			{#if !detail.isClosed}
-				<button class="btn btn-primary" on:click={handleSave}>Save</button>
+				<button class="btn btn-primary" on:click={handleSave}>{$tr("Save")}</button>
 			{/if}
-			<button class="btn btn-ghost" on:click={close}>Done</button>
+			<button class="btn btn-ghost" on:click={close}>{$tr("Done")}</button>
 		</div>
 	</div>
 </div>

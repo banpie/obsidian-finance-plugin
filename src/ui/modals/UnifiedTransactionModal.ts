@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 // src/ui/modals/UnifiedTransactionModal.ts
 
 import { App, Modal, Notice } from 'obsidian';
@@ -149,7 +150,7 @@ export class UnifiedTransactionModal extends Modal {
                 const result = await createTransaction(this.plugin, entryData);
                 
                 if (result.success) {
-                    new Notice('Transaction added successfully!');
+                    new Notice(t("Transaction added successfully!"));
                     
                     // Refresh the store
                     await this.plugin.journalStore.refresh();
@@ -165,7 +166,7 @@ export class UnifiedTransactionModal extends Modal {
                     
                     this.close();
                 } else {
-                    new Notice(`Failed to add transaction: ${result.error || 'Unknown error'}`);
+                    new Notice(t("Failed to add transaction: {0}", [result.error || 'Unknown error']));
                 }
             } else if (entryData.type === 'balance') {
                 // Use direct file writing for balance assertions
@@ -180,7 +181,7 @@ export class UnifiedTransactionModal extends Modal {
                 );
                 
                 if (result.success) {
-                    new Notice('Balance assertion added successfully!');
+                    new Notice(t("Balance assertion added successfully!"));
                     
                     // Refresh the store
                     await this.plugin.journalStore.refresh();
@@ -196,7 +197,7 @@ export class UnifiedTransactionModal extends Modal {
                     
                     this.close();
                 } else {
-                    new Notice(`Failed to add balance: ${result.error || 'Unknown error'}`);
+                    new Notice(t("Failed to add balance: {0}", [result.error || 'Unknown error']));
                 }
             } else if (entryData.type === 'open') {
                 // Use direct file writing for open directives
@@ -211,7 +212,7 @@ export class UnifiedTransactionModal extends Modal {
                 );
                 
                 if (result.success) {
-                    new Notice('Open directive added successfully!');
+                    new Notice(t("Open directive added successfully!"));
                     
                     // Refresh the store
                     await this.plugin.journalStore.refresh();
@@ -227,7 +228,7 @@ export class UnifiedTransactionModal extends Modal {
                     
                     this.close();
                 } else {
-                    new Notice(`Failed to add open directive: ${result.error || 'Unknown error'}`);
+                    new Notice(t("Failed to add open directive: {0}", [result.error || 'Unknown error']));
                 }
             } else if (entryData.type === 'close') {
                 // Use direct file writing for close directives
@@ -239,7 +240,7 @@ export class UnifiedTransactionModal extends Modal {
                 );
                 
                 if (result.success) {
-                    new Notice('Close directive added successfully!');
+                    new Notice(t("Close directive added successfully!"));
                     
                     // Refresh the store
                     await this.plugin.journalStore.refresh();
@@ -255,7 +256,7 @@ export class UnifiedTransactionModal extends Modal {
                     
                     this.close();
                 } else {
-                    new Notice(`Failed to add close directive: ${result.error || 'Unknown error'}`);
+                    new Notice(t("Failed to add close directive: {0}", [result.error || 'Unknown error']));
                 }
             } else if (entryData.type === 'note') {
                 // Use direct file writing for notes
@@ -270,7 +271,7 @@ export class UnifiedTransactionModal extends Modal {
                 );
                 
                 if (result.success) {
-                    new Notice('Note added successfully!');
+                    new Notice(t("Note added successfully!"));
                     
                     // Refresh the store
                     await this.plugin.journalStore.refresh();
@@ -286,7 +287,7 @@ export class UnifiedTransactionModal extends Modal {
                     
                     this.close();
                 } else {
-                    new Notice(`Failed to add note: ${result.error || 'Unknown error'}`);
+                    new Notice(t("Failed to add note: {0}", [result.error || 'Unknown error']));
                 }
             } else if (entryData.type === 'query') {
                 const result = await createQueryDirective(
@@ -298,21 +299,21 @@ export class UnifiedTransactionModal extends Modal {
                 );
 
                 if (result.success) {
-                    new Notice(`Query "${entryData.name}" saved successfully! Use \`bql-q:${entryData.name}\` in your notes.`);
+                    new Notice(t("Query \"{0}\" saved successfully! Use `bql-q:{1}` in your notes.", [entryData.name, entryData.name]));
                     // Invalidate inline processor cache so new query is immediately available
                     this.plugin.inlineBqlProcessor.invalidateQueryCache();
                     this.close();
                 } else {
-                    new Notice(`Failed to save query: ${result.error || 'Unknown error'}`);
+                    new Notice(t("Failed to save query: {0}", [result.error || 'Unknown error']));
                 }
             } else {
                 // Pad entries have no UI - this code path is unreachable
-                new Notice(`Creating ${entryData.type} entries is not supported through the UI.`);
+                new Notice(t("Creating {0} entries is not supported through the UI.", [entryData.type]));
                 Logger.warn(`Attempted to create ${entryData.type} entry without UI support`);
             }
         } catch (error) {
             Logger.error('Error adding entry:', error);
-            new Notice(`Failed to add ${entryData.type}. Check console for details.`);
+            new Notice(t("Failed to add {0}. Check console for details.", [entryData.type]));
         }
     }
 
@@ -329,7 +330,7 @@ export class UnifiedTransactionModal extends Modal {
                 const result = await updateTransaction(this.plugin, entryId!, entryData);
                 
                 if (result.success) {
-                    new Notice('Transaction updated successfully!');
+                    new Notice(t("Transaction updated successfully!"));
                     
                     // Refresh the store
                     await this.plugin.journalStore.refresh();
@@ -345,14 +346,14 @@ export class UnifiedTransactionModal extends Modal {
                     
                     this.close();
                 } else {
-                    new Notice(`Failed to update transaction: ${result.error || 'Unknown error'}`);
+                    new Notice(t("Failed to update transaction: {0}", [result.error || 'Unknown error']));
                 }
             } else if (entryData.type === 'balance') {
                 // Use direct file writing for balance updates
                 const result = await updateBalance(this.plugin, entryId!, entryData as unknown as BalanceData);
                 
                 if (result.success) {
-                    new Notice('Balance updated successfully!');
+                    new Notice(t("Balance updated successfully!"));
                     
                     // Refresh the store
                     await this.plugin.journalStore.refresh();
@@ -368,14 +369,14 @@ export class UnifiedTransactionModal extends Modal {
                     
                     this.close();
                 } else {
-                    new Notice(`Failed to update balance: ${result.error || 'Unknown error'}`);
+                    new Notice(t("Failed to update balance: {0}", [result.error || 'Unknown error']));
                 }
             } else if (entryData.type === 'note') {
                 // Use direct file writing for note updates
                 const result = await updateNote(this.plugin, entryId!, entryData as unknown as NoteData);
                 
                 if (result.success) {
-                    new Notice('Note updated successfully!');
+                    new Notice(t("Note updated successfully!"));
                     
                     // Refresh the store
                     await this.plugin.journalStore.refresh();
@@ -391,16 +392,16 @@ export class UnifiedTransactionModal extends Modal {
                     
                     this.close();
                 } else {
-                    new Notice(`Failed to update note: ${result.error || 'Unknown error'}`);
+                    new Notice(t("Failed to update note: {0}", [result.error || 'Unknown error']));
                 }
             } else {
                 // Open/Close entries have no edit UI - this code path is unreachable
-                new Notice(`Updating ${entryData.type} entries is not supported through the UI.`);
+                new Notice(t("Updating {0} entries is not supported through the UI.", [entryData.type]));
                 Logger.warn(`Attempted to update ${entryData.type} entry without UI support`);
             }
         } catch (error) {
             Logger.error('Error updating entry:', error);
-            new Notice(`Failed to update ${entryData.type}. Check console for details.`);
+            new Notice(t("Failed to update {0}. Check console for details.", [entryData.type]));
         }
     }
 
@@ -416,7 +417,7 @@ export class UnifiedTransactionModal extends Modal {
                 const result = await deleteTransaction(this.plugin, entryId);
                 
                 if (result.success) {
-                    new Notice('Transaction deleted successfully!');
+                    new Notice(t("Transaction deleted successfully!"));
                     
                     // Refresh the store
                     await this.plugin.journalStore.refresh();
@@ -432,13 +433,13 @@ export class UnifiedTransactionModal extends Modal {
                     
                     this.close();
                 } else {
-                    new Notice(`Failed to delete transaction: ${result.error || 'Unknown error'}`);
+                    new Notice(t("Failed to delete transaction: {0}", [result.error || 'Unknown error']));
                 }
             } else if (entryType === 'balance') {
                 // Use direct file deletion for balance
                 const result = await deleteBalance(this.plugin, entryId);
                 if (result.success) {
-                    new Notice('Balance deleted successfully!');
+                    new Notice(t("Balance deleted successfully!"));
                     
                     // Refresh the store
                     await this.plugin.journalStore.refresh();
@@ -454,13 +455,13 @@ export class UnifiedTransactionModal extends Modal {
                     
                     this.close();
                 } else {
-                    new Notice(`Failed to delete balance: ${result.error || 'Unknown error'}`);
+                    new Notice(t("Failed to delete balance: {0}", [result.error || 'Unknown error']));
                 }
             } else if (entryType === 'note') {
                 // Use direct file deletion for note
                 const result = await deleteNote(this.plugin, entryId);
                 if (result.success) {
-                    new Notice('Note deleted successfully!');
+                    new Notice(t("Note deleted successfully!"));
                     
                     // Refresh the store
                     await this.plugin.journalStore.refresh();
@@ -476,17 +477,17 @@ export class UnifiedTransactionModal extends Modal {
                     
                     this.close();
                 } else {
-                    new Notice(`Failed to delete note: ${result.error || 'Unknown error'}`);
+                    new Notice(t("Failed to delete note: {0}", [result.error || 'Unknown error']));
                 }
             } else {
                 // Open/Close entries have no delete UI - this code path is unreachable
                 const entryType = entryId.split('_')[0];
-                new Notice(`Deleting ${entryType} entries is not supported through the UI.`);
+                new Notice(t("Deleting {0} entries is not supported through the UI.", [entryType]));
                 Logger.warn(`Attempted to delete ${entryType} entry without UI support`);
             }
         } catch (error) {
             console.error('Error deleting entry:', error);
-            new Notice('Failed to delete entry. Check console for details.');
+            new Notice(t("Failed to delete entry. Check console for details."));
         }
     }
 

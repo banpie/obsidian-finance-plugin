@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { App, Modal, Notice } from 'obsidian';
 import type BeancountPlugin from '../../main';
 import CommodityDetailModalComponent from './CommodityDetailModal.svelte';
@@ -52,7 +53,7 @@ export class CommodityDetailModal extends Modal {
                 const result = await this.controller.saveMetadata(symbol, metadata);
                 console.debug('[CommodityDetailModal] save-metadata result ->', result);
                 if (result && result.success) {
-                    new Notice('Metadata saved successfully');
+                    new Notice(t("Metadata saved successfully"));
 
                     // Reload commodity details to reflect changes in the modal
                     try {
@@ -65,7 +66,7 @@ export class CommodityDetailModal extends Modal {
                         console.warn('[CommodityDetailModal] Failed to reload commodity details:', reloadError);
                     }
                 } else {
-                    new Notice('Failed to save metadata');
+                    new Notice(t("Failed to save metadata"));
                 }
             })();
         });
@@ -76,8 +77,8 @@ export class CommodityDetailModal extends Modal {
                 console.debug('[CommodityDetailModal] test-price event', { symbol });
                 const res = await this.controller.testPriceSource(symbol);
                 console.debug('[CommodityDetailModal] test-price result ->', res);
-                if (res && res.success) new Notice('Price test successful');
-                else new Notice(`Price test failed: ${res?.error || 'unknown'}`);
+                if (res && res.success) new Notice(t("Price test successful"));
+                else new Notice(t("Price test failed: {0}", [res?.error || 'unknown']));
             })();
         });
 
@@ -87,8 +88,8 @@ export class CommodityDetailModal extends Modal {
                 console.debug('[CommodityDetailModal] test-logo event', { symbol, url });
                 const res = await this.controller.testLogoUrl(symbol, url);
                 console.debug('[CommodityDetailModal] test-logo result ->', res);
-                if (res && res.success) new Notice('Logo test successful');
-                else new Notice(`Logo test failed: ${res?.error || 'unknown'}`);
+                if (res && res.success) new Notice(t("Logo test successful"));
+                else new Notice(t("Logo test failed: {0}", [res?.error || 'unknown']));
             })();
         });
 
@@ -100,10 +101,10 @@ export class CommodityDetailModal extends Modal {
                 console.debug('[CommodityDetailModal] delete event', { symbol });
                 const result = await this.controller.deleteCommodity(symbol);
                 if (result && result.success) {
-                    new Notice(`${symbol} commodity deleted`);
+                    new Notice(t("{0} commodity deleted", [symbol]));
                     this.close();
                 } else {
-                    new Notice(`Failed to delete ${symbol}: ${result?.error || 'unknown error'}`);
+                    new Notice(t("Failed to delete {0}: {1}", [symbol, result?.error || 'unknown error']));
                 }
             })();
         });

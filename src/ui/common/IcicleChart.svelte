@@ -8,6 +8,7 @@
   can be swapped in the same UI area.
 -->
 <script lang="ts">
+	import { tr } from "../../i18n";
 	import { createEventDispatcher } from 'svelte';
 	import type { AccountItem } from '../../controllers/BalanceSheetController';
 
@@ -22,7 +23,7 @@
 	export let totalAssets: number        = 0;
 	export let totalLiabilities: number   = 0;
 	export let totalEquity: number        = 0;
-	export let title: string              = 'All Accounts';
+	export let title: string              = $tr("All Accounts");
 	// Optional overrides for section labels (used e.g. for Income Statement)
 	export let assetsLabel: string              = 'Assets';
 	export let liabilitiesLabel: string         = 'Liabilities';
@@ -272,7 +273,7 @@
 <div class="icicle-root">
 
 	<!-- Breadcrumb navigation -->
-	<nav class="icicle-breadcrumb" aria-label="Account hierarchy breadcrumb">
+	<nav class="icicle-breadcrumb" aria-label={$tr("Account hierarchy breadcrumb")}>
 		<button
 			class="crumb-btn"
 			class:active={drillStack.length === 0}
@@ -302,7 +303,7 @@
 			viewBox="0 0 {chartWidth} {CHART_V}"
 			class="icicle-svg"
 			role="img"
-			aria-label="Icicle chart"
+			aria-label={$tr("Icicle chart")}
 		>
 			<defs>
 				<!-- Diagonal-stripe hatch for anomalous (unexpected-sign) accounts -->
@@ -330,7 +331,7 @@
 					role="button"
 					tabindex="0"
 					aria-label="{node.path}: {node.amount}"
-					title={node.sourceItem?.children?.length ? 'Click to drill in · Ctrl/Cmd+click: view in Transactions' : 'Ctrl/Cmd+click: view in Transactions'}
+					title={node.sourceItem?.children?.length ? $tr("Click to drill in · Ctrl/Cmd+click: view in Transactions") : $tr("Ctrl/Cmd+click: view in Transactions")}
 					on:keydown={(e) => e.key === 'Enter' && onRectClick(node, e)}
 				/>
 				<!-- Stripe overlay for anomalous-sign accounts -->
@@ -384,7 +385,7 @@
 				<div class="tt-path">{hoveredNode.path}</div>
 				<div class="tt-amount">{hoveredNode.amount}</div>
 				{#if hoveredNode.sourceItem?.children?.length}
-					<div class="tt-hint">Click to drill down ›</div>
+					<div class="tt-hint">{$tr("Click to drill down ›")}</div>
 				{/if}
 			</div>
 		{/if}
@@ -392,7 +393,7 @@
 
 	<!-- Legend (shown at root level only) -->
 	{#if drillStack.length === 0}
-		<div class="icicle-legend" aria-label="Chart legend">
+		<div class="icicle-legend" aria-label={$tr("Chart legend")}>
 			{#if Math.abs(totalAssets) > 0.001}
 				<span class="legend-item">
 					<span class="legend-dot legend-assets"></span>
@@ -426,13 +427,13 @@
 				<rect width="14" height="14" rx="2" fill="var(--background-modifier-border)" />
 				<rect width="14" height="14" rx="2" fill="url(#icicle-hatch-hint-pat)" />
 			</svg>
-			Stripes = unexpected sign
+			{$tr("Stripes = unexpected sign")}
 		</p>
 	{/if}
 
 	<!-- Empty state -->
 	{#if grandTotal < 0.001}
-		<p class="icicle-empty">No data to display. Load your balance sheet first.</p>
+		<p class="icicle-empty">{$tr("No data to display. Load your balance sheet first.")}</p>
 	{/if}
 
 </div>

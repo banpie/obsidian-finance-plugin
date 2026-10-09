@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { locale } from '../../i18n';
+	import { localizeChartConfig } from '../../i18n/chart';
 	import { onMount, onDestroy, beforeUpdate } from 'svelte';
 	// Import necessary types and Chart.js itself
 	import Chart, { type ChartConfiguration, type ChartItem } from 'chart.js/auto';
@@ -11,18 +13,20 @@
 	let canvasElement: HTMLCanvasElement; // Reference to the canvas element
 	let chartInstance: Chart | null = null; // Reference to the Chart.js instance
 
+	$: localizedConfig = config ? localizeChartConfig(config, $locale) : config;
+
 	// Function to create or update the chart
 	function renderChart() {
 		if (!canvasElement || !config) return;
 
 		// If a chart instance exists, update it
 		if (chartInstance) {
-			chartInstance.data = config.data; // Update data
-			chartInstance.options = config.options || {}; // Update options
+			chartInstance.data = localizedConfig.data; // Update data
+			chartInstance.options = localizedConfig.options || {}; // Update options
 			chartInstance.update(); // Redraw the chart
 		} else {
 			// Otherwise, create a new chart instance
-			chartInstance = new Chart(canvasElement as ChartItem, config);
+			chartInstance = new Chart(canvasElement as ChartItem, localizedConfig);
 		}
 	}
 

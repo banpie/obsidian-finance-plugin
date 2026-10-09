@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	type PeriodMode = 'month' | 'year';
 	type PeriodPreset = 'this-month' | 'last-month' | 'this-year' | 'last-year' | 'custom-month' | 'custom-year';
 
@@ -33,19 +34,20 @@
 		{ value: 12, label: '12' },
 	];
 
-	const periodPresets: Array<{ value: PeriodPreset; label: string }> = [
-		{ value: 'this-month', label: 'This Month' },
-		{ value: 'last-month', label: 'Last Month' },
-		{ value: 'this-year', label: 'This Year' },
-		{ value: 'last-year', label: 'Last Year' },
+	let periodPresets: Array<{ value: PeriodPreset; label: string }>;
+	$: periodPresets = [
+		{ value: 'this-month', label: $tr("This Month") },
+		{ value: 'last-month', label: $tr("Last Month") },
+		{ value: 'this-year', label: $tr("This Year") },
+		{ value: 'last-year', label: $tr("Last Year") },
 	];
 
 	$: normalizedMonth = Math.min(12, Math.max(1, Math.trunc(month || 1)));
 	$: displayLabel = periodMode === 'year' ? String(year) : `${year}-${pad2(normalizedMonth)}`;
-	$: modeLabel = periodMode === 'year' ? 'Year' : 'Month';
-	$: presetLabel = periodPresets.find(item => item.value === periodPreset)?.label || (periodMode === 'year' ? 'Custom Year' : 'Custom Month');
-	$: previousLabel = `Previous ${modeLabel.toLowerCase()}`;
-	$: nextLabel = `Next ${modeLabel.toLowerCase()}`;
+	$: modeLabel = periodMode === 'year' ? $tr("Year") : $tr("Month");
+	$: presetLabel = periodPresets.find(item => item.value === periodPreset)?.label || (periodMode === 'year' ? $tr("Custom Year") : $tr("Custom Month"));
+	$: previousLabel = periodMode === 'year' ? $tr('Previous year') : $tr('Previous month');
+	$: nextLabel = periodMode === 'year' ? $tr('Next year') : $tr('Next month');
 
 	function pad2(value: number): string {
 		return String(value).padStart(2, '0');
@@ -121,7 +123,7 @@
 <div class="period-navigator">
 	<div class="period-main">
 		<div class="period-stepper-wrap">
-			<div class="period-stepper" aria-label="Selected reporting period">
+			<div class="period-stepper" aria-label={$tr("Selected reporting period")}>
 				<button type="button" class="icon-button" on:click={() => handleMovePeriod(-1)} disabled={disabled} aria-label={previousLabel} title={previousLabel}>←</button>
 				<button
 					type="button"
@@ -129,7 +131,7 @@
 					on:click={openPicker}
 					disabled={disabled}
 					aria-expanded={showPicker}
-					title="Choose exact period"
+					title={$tr("Choose exact period")}
 				>
 					<span class="current-period">{displayLabel}</span>
 					<span class="current-preset">{presetLabel}</span>
@@ -138,15 +140,15 @@
 			</div>
 
 			{#if showPicker}
-				<div class="exact-picker" role="dialog" aria-label="Choose exact period">
+				<div class="exact-picker" role="dialog" aria-label={$tr("Choose exact period")}>
 					<div class="exact-picker-fields">
 						<label>
-							<span>Year</span>
+							<span>{$tr("Year")}</span>
 							<input type="number" min="1970" max="9999" step="1" value={draftYear} on:input={handleYearChange} on:keydown={handlePickerKeydown} disabled={disabled} />
 						</label>
 						{#if periodMode === 'month'}
 							<label>
-								<span>Month</span>
+								<span>{$tr("Month")}</span>
 								<select value={draftMonth} on:change={handleMonthChange} on:keydown={handlePickerKeydown} disabled={disabled}>
 									{#each months as monthOption}
 										<option value={monthOption.value}>{monthOption.label}</option>
@@ -156,22 +158,22 @@
 						{/if}
 					</div>
 					<div class="exact-picker-actions">
-						<button type="button" class="secondary-button" on:click={cancelPicker}>Cancel</button>
-						<button type="button" class="primary-button" on:click={applyPicker} disabled={disabled}>Apply</button>
+						<button type="button" class="secondary-button" on:click={cancelPicker}>{$tr("Cancel")}</button>
+						<button type="button" class="primary-button" on:click={applyPicker} disabled={disabled}>{$tr("Apply")}</button>
 					</div>
 				</div>
 			{/if}
 		</div>
 
-		<div class="segmented-control period-mode" aria-label="Period mode">
-			<button type="button" class:active={periodMode === 'month'} on:click={() => handleModeChange('month')} disabled={disabled}>Month</button>
-			<button type="button" class:active={periodMode === 'year'} on:click={() => handleModeChange('year')} disabled={disabled}>Year</button>
+		<div class="segmented-control period-mode" aria-label={$tr("Period mode")}>
+			<button type="button" class:active={periodMode === 'month'} on:click={() => handleModeChange('month')} disabled={disabled}>{$tr("Month")}</button>
+			<button type="button" class:active={periodMode === 'year'} on:click={() => handleModeChange('year')} disabled={disabled}>{$tr("Year")}</button>
 		</div>
 
-		<button type="button" class="refresh-button" on:click={handleRefresh} disabled={disabled}>Refresh</button>
+		<button type="button" class="refresh-button" on:click={handleRefresh} disabled={disabled}>{$tr("Refresh")}</button>
 	</div>
 
-	<div class="quick-presets" aria-label="Quick period presets">
+	<div class="quick-presets" aria-label={$tr("Quick period presets")}>
 		{#each periodPresets as preset}
 			<button
 				type="button"

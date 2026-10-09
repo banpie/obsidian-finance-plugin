@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // src/controllers/OverviewController.ts
 
 import { writable, type Writable, get } from 'svelte/store';
@@ -99,7 +100,7 @@ export class OverviewController {
 			this.state.set({
 				...get(this.state), // Svelte 4/5 way to get current value
 				isLoading: false,
-				error: "Operating currency is not set in plugin settings.",
+				error: t("Operating currency is not set in plugin settings."),
 			});
 			return;
 		}
@@ -141,7 +142,7 @@ export class OverviewController {
 			if (!this.isCurrentLoad(loadRevision, activeProfileId)) return;
 			Logger.error("Error loading overview data:", e);
 			const errMsg = e instanceof Error ? e.message : String(e);
-			this.state.update(s => ({ ...s, isLoading: false, error: `Failed to load data: ${errMsg}` }));
+			this.state.update(s => ({ ...s, isLoading: false, error: t("Failed to load data: {0}", [errMsg]) }));
 		}
 	}
 

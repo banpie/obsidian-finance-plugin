@@ -1,8 +1,9 @@
 <!-- src/ui/common/EmptyState.svelte -->
 <script lang="ts">
+	import { tr } from "../../i18n";
 	export let icon: string = '🔍';
-	export let title: string = 'No Data Found';
-	export let description: string = 'We couldn\'t find any records matching your criteria.';
+	export let title: string = $tr("No Data Found");
+	export let description: string = $tr("We couldn't find any records matching your criteria.");
 </script>
 
 <div class="empty-state-container">

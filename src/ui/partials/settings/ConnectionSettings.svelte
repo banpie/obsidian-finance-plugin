@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import { onMount, createEventDispatcher } from "svelte";
 	import { Notice } from "obsidian";
 	import type BeancountPlugin from "../../../main";
@@ -236,7 +237,7 @@
 			validationResult = {
 				isValid: false,
 				message:
-					"No beancount folder configured. Please run onboarding first.",
+					$tr("No beancount folder configured. Please run onboarding first."),
 			};
 			return;
 		}
@@ -256,21 +257,21 @@
 			if (allValid) {
 				validationResult = {
 					isValid: true,
-					message: "✅ All bean-query commands tested successfully!",
+					message: $tr("✅ All bean-query commands tested successfully!"),
 				};
-				new Notice("✅ Bean-query commands validated successfully");
+				new Notice($tr("✅ Bean-query commands validated successfully"));
 			} else {
 				validationResult = {
 					isValid: false,
 					message:
-						"❌ Some command tests failed - check individual results",
+						$tr("❌ Some command tests failed - check individual results"),
 				};
-				new Notice("❌ Some Beancount command tests failed");
+				new Notice($tr("❌ Some Beancount command tests failed"));
 			}
 		} catch (error) {
 			validationResult = {
 				isValid: false,
-				message: `❌ Error during validation: ${error.message}`,
+				message: $tr("❌ Error during validation: {0}", [error.message]),
 			};
 		} finally {
 			isValidating = false;
@@ -337,7 +338,7 @@
 
 	async function saveCommandEdit() {
 		if (!editedBeanQueryCommand.trim()) {
-			new Notice("❌ Command cannot be empty");
+			new Notice($tr("❌ Command cannot be empty"));
 			return;
 		}
 		plugin.settings.beancountCommand = editedBeanQueryCommand.trim();
@@ -346,7 +347,7 @@
 		commandVerificationStatus = "idle";
 		commandVerificationMessage = "";
 		await detectCurrentCommands();
-		new Notice("✅ Command saved successfully");
+		new Notice($tr("✅ Command saved successfully"));
 		dispatch("settingsChanged", {
 			beancountCommand: editedBeanQueryCommand.trim(),
 		});
@@ -371,7 +372,7 @@
 		beanPriceVerificationStatus = "idle";
 		beanPriceVerificationMessage = "";
 		await detectCurrentCommands();
-		new Notice("✅ Bean-price command saved");
+		new Notice($tr("✅ Bean-price command saved"));
 	}
 
 	async function verifyCommand() {
@@ -401,11 +402,11 @@
 			if (result.success) {
 				commandVerificationStatus = "success";
 				commandVerificationMessage = "Command verified successfully";
-				new Notice("✅ Command verified successfully");
+				new Notice($tr("✅ Command verified successfully"));
 			} else {
 				commandVerificationStatus = "error";
 				commandVerificationMessage = `Verification failed: ${result.error || "Unknown error"}`;
-				new Notice("❌ Command verification failed");
+				new Notice($tr("❌ Command verification failed"));
 			}
 		} catch (error) {
 			commandVerificationStatus = "error";
@@ -438,11 +439,11 @@
 				beanPriceVerificationStatus = "success";
 				beanPriceVerificationMessage =
 					"bean-price found and responsive";
-				new Notice("✅ bean-price verified");
+				new Notice($tr("✅ bean-price verified"));
 			} else {
 				beanPriceVerificationStatus = "error";
 				beanPriceVerificationMessage = `Not found: ${result.error || "Command failed"}`;
-				new Notice("❌ bean-price verification failed");
+				new Notice($tr("❌ bean-price verification failed"));
 			}
 		} catch (error) {
 			beanPriceVerificationStatus = "error";
@@ -461,27 +462,27 @@
 
 <div class="connection-settings">
 	<div class="system-info">
-		<h4>🖥️ System Information</h4>
+		<h4>{$tr("🖥️ System Information")}</h4>
 		<div class="system-grid">
 			<div class="system-card">
 				<div class="card-header">
 					<span class="card-icon">💻</span>
-					<h5>System Platform</h5>
+					<h5>{$tr("System Platform")}</h5>
 				</div>
 				<div class="card-content">
 					{#if systemInfo}
 						<div class="info-item">
-							<span class="label">OS:</span>
+							<span class="label">{$tr("OS:")}</span>
 							<span class="value"
 								>{systemInfo.platformDisplay}</span
 							>
 						</div>
 						<div class="info-item">
-							<span class="label">Architecture:</span>
+							<span class="label">{$tr("Architecture:")}</span>
 							<span class="value">{systemInfo.arch}</span>
 						</div>
 					{:else}
-						<div class="loading">Loading system info...</div>
+						<div class="loading">{$tr("Loading system info...")}</div>
 					{/if}
 				</div>
 			</div>
@@ -489,36 +490,36 @@
 			<div class="system-card">
 				<div class="card-header">
 					<span class="card-icon">⚡</span>
-					<h5>Terminal Specification</h5>
+					<h5>{$tr("Terminal Specification")}</h5>
 				</div>
 				<div class="card-content">
 					{#if systemInfo}
 						<div class="info-item">
-							<span class="label">Shell:</span>
+							<span class="label">{$tr("Shell:")}</span>
 							<span class="value">{systemInfo.shell}</span>
 						</div>
 						<div class="info-item">
-							<span class="label">Environment:</span>
+							<span class="label">{$tr("Environment:")}</span>
 							<span class="value">
 								{#if systemInfo.isWSL}
-									🐧 WSL Environment
+									{$tr("🐧 WSL Environment")}
 								{:else if platform === "win32"}
-									🪟 Windows Native
+									{$tr("🪟 Windows Native")}
 								{:else}
-									🖥️ System Native
+									{$tr("🖥️ System Native")}
 								{/if}
 							</span>
 						</div>
 						<div class="info-item">
-							<span class="label">Path Format:</span>
+							<span class="label">{$tr("Path Format:")}</span>
 							<span class="value"
 								>{systemInfo.pathSeparator === "\\"
-									? "Windows (\\)"
-									: "Unix (/)"}</span
+									? $tr("Windows (\\)")
+									: $tr("Unix (/)")}</span
 							>
 						</div>
 					{:else}
-						<div class="loading">Loading terminal info...</div>
+						<div class="loading">{$tr("Loading terminal info...")}</div>
 					{/if}
 				</div>
 			</div>
@@ -526,7 +527,7 @@
 	</div>
 
 	<div class="commands-section">
-		<h4>⚙️ Commands</h4>
+		<h4>{$tr("⚙️ Commands")}</h4>
 
 		<div class="command-config">
 			<!-- Bean Query -->
@@ -534,7 +535,7 @@
 				<div class="command-info-header">
 					<div class="command-title">
 						<span class="command-icon">🔹</span>
-						<span class="command-name">Bean Query Command</span>
+						<span class="command-name">{$tr("Bean Query Command")}</span>
 					</div>
 					{#if optimalCommands.beanQueryVersion}
 						<span class="command-version-badge"
@@ -566,28 +567,27 @@
 							<button
 								class="action-btn edit-btn"
 								on:click={enableCommandEdit}
-								title="Edit command">✏️ Edit</button
+								title={$tr("Edit command")}>{$tr("✏️ Edit")}</button
 							>
 							<button
 								class="action-btn verify-btn"
 								on:click={verifyCommand}
 								disabled={isVerifyingCommand ||
 									!plugin.settings.beancountCommand}
-								title="Verify command works"
+								title={$tr("Verify command works")}
 							>
-								{#if isVerifyingCommand}🔄 Verifying...{:else}✓
-									Verify{/if}
+								{#if isVerifyingCommand}{$tr("🔄 Verifying...")}{:else}{$tr("✓\n\t\t\t\t\t\t\t\t\tVerify")}{/if}
 							</button>
 						{:else}
 							<button
 								class="action-btn save-btn"
 								on:click={saveCommandEdit}
 								disabled={!editedBeanQueryCommand.trim()}
-								>💾 Save</button
+								>{$tr("💾 Save")}</button
 							>
 							<button
 								class="action-btn cancel-btn"
-								on:click={cancelCommandEdit}>✖ Cancel</button
+								on:click={cancelCommandEdit}>{$tr("✖ Cancel")}</button
 							>
 						{/if}
 					</div>
@@ -614,9 +614,8 @@
 
 				<div class="command-help">
 					<p class="help-text">
-						Executes BQL queries against your Beancount file. Common
-						values: <code>bean-query</code>,
-						<code>wsl bean-query</code>, or
+						{$tr("Executes BQL queries against your Beancount file. Common\n\t\t\t\t\t\tvalues:")} <code>bean-query</code>,
+						<code>wsl bean-query</code>{$tr(", or")}
 						<code>python3 -m beancount.query</code>
 					</p>
 				</div>
@@ -628,8 +627,8 @@
 					<div class="command-title">
 						<span class="command-icon">💹</span>
 						<span class="command-name"
-							>Bean Price Command <span class="optional-badge"
-								>optional</span
+							>{$tr("Bean Price Command")} <span class="optional-badge"
+								>{$tr("optional")}</span
 							></span
 						>
 					</div>
@@ -654,7 +653,7 @@
 							class="command-input"
 							value={plugin.settings.beanPriceCommand}
 							disabled
-							placeholder="Not detected — install: pip install beanprice"
+							placeholder={$tr("Not detected — install: pip install beanprice")}
 						/>
 					{/if}
 
@@ -663,26 +662,25 @@
 							<button
 								class="action-btn edit-btn"
 								on:click={enableBeanPriceEdit}
-								title="Edit command">✏️ Edit</button
+								title={$tr("Edit command")}>{$tr("✏️ Edit")}</button
 							>
 							<button
 								class="action-btn verify-btn"
 								on:click={verifyBeanPriceCommand}
 								disabled={isVerifyingBeanPriceCommand ||
 									!plugin.settings.beanPriceCommand}
-								title="Verify bean-price works"
+								title={$tr("Verify bean-price works")}
 							>
-								{#if isVerifyingBeanPriceCommand}🔄 Verifying...{:else}✓
-									Verify{/if}
+								{#if isVerifyingBeanPriceCommand}{$tr("🔄 Verifying...")}{:else}{$tr("✓\n\t\t\t\t\t\t\t\t\tVerify")}{/if}
 							</button>
 						{:else}
 							<button
 								class="action-btn save-btn"
-								on:click={saveBeanPriceEdit}>💾 Save</button
+								on:click={saveBeanPriceEdit}>{$tr("💾 Save")}</button
 							>
 							<button
 								class="action-btn cancel-btn"
-								on:click={cancelBeanPriceEdit}>✖ Cancel</button
+								on:click={cancelBeanPriceEdit}>{$tr("✖ Cancel")}</button
 							>
 						{/if}
 					</div>
@@ -710,9 +708,8 @@
 
 				<div class="command-help">
 					<p class="help-text">
-						Used for automated commodity price fetching. Install
-						with <code>pip install beanprice</code>. Common values:
-						<code>bean-price</code>, <code>wsl bean-price</code>, or
+						{$tr("Used for automated commodity price fetching. Install\n\t\t\t\t\t\twith")} <code>pip install beanprice</code>{$tr(". Common values:")}
+						<code>bean-price</code>, <code>wsl bean-price</code>{$tr(", or")}
 						<code>python3 -m beancount.scripts.price</code>
 					</p>
 				</div>

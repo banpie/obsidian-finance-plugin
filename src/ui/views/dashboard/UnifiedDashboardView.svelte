@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr, type LanguagePreference } from "../../../i18n";
     import { onMount } from 'svelte';
 
     // Components
@@ -32,6 +33,7 @@
     export let ledgerProfileName = '';
     export let ledgerProfiles: Array<{ id: string; name: string; readOnly?: boolean }> = [];
     export let activeLedgerProfileId = '';
+    export let languagePreference: LanguagePreference = 'auto';
 
     export let activeTab = 'overview';
     let isSwitchingLedger = false;
@@ -70,14 +72,19 @@
         isSwitchingLedger = false;
     }
 
-    const tabs = [
-        { value: 'overview', label: 'Overview' },
-        { value: 'reports', label: 'Reports' },
-        { value: 'transactions', label: 'Transactions' },
-        { value: 'journal', label: 'Journal' },
-        { value: 'balancesheet', label: 'Accounts & Balances' },
-        { value: 'incomestatement', label: 'Income Statement' },
-        { value: 'commodities', label: 'Commodities' }
+    async function handleLanguageChange(event: Event) {
+        languagePreference = (event.currentTarget as HTMLSelectElement).value as LanguagePreference;
+        await plugin?.changeLanguage(languagePreference);
+    }
+
+    $: tabs = [
+        { value: 'overview', label: $tr("Overview") },
+        { value: 'reports', label: $tr("Reports") },
+        { value: 'transactions', label: $tr("Transactions") },
+        { value: 'journal', label: $tr("Journal") },
+        { value: 'balancesheet', label: $tr("Accounts & Balances") },
+        { value: 'incomestatement', label: $tr("Income Statement") },
+        { value: 'commodities', label: $tr("Commodities") }
     ];
 </script>
 
@@ -85,24 +92,29 @@
 
     {#if ledgerProfiles.length > 0}
         <div class="ledger-profile-bar">
-            <label for="ledger-profile-switcher">账套</label>
+            <label for="ledger-profile-switcher">{$tr("账套")}</label>
             <select
                 id="ledger-profile-switcher"
                 value={activeLedgerProfileId}
                 disabled={isSwitchingLedger}
                 on:change={handleLedgerProfileChange}
-                aria-label="切换账套"
+                aria-label={$tr("切换账套")}
             >
                 {#each ledgerProfiles as profile}
-                    <option value={profile.id}>{profile.name}{profile.readOnly ? '（只读）' : ''}</option>
+                    <option value={profile.id}>{profile.name}{profile.readOnly ? $tr("（只读）") : ''}</option>
                 {/each}
             </select>
         </div>
     {:else if ledgerProfileName}
-        <div class="ledger-profile-bar">账套：{ledgerProfileName}</div>
+        <div class="ledger-profile-bar">{$tr("账套：")}{ledgerProfileName}</div>
     {/if}
     <div class="tabs-header">
-        <TabBar {tabs} bind:value={activeTab} fullWidth={false} ariaLabel="Dashboard sections" />
+        <TabBar {tabs} bind:value={activeTab} fullWidth={false} ariaLabel={$tr("Dashboard sections")} />
+        <select class="language-switcher" value={languagePreference} on:change={handleLanguageChange} aria-label={$tr('Interface language')} title={$tr('Interface language')}>
+            <option value="auto">{$tr('Follow Obsidian')}</option>
+            <option value="zh-CN">简体中文</option>
+            <option value="en">English</option>
+        </select>
     </div>
 
     <div class="tab-content">
@@ -143,6 +155,15 @@
         border-bottom: 1px solid var(--background-modifier-border);
         background: var(--background-secondary);
         overflow-x: auto;
+        align-items: center;
+        gap: var(--size-4-3);
+    }
+
+    .language-switcher {
+        margin-left: auto;
+        flex-shrink: 0;
+        font-size: var(--font-ui-small);
+        max-width: 10rem;
     }
 
     .ledger-profile-bar {

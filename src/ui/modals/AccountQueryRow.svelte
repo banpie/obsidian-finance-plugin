@@ -2,6 +2,7 @@
 <!-- One account input row, used repeatedly by AddBudgetModal/AddTargetModal to build a
      multi-account query (e.g. Expenses:(Rent|Utility)) from individually picked accounts. -->
 <script lang="ts">
+	import { tr } from "../../i18n";
 	import { createEventDispatcher } from 'svelte';
 
 	const dispatch = createEventDispatcher();
@@ -16,8 +17,8 @@
 		? accounts.filter((a) => a.toLowerCase().includes(value.toLowerCase()))
 		: accounts;
 	$: summary = value
-		? `${filteredAccounts.length} matching account${filteredAccounts.length === 1 ? '' : 's'}`
-		: `${accounts.length} account${accounts.length === 1 ? '' : 's'} available. Type to filter.`;
+		? $tr("{0} matching account{1}", [filteredAccounts.length, filteredAccounts.length === 1 ? '' : 's'])
+		: $tr("{0} account{1} available. Type to filter.", [accounts.length, accounts.length === 1 ? '' : 's']);
 	let showDropdown = false;
 
 	function selectAccount(acc: string) {
@@ -50,13 +51,13 @@
 						<li on:mousedown|preventDefault={() => selectAccount(acc)}>{acc}</li>
 					{/each}
 				{:else}
-					<li class="autocomplete-empty">No accounts match your filter.</li>
+					<li class="autocomplete-empty">{$tr("No accounts match your filter.")}</li>
 				{/if}
 			</ul>
 		{/if}
 	</div>
 	{#if showRemove}
-		<button type="button" class="remove-row-btn" aria-label="Remove account" on:click={remove}>&times;</button>
+		<button type="button" class="remove-row-btn" aria-label={$tr("Remove account")} on:click={remove}>&times;</button>
 	{/if}
 </div>
 

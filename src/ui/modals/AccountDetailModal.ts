@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 // src/ui/modals/AccountDetailModal.ts
 
 import { App, Modal, Notice } from 'obsidian';
@@ -43,7 +44,7 @@ export class AccountDetailModal extends Modal {
 			detail = await getAccountDetail(this.plugin, this.account);
 		} catch (e) {
 			Logger.error('[AccountDetailModal] Failed to load account detail:', e);
-			new Notice('Failed to load account details.');
+			new Notice(t("Failed to load account details."));
 			this.close();
 			return;
 		}
@@ -80,7 +81,7 @@ export class AccountDetailModal extends Modal {
 
 	private async handleSaveReconcile(reconcileDays: number | null, detail: { filename: string | null; lineno: number | null }) {
 		if (!detail.filename || !detail.lineno) {
-			new Notice('Could not locate this account in the ledger file.');
+			new Notice(t("Could not locate this account in the ledger file."));
 			return;
 		}
 		const createBackup = this.plugin.settings.createBackups ?? true;
@@ -93,10 +94,10 @@ export class AccountDetailModal extends Modal {
 			createBackup
 		);
 		if (!result.success) {
-			new Notice(`Failed to save: ${result.error || 'Unknown error'}`);
+			new Notice(t("Failed to save: {0}", [result.error || 'Unknown error']));
 			return;
 		}
-		new Notice('Reconciliation interval updated');
+		new Notice(t("Reconciliation interval updated"));
 		await this.refresh();
 	}
 

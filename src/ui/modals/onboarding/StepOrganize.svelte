@@ -1,5 +1,6 @@
 <!-- src/ui/modals/onboarding/StepOrganize.svelte -->
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import FolderTreePreview from './FolderTreePreview.svelte';
 
 	export let beanQueryValid = false;
@@ -20,13 +21,12 @@
 </script>
 
 <p class="step-description">
-	Choose how to start and configure your folder layout. All your finance files will be organized in a single folder.
+	{$tr("Choose how to start and configure your folder layout. All your finance files will be organized in a single folder.")}
 </p>
 
 {#if !beanQueryValid}
 	<div class="onboarding-warning-callout">
-		<strong>⚠️ bean-query not configured</strong> — Dashboard features won't work until it's set up in Settings → Connection.
-		You can still create the folder structure with demo data now.
+		<strong>{$tr("⚠️ bean-query not configured")}</strong> {$tr("— Dashboard features won't work until it's set up in Settings → Connection.\n\t\tYou can still create the folder structure with demo data now.")}
 	</div>
 {/if}
 
@@ -40,10 +40,10 @@
 		on:click={() => onSelectDataChoice('demo')}
 		on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelectDataChoice('demo'); }}
 	>
-		<div class="card-badge">✨ Recommended for beginners</div>
+		<div class="card-badge">{$tr("✨ Recommended for beginners")}</div>
 		<div class="card-icon">📊</div>
-		<h4>Start with Demo Data</h4>
-		<p>A complete sample ledger with realistic accounts and transactions so you can explore the dashboard immediately.</p>
+		<h4>{$tr("Start with Demo Data")}</h4>
+		<p>{$tr("A complete sample ledger with realistic accounts and transactions so you can explore the dashboard immediately.")}</p>
 	</div>
 
 	<div
@@ -56,10 +56,10 @@
 		on:keydown={(e) => { if (beanQueryValid && (e.key === 'Enter' || e.key === ' ')) onSelectDataChoice('existing'); }}
 	>
 		<div class="card-icon">📁</div>
-		<h4>Use My Existing Ledger</h4>
-		<p>Select your existing Beancount file to migrate it into the structured folder layout.</p>
+		<h4>{$tr("Use My Existing Ledger")}</h4>
+		<p>{$tr("Select your existing Beancount file to migrate it into the structured folder layout.")}</p>
 		{#if !beanQueryValid}
-			<div class="card-disabled-hint">Requires bean-query</div>
+			<div class="card-disabled-hint">{$tr("Requires bean-query")}</div>
 		{/if}
 	</div>
 </div>
@@ -70,12 +70,12 @@
 		{#if dataChoice === 'existing'}
 			<div class="setting-item">
 				<div class="setting-item-info">
-					<div class="setting-item-name">Select Beancount file</div>
+					<div class="setting-item-name">{$tr("Select Beancount file")}</div>
 					<div class="setting-item-description">
 						{#if beancountFiles.length > 0}
-							Choose your existing Beancount file from your vault
+							{$tr("Choose your existing Beancount file from your vault")}
 						{:else}
-							No <code>.beancount</code> files were found in your vault
+							{$tr("No")} <code>.beancount</code> {$tr("files were found in your vault")}
 						{/if}
 					</div>
 				</div>
@@ -87,7 +87,7 @@
 							{/each}
 						</select>
 					{:else}
-						<span class="no-files-badge">No files found</span>
+						<span class="no-files-badge">{$tr("No files found")}</span>
 					{/if}
 				</div>
 			</div>
@@ -96,8 +96,8 @@
 		<!-- Structured Folder Name -->
 		<div class="setting-item">
 			<div class="setting-item-info">
-				<div class="setting-item-name">Folder name</div>
-				<div class="setting-item-description">Folder in your vault where organized finance files will live</div>
+				<div class="setting-item-name">{$tr("Folder name")}</div>
+				<div class="setting-item-description">{$tr("Folder in your vault where organized finance files will live")}</div>
 			</div>
 			<div class="setting-item-control">
 				<input type="text" bind:value={structuredFolderName} placeholder="Finances" class:is-invalid={!isFolderNameValid} />
@@ -110,13 +110,13 @@
 		<!-- Transaction File Period -->
 		<div class="setting-item">
 			<div class="setting-item-info">
-				<div class="setting-item-name">Transaction file period</div>
-				<div class="setting-item-description">How transaction files are organized inside the folder</div>
+				<div class="setting-item-name">{$tr("Transaction file period")}</div>
+				<div class="setting-item-description">{$tr("How transaction files are organized inside the folder")}</div>
 			</div>
 			<div class="setting-item-control">
 				<select bind:value={fileOrganization}>
-					<option value="yearly">Yearly (e.g. 2026.beancount)</option>
-					<option value="monthly">Monthly (e.g. 2026/2026-07.beancount)</option>
+					<option value="yearly">{$tr("Yearly (e.g. 2026.beancount)")}</option>
+					<option value="monthly">{$tr("Monthly (e.g. 2026/2026-07.beancount)")}</option>
 				</select>
 			</div>
 		</div>
@@ -124,8 +124,8 @@
 		<!-- Operating Currency -->
 		<div class="setting-item">
 			<div class="setting-item-info">
-				<div class="setting-item-name">Operating currency</div>
-				<div class="setting-item-description">Primary currency for your financial records</div>
+				<div class="setting-item-name">{$tr("Operating currency")}</div>
+				<div class="setting-item-description">{$tr("Primary currency for your financial records")}</div>
 			</div>
 			<div class="setting-item-control">
 				<input
@@ -140,7 +140,7 @@
 
 		{#if dataChoice === 'demo'}
 			<p class="currency-hint">
-				💡 Demo data uses USD. You can change the currency later in Settings.
+				{$tr("💡 Demo data uses USD. You can change the currency later in Settings.")}
 			</p>
 		{/if}
 
@@ -151,15 +151,15 @@
 
 <!-- Action buttons -->
 <div class="action-row">
-	<button on:click={onBack}>← Back</button>
+	<button on:click={onBack}>{$tr("← Back")}</button>
 	<div class="action-buttons">
-		<button class="mod-warning" on:click={onCancel}>Cancel</button>
+		<button class="mod-warning" on:click={onCancel}>{$tr("Cancel")}</button>
 		<button
 			class="mod-cta"
 			on:click={onSubmit}
 			disabled={isSubmitting || !dataChoice || !isFolderNameValid || (dataChoice === 'existing' && beancountFiles.length === 0)}
 		>
-			{isSubmitting ? '⏳ Setting up…' : '🚀 Set Up'}
+			{isSubmitting ? $tr("⏳ Setting up…") : $tr("🚀 Set Up")}
 		</button>
 	</div>
 </div>

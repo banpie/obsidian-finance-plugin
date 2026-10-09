@@ -1,5 +1,6 @@
 <!-- src/ui/modals/CommodityCreateModal.svelte -->
 <script lang="ts">
+	import { tr } from "../../i18n";
     import { createEventDispatcher } from 'svelte';
     import { nativeDatePicker } from '../actions/nativeDatePicker';
 
@@ -106,12 +107,12 @@
 </script>
 
 <div class="commodity-create-modal">
-    <h2>Add New Commodity</h2>
+    <h2>{$tr("Add New Commodity")}</h2>
 
     <div class="form-grid">
         <div class="form-group">
             <label for="symbol">
-                Symbol <span class="required">*</span>
+                {$tr("Symbol")} <span class="required">*</span>
             </label>
             <input
                 id="symbol"
@@ -125,12 +126,12 @@
             {#if symbolError}
                 <div class="error-message">{symbolError}</div>
             {/if}
-            <div class="hint">Uppercase alphanumeric recommended (e.g., BTC, AAPL)</div>
+            <div class="hint">{$tr("Uppercase alphanumeric recommended (e.g., BTC, AAPL)")}</div>
         </div>
 
         <div class="form-group">
             <label for="date">
-                Date <span class="required">*</span>
+                {$tr("Date")} <span class="required">*</span>
             </label>
             <input
                 id="date"
@@ -139,12 +140,12 @@
                 use:nativeDatePicker
                 required
             />
-            <div class="hint">Date when the commodity was first introduced</div>
+            <div class="hint">{$tr("Date when the commodity was first introduced")}</div>
         </div>
 
         <div class="form-group full-width">
             <label for="priceMetadata">
-                Price Source <span class="optional">(optional)</span>
+                {$tr("Price Source")} <span class="optional">{$tr("(optional)")}</span>
             </label>
             <div class="input-with-button">
                 <input
@@ -158,18 +159,18 @@
                     disabled={testingPrice || !priceMetadata.trim()}
                     class="test-button"
                 >
-                    {testingPrice ? '⏳' : '🧪'} Test
+                    {testingPrice ? '⏳' : '🧪'} {$tr("Test")}
                 </button>
             </div>
             {#if priceTestResult}
                 <div class="test-result">{priceTestResult}</div>
             {/if}
-            <div class="hint">Price source for automated price fetching (e.g., yahoo/AAPL)</div>
+            <div class="hint">{$tr("Price source for automated price fetching (e.g., yahoo/AAPL)")}</div>
         </div>
 
         <div class="form-group full-width">
             <label for="logoUrl">
-                Logo URL <span class="optional">(optional)</span>
+                {$tr("Logo URL")} <span class="optional">{$tr("(optional)")}</span>
             </label>
             <div class="input-with-button">
                 <input
@@ -184,7 +185,7 @@
                     disabled={testingLogo || !logoUrl.trim()}
                     class="test-button"
                 >
-                    {testingLogo ? '⏳' : '🧪'} Test
+                    {testingLogo ? '⏳' : '🧪'} {$tr("Test")}
                 </button>
             </div>
             {#if logoTestResult}
@@ -194,25 +195,25 @@
                 <div class="logo-preview">
                     <img 
                         src={logoPreview} 
-                        alt="Logo preview" 
+                        alt={$tr("Logo preview")}
                         on:error={handleLogoError}
                     />
                 </div>
             {/if}
-            <div class="hint">URL to commodity logo image (will be displayed in UI)</div>
+            <div class="hint">{$tr("URL to commodity logo image (will be displayed in UI)")}</div>
         </div>
     </div>
 
     <div class="modal-footer">
         <button on:click={handleCancel} class="cancel-button">
-            Cancel
+            {$tr("Cancel")}
         </button>
         <button 
             on:click={handleSave} 
             class="save-button"
             disabled={!symbol || !!symbolError}
         >
-            Create Commodity
+            {$tr("Create Commodity")}
         </button>
     </div>
 </div>

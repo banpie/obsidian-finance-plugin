@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../../../i18n";
     import { createEventDispatcher } from 'svelte';
     import type { JournalBalance } from '../../../../models/journal';
 
@@ -11,15 +12,15 @@
     <div class="card-header">
         <div class="header-left">
             <span class="badge badge-balance">
-                <span class="icon">⚖️</span> BALANCE
+                <span class="icon">⚖️</span> {$tr("BALANCE")}
             </span>
             <span class="date">{entry.date}</span>
         </div>
         <div class="header-right">
-            <button class="btn-icon" on:click={() => dispatch('edit', entry)} title="Edit">
+            <button class="btn-icon" on:click={() => dispatch('edit', entry)} title={$tr("Edit")}>
                 ✏️
             </button>
-            <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title="Delete">
+            <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title={$tr("Delete")}>
                 ❌
             </button>
         </div>
@@ -27,7 +28,7 @@
 
     <div class="card-body">
         <div class="balance-row">
-            <button class="account account-link" type="button" on:click={(e) => dispatch('account-click', { account: entry.account, ctrlKey: e.ctrlKey || e.metaKey })} title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal">
+            <button class="account account-link" type="button" on:click={(e) => dispatch('account-click', { account: entry.account, ctrlKey: e.ctrlKey || e.metaKey })} title={$tr("Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal")}>
                 {entry.account}
             </button>
             <div class="amount">
@@ -36,7 +37,7 @@
         </div>
         {#if entry.diff_amount}
              <div class="balance-row diff">
-                <div class="label">Difference:</div>
+                <div class="label">{$tr("Difference:")}</div>
                 <div class="amount error">
                     {entry.diff_amount}
                 </div>

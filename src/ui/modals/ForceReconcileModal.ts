@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 // src/ui/modals/ForceReconcileModal.ts
 
 import { App, Modal, Notice, Setting } from 'obsidian';
@@ -67,14 +68,14 @@ export class ForceReconcileModal extends Modal {
 		if (this.failingInfo.date) infoParts.push(`as of ${this.failingInfo.date}`);
 
 		contentEl.createEl('p', {
-			text: `${this.account} is currently failing its balance assertion${infoParts.length ? ` (${infoParts.join(', ')})` : ''}. Inserting a pad directive lets Beancount auto-generate a transaction to plug the gap — use it only when the difference is genuine, not to mask a mistake.`,
+			text: t("{0} is currently failing its balance assertion{1}. Inserting a pad directive lets Beancount auto-generate a transaction to plug the gap — use it only when the difference is genuine, not to mask a mistake.", [this.account, infoParts.length ? ` (${infoParts.join(', ')})` : '']),
 		});
 
 		new Setting(contentEl)
-			.setName('Pad account')
-			.setDesc('Where the plugging transaction moves the difference to/from (commonly an equity "opening balance" or "adjustments" account).')
+			.setName(t("Pad account"))
+			.setDesc(t("Where the plugging transaction moves the difference to/from (commonly an equity \"opening balance\" or \"adjustments\" account)."))
 			.addDropdown(dropdown => {
-				dropdown.addOption('', '-- select an account --');
+				dropdown.addOption('', t("-- select an account --"));
 				openAccounts.forEach(acc => { dropdown.addOption(acc, acc); });
 				dropdown.setValue(this.padAccount).onChange(value => {
 					this.padAccount = value;
@@ -90,10 +91,10 @@ export class ForceReconcileModal extends Modal {
 			marginTop: '20px',
 		});
 
-		const cancelButton = buttonContainer.createEl('button', { text: 'Cancel' });
+		const cancelButton = buttonContainer.createEl('button', { text: t("Cancel") });
 		cancelButton.addEventListener('click', () => this.close());
 
-		this.confirmButton = buttonContainer.createEl('button', { text: 'Insert pad directive', cls: 'mod-warning' });
+		this.confirmButton = buttonContainer.createEl('button', { text: t("Insert pad directive"), cls: 'mod-warning' });
 		this.confirmButton.disabled = true;
 		this.confirmButton.addEventListener('click', () => { void this.handleConfirm(); });
 	}
@@ -106,11 +107,11 @@ export class ForceReconcileModal extends Modal {
 
 	private async handleConfirm() {
 		if (!this.padAccount) {
-			new Notice('Please select a pad account');
+			new Notice(t("Please select a pad account"));
 			return;
 		}
 		if (!this.failingInfo.date) {
-			new Notice('Could not determine the failing balance date.');
+			new Notice(t("Could not determine the failing balance date."));
 			return;
 		}
 
@@ -118,10 +119,10 @@ export class ForceReconcileModal extends Modal {
 		const padDate = dayBefore(this.failingInfo.date);
 		const result = await createPadDirective(this.plugin, padDate, this.account, this.padAccount, createBackup);
 		if (!result.success) {
-			new Notice(`Failed to insert pad directive: ${result.error || 'Unknown error'}`);
+			new Notice(t("Failed to insert pad directive: {0}", [result.error || 'Unknown error']));
 			return;
 		}
-		new Notice(`Pad directive inserted for ${this.account}`);
+		new Notice(t("Pad directive inserted for {0}", [this.account]));
 		if (this.onSuccess) {
 			try {
 				await this.onSuccess();

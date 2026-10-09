@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../../../i18n";
     import { createEventDispatcher } from 'svelte';
     import type { JournalTransaction } from '../../../../models/journal';
 
@@ -17,31 +18,31 @@
     <div class="card-header">
         <div class="header-left">
             <span class="badge badge-transaction">
-                <span class="icon">💰</span> TRANSACTIONS
+                <span class="icon">💰</span> {$tr("TRANSACTIONS")}
             </span>
             <span class="date">{entry.date}</span>
             <span class="flag">{entry.flag}</span>
             {#if entry.payee}
-                <button class="payee payee-link" type="button" on:click={() => dispatch('view-transactions', { payee: entry.payee })} title="View in Transactions tab">"{entry.payee}"</button>
+                <button class="payee payee-link" type="button" on:click={() => dispatch('view-transactions', { payee: entry.payee })} title={$tr("View in Transactions tab")}>"{entry.payee}"</button>
             {/if}
             <span class="narration">"{entry.narration}"</span>
             {#each entry.tags as tag}
-                <button class="tag tag-link" type="button" on:click={(e) => dispatch('tag-click', { tag, ctrlKey: e.ctrlKey || e.metaKey })} title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal">#{tag}</button>
+                <button class="tag tag-link" type="button" on:click={(e) => dispatch('tag-click', { tag, ctrlKey: e.ctrlKey || e.metaKey })} title={$tr("Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal")}>#{tag}</button>
             {/each}
         </div>
         <div class="header-right">
-            <button class="btn-icon" on:click={() => dispatch('edit', entry)} title="Edit">
+            <button class="btn-icon" on:click={() => dispatch('edit', entry)} title={$tr("Edit")}>
                 ✏️
             </button>
             <button 
                 class="btn-icon" 
                 disabled={!enableUserSnippets} 
                 on:click={() => dispatch('create-snippet', entry)} 
-                title={enableUserSnippets ? "Save as snippet" : "User-defined snippets disabled in settings"}
+                title={enableUserSnippets ? $tr("Save as snippet") : $tr("User-defined snippets disabled in settings")}
             >
                 📋
             </button>
-            <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title="Delete">
+            <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title={$tr("Delete")}>
                 ❌
             </button>
         </div>
@@ -50,7 +51,7 @@
     <div class="card-body">
         {#each entry.postings as posting}
             <div class="posting-row">
-                <button class="account account-link" type="button" on:click={(e) => dispatch('account-click', { account: posting.account, ctrlKey: e.ctrlKey || e.metaKey })} title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal">
+                <button class="account account-link" type="button" on:click={(e) => dispatch('account-click', { account: posting.account, ctrlKey: e.ctrlKey || e.metaKey })} title={$tr("Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal")}>
                     {posting.account}
                 </button>
                 <div class="amount" class:negative={posting.amount && posting.amount.startsWith('-')}>

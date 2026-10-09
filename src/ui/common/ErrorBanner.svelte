@@ -1,8 +1,9 @@
 <!-- src/ui/common/ErrorBanner.svelte -->
 <script lang="ts">
+	import { tr } from "../../i18n";
 	import { createEventDispatcher } from 'svelte';
-	export let message: string = 'An error occurred while loading data.';
-	export let title: string = 'Error Loading Data';
+	export let message: string = $tr("An error occurred while loading data.");
+	export let title: string = $tr("Error Loading Data");
 
 	const dispatch = createEventDispatcher();
 
@@ -27,7 +28,7 @@
 		<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="retry-icon">
 			<path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
 		</svg>
-		Retry
+		{$tr("Retry")}
 	</button>
 </div>
 

@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 // src/ui/modals/AccountManagementModal.ts
 
 import { App, Modal, Setting, Notice } from 'obsidian';
@@ -33,7 +34,7 @@ export class AccountManagementModal extends Modal {
                 this.openAccounts = await getOpenAccounts(this.plugin);
             } catch (error) {
                 console.error('Failed to fetch accounts:', error);
-                new Notice('Failed to fetch accounts list');
+                new Notice(t("Failed to fetch accounts list"));
             }
         }
         
@@ -49,11 +50,11 @@ export class AccountManagementModal extends Modal {
         // Account name field - dropdown for close mode, text input for open mode
         if (this.mode === 'close' && this.openAccounts.length > 0) {
             new Setting(contentEl)
-                .setName('Account name')
-                .setDesc('Select an account to close')
+                .setName(t("Account name"))
+                .setDesc(t("Select an account to close"))
                 .addDropdown(dropdown => {
                     // Add empty option
-                    dropdown.addOption('', '-- select an account --');
+                    dropdown.addOption('', t("-- select an account --"));
                     // Add all open accounts
                     this.openAccounts.forEach(account => {
                         dropdown.addOption(account, account);
@@ -68,7 +69,7 @@ export class AccountManagementModal extends Modal {
             const accountDesc = 'Enter the full account name (e.g., Assets:Bank:Checking)';
             const accountPlaceholder = 'Assets:Bank:Checking';
             new Setting(contentEl)
-                .setName('Account name')
+                .setName(t("Account name"))
                 .setDesc(accountDesc)
                 .addText(text => text
                     .setPlaceholder(accountPlaceholder)
@@ -80,8 +81,8 @@ export class AccountManagementModal extends Modal {
 
         // Date field
         new Setting(contentEl)
-            .setName('Date')
-            .setDesc('Enter the date in YYYY-MM-DD format')
+            .setName(t("Date"))
+            .setDesc(t("Enter the date in YYYY-MM-DD format"))
             .addText(text => {
                 text.inputEl.type = 'date';
                 return text
@@ -94,8 +95,8 @@ export class AccountManagementModal extends Modal {
         // Currencies field (only for open mode)
         if (this.mode === 'open') {
             new Setting(contentEl)
-                .setName('Currencies')
-                .setDesc('Optional: Enter comma-separated currencies (e.g., USD,EUR)')
+                .setName(t("Currencies"))
+                .setDesc(t("Optional: Enter comma-separated currencies (e.g., USD,EUR)"))
                 .addText(text => text
                     .setPlaceholder('USD,EUR')
                     .setValue(this.currencies)
@@ -104,8 +105,8 @@ export class AccountManagementModal extends Modal {
                     }));
 
             new Setting(contentEl)
-                .setName('Reconciliation interval (days)')
-                .setDesc('Optional: Number of days between reconciliations (e.g. 30)')
+                .setName(t("Reconciliation interval (days)"))
+                .setDesc(t("Optional: Number of days between reconciliations (e.g. 30)"))
                 .addText(text => text
                     .setPlaceholder('30')
                     .setValue(this.reconcileDays)
@@ -123,7 +124,7 @@ export class AccountManagementModal extends Modal {
             marginTop: '20px'
         });
 
-        const cancelButton = buttonContainer.createEl('button', { text: 'Cancel' });
+        const cancelButton = buttonContainer.createEl('button', { text: t("Cancel") });
         cancelButton.addEventListener('click', () => {
             this.close();
         });
@@ -140,18 +141,18 @@ export class AccountManagementModal extends Modal {
     async handleSubmit() {
         // Validate inputs
         if (!this.accountName.trim()) {
-            new Notice('Please enter an account name');
+            new Notice(t("Please enter an account name"));
             return;
         }
 
         if (!this.date.trim()) {
-            new Notice('Please enter a date');
+            new Notice(t("Please enter a date"));
             return;
         }
 
         // Validate date format
         if (!/^\d{4}-\d{2}-\d{2}$/.test(this.date)) {
-            new Notice('Invalid date format. Use YYYY-MM-DD');
+            new Notice(t("Invalid date format. Use YYYY-MM-DD"));
             return;
         }
 
@@ -167,7 +168,7 @@ export class AccountManagementModal extends Modal {
                 if (this.reconcileDays.trim()) {
                     const days = parseInt(this.reconcileDays.trim(), 10);
                     if (isNaN(days) || days <= 0) {
-                        new Notice('Reconciliation interval must be a positive number of days');
+                        new Notice(t("Reconciliation interval must be a positive number of days"));
                         return;
                     }
                     metadata = { reconcile: days.toString() };
@@ -186,7 +187,7 @@ export class AccountManagementModal extends Modal {
                     throw new Error(result.error || 'Unknown error');
                 }
                 
-                new Notice(`Account ${this.accountName} opened successfully`);
+                new Notice(t("Account {0} opened successfully", [this.accountName]));
             } else {
                 const result = await saveCloseDirective(
                     this.plugin,
@@ -198,7 +199,7 @@ export class AccountManagementModal extends Modal {
                     throw new Error(result.error || 'Unknown error');
                 }
                 
-                new Notice(`Account ${this.accountName} closed successfully`);
+                new Notice(t("Account {0} closed successfully", [this.accountName]));
             }
 
             // Call success callback
@@ -209,7 +210,7 @@ export class AccountManagementModal extends Modal {
             this.close();
         } catch (error) {
             const errMsg = error instanceof Error ? error.message : String(error);
-            new Notice(`Failed to ${this.mode} account: ${errMsg}`);
+            new Notice(t("Failed to {0} account: {1}", [this.mode, errMsg]));
             console.error(`Failed to ${this.mode} account:`, error);
         }
     }

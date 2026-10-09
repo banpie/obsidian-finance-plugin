@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 // src/components/BQLCodeBlockProcessor.ts
 
 import type { MarkdownPostProcessorContext } from 'obsidian';
@@ -98,17 +99,17 @@ export class BQLCodeBlockProcessor {
 			
 			if (showQuery) {
 				const queryLabel = header.createDiv({ cls: 'bql-query-label' });
-				queryLabel.createSpan({ text: 'BQL query', cls: 'bql-label' });
+				queryLabel.createSpan({ text: t("BQL query"), cls: 'bql-label' });
 			}
 			
 			if (showTools) {
 				controls = header.createDiv({ cls: 'bql-query-controls' });
 
 				// Format selector
-				const formatSelect = controls.createEl('select', { cls: 'bql-format-select', title: 'Output format' });
+				const formatSelect = controls.createEl('select', { cls: 'bql-format-select', title: t("Output format") });
 				const formatOptions: { value: BQLFormat; label: string }[] = [
-					{ value: 'csv', label: 'Table' },
-					{ value: 'text', label: 'Text' },
+					{ value: 'csv', label: t("Table") },
+					{ value: 'text', label: t("Text") },
 					{ value: 'beancount', label: 'Beancount' },
 				];
 				formatOptions.forEach(opt => {
@@ -124,19 +125,19 @@ export class BQLCodeBlockProcessor {
 				refreshBtn = controls.createEl('button', { 
 					text: '⟳', 
 					cls: 'bql-refresh-btn',
-					title: 'Refresh query results'
+					title: t("Refresh query results")
 				});
 				
 				copyBtn = controls.createEl('button', { 
 					text: '📋', 
 					cls: 'bql-copy-btn',
-					title: 'Copy results to clipboard'
+					title: t("Copy results to clipboard")
 				});
 
 				exportBtn = controls.createEl('button', { 
 					text: '📤', 
 					cls: 'bql-export-btn',
-					title: 'Export results'
+					title: t("Export results")
 				});
 			}
 		}
@@ -145,7 +146,7 @@ export class BQLCodeBlockProcessor {
 		let queryDisplay: HTMLDetailsElement | null = null;
 		if (showQuery) {
 			queryDisplay = container.createEl('details', { cls: 'bql-query-details' });
-			queryDisplay.createEl('summary', { text: 'View query', cls: 'bql-query-summary' });
+			queryDisplay.createEl('summary', { text: t("View query"), cls: 'bql-query-summary' });
 			const queryCode = queryDisplay.createEl('pre', { cls: 'bql-query-code' });
 			queryCode.createEl('code', { text: query });
 		}
@@ -162,7 +163,7 @@ export class BQLCodeBlockProcessor {
 				if (showTools) {
 					const loadingEl = resultArea.createDiv({ cls: 'bql-loading' });
 					loadingEl.createSpan({ text: '⟳', cls: 'bql-loading-spinner' });
-					loadingEl.createSpan({ text: 'Executing query...', cls: 'bql-loading-text' });
+					loadingEl.createSpan({ text: t("Executing query..."), cls: 'bql-loading-text' });
 				} else {
 					// Minimal loading for clean mode
 					const loadingEl = resultArea.createDiv({ cls: 'bql-loading-minimal' });
@@ -178,7 +179,7 @@ export class BQLCodeBlockProcessor {
 				
 				if (!queryResult || queryResult.trim() === '') {
 					resultArea.createDiv({
-						text: 'No results returned', 
+						text: t("No results returned"),
 						cls: 'bql-no-results' 
 					});
 					return;
@@ -298,7 +299,7 @@ export class BQLCodeBlockProcessor {
 		try {
 			const lines = csvText.trim().split('\n');
 			if (lines.length === 0) {
-				return { table: null, error: 'Empty result set' };
+				return { table: null, error: t("Empty result set") };
 			}
 			
 			// Parse CSV (simple parser - handles quoted values)

@@ -1,5 +1,6 @@
 <!-- src/ui/modals/ConfirmDueSchedulesModal.svelte -->
 <script lang="ts">
+	import { tr } from "../../i18n";
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { nativeDatePicker } from '../actions/nativeDatePicker';
 	import type { ScheduledTransactionItem, DueOccurrence } from '../../models/schedule';
@@ -91,11 +92,10 @@
 </script>
 
 <div class="confirm-modal">
-	<h2>Transactions due</h2>
+	<h2>{$tr("Transactions due")}</h2>
 	<p class="subtitle">
-		Review each occurrence: <strong>Insert</strong> adds it to the ledger,
-		<strong>Skip</strong> dismisses it without adding, and leaving it
-		unchecked <strong>holds</strong> it for next time.
+		{$tr("Review each occurrence:")} <strong>{$tr("Insert")}</strong> {$tr("adds it to the ledger,")}
+		<strong>{$tr("Skip")}</strong> {$tr("dismisses it without adding, and leaving it\n\t\tunchecked")} <strong>{$tr("holds")}</strong> {$tr("it for next time.")}
 	</p>
 
 	<div class="due-groups">
@@ -136,10 +136,10 @@
 								disabled={gated || decision !== 'insert'}
 							/>
 							<span class="decision-label" class:label-skip={decision === 'skip'} class:label-hold={decision === 'hold'}>
-								{#if gated}Blocked by hold above
-								{:else if decision === 'insert'}Will add
-								{:else if decision === 'skip'}Skipped
-								{:else}On hold{/if}
+								{#if gated}{$tr("Blocked by hold above")}
+								{:else if decision === 'insert'}{$tr("Will add")}
+								{:else if decision === 'skip'}{$tr("Skipped")}
+								{:else}{$tr("On hold")}{/if}
 							</span>
 							<button
 								type="button"
@@ -147,7 +147,7 @@
 								disabled={gated}
 								on:click={() => setDecision(group, i, decision === 'skip' ? 'insert' : 'skip')}
 							>
-								{decision === 'skip' ? 'Undo skip' : 'Skip'}
+								{decision === 'skip' ? $tr("Undo skip") : $tr("Skip")}
 							</button>
 						</div>
 					{/each}
@@ -157,9 +157,9 @@
 	</div>
 
 	<div class="modal-footer">
-		<button class="cancel-btn" on:click={handleCancel}>Cancel</button>
+		<button class="cancel-btn" on:click={handleCancel}>{$tr("Cancel")}</button>
 		<button class="save-btn" on:click={handleConfirm} disabled={insertCount === 0 && skipCount === 0}>
-			Confirm ({insertCount} insert{insertCount === 1 ? '' : 's'}{skipCount > 0 ? `, ${skipCount} skip${skipCount === 1 ? '' : 's'}` : ''})
+			{$tr('Confirm ({0} insert, {1} skip)', [insertCount, skipCount])}
 		</button>
 	</div>
 </div>

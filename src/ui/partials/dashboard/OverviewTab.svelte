@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import { createEventDispatcher } from 'svelte';
 	import CardComponent from '../../common/CardComponent.svelte';
 	import IndicatorsSection from './IndicatorsSection.svelte';
@@ -63,7 +64,7 @@
 	// 3. Now, '$stateStore' will safely subscribe, starting with the
 	//    placeholder and then automatically switching to the real store.
 	$: state = $stateStore;
-	$: reportingBasisLabel = state.reportingMode === 'corporate' ? 'Accrual P&L' : 'Cash Flow';
+	$: reportingBasisLabel = state.reportingMode === 'corporate' ? $tr("Accrual P&L") : $tr("Cash Flow");
 	
 	// Add refresh functionality
 	function handleRefresh() {
@@ -87,7 +88,7 @@
 <div class="beancount-overview">
 	<div class="overview-header">
 		<div class="overview-title">
-			<h3>Financial Overview</h3>
+			<h3>{$tr("Financial Overview")}</h3>
 			<p>{state.periodLabel} · {reportingBasisLabel}</p>
 		</div>
 		<div class="overview-actions">
@@ -118,14 +119,14 @@
 				<line x1="12" y1="9" x2="12" y2="13"/>
 				<line x1="12" y1="17" x2="12.01" y2="17"/>
 			</svg>
-			<span>Only commodities with conversion prices to {state.currency} are included in Net Worth calculations</span>
+			<span>{$tr("Only commodities with conversion prices to")} {state.currency} {$tr("are included in Net Worth calculations")}</span>
 		</div>
 		
 		<div class="kpi-grid">
-			<CardComponent label="Total Balance" value={state.netWorth} comparison="Assets minus liabilities" clickable on:click={(e) => handleKpiClick(undefined, e.detail)} />
-			<CardComponent label="Income" value={state.periodIncome} comparison={state.periodLabel} clickable on:click={(e) => handleKpiClick('Income', e.detail)} />
-			<CardComponent label="Expenses" value={state.periodExpenses} comparison={state.periodLabel} clickable on:click={(e) => handleKpiClick('Expenses', e.detail)} />
-			<CardComponent label="Net Result" value={state.periodNetIncome} comparison={`Net result rate: ${state.periodSavingsRate}`} clickable on:click={(e) => handleKpiClick(undefined, e.detail)} />
+			<CardComponent label={$tr("Total Balance")} value={state.netWorth} comparison={$tr("Assets minus liabilities")} clickable on:click={(e) => handleKpiClick(undefined, e.detail)} />
+			<CardComponent label={$tr("Income")} value={state.periodIncome} comparison={state.periodLabel} clickable on:click={(e) => handleKpiClick('Income', e.detail)} />
+			<CardComponent label={$tr("Expenses")} value={state.periodExpenses} comparison={state.periodLabel} clickable on:click={(e) => handleKpiClick('Expenses', e.detail)} />
+			<CardComponent label={$tr("Net Result")} value={state.periodNetIncome} comparison={$tr('Net result rate: {0}', [state.periodSavingsRate])} clickable on:click={(e) => handleKpiClick(undefined, e.detail)} />
 		</div>
 
 		<IndicatorsSection

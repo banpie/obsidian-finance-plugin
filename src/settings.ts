@@ -1,3 +1,5 @@
+import { t } from "./i18n";
+import type { LanguagePreference } from './i18n';
 // src/settings.ts
 
 import { App, PluginSettingTab, Setting, Notice, TFolder } from 'obsidian';
@@ -35,6 +37,8 @@ export interface LedgerProfile {
 }
 
 export interface BeancountPluginSettings {
+    /** UI language. Ledger account paths and stored directives are never translated. */
+    language: LanguagePreference;
     /** Command to run Beancount/Python (e.g. "bean-query", "python3"). */
     beancountCommand: string;
     /** The primary currency for reporting and defaults. */
@@ -97,6 +101,7 @@ export interface BeancountPluginSettings {
  * Default settings for the plugin.
  */
 export const DEFAULT_SETTINGS: BeancountPluginSettings = {
+    language: 'auto',
     beancountCommand: '',
     operatingCurrency: 'USD',
     maxTransactionResults: 2000,
@@ -156,20 +161,20 @@ export class BeancountSettingTab extends PluginSettingTab {
 
     getSettingDefinitions(): Record<string, { name: string; description: string }> {
         return {
-            operatingCurrency: { name: 'Operating currency', description: 'The currency to use for transaction defaults and for consolidating totals.' },
-            dashboardDefaultPeriod: { name: 'Default dashboard period', description: 'Choose the period shown by dashboard summaries when the dashboard first loads.' },
-            investmentGainLossColors: { name: 'Investment gain/loss colors', description: 'Choose how gains and losses are colored in investment reports.' },
-            structuredFolderName: { name: 'Base folder name', description: 'The name of the root folder in your vault where Beancount files will be stored.' },
-            fileOrganization: { name: 'File organization', description: 'How transactions should be split into separate files.' },
-            accountAutocomplete: { name: 'Editor autocomplete', description: 'Show context-aware completions in .beancount files.' },
-            enableUserSnippets: { name: 'User-defined snippets', description: 'Enable user-defined transaction snippets loaded from snippets.beancount.' },
-            formatOnSave: { name: 'Format on save', description: 'Automatically format the Beancount file when saving.' },
-            lintMode: { name: 'Inline lint mode', description: 'Show Beancount validation errors as inline squiggly underlines.' },
-            bqlShowTools: { name: 'Show query tools', description: 'Display refresh, copy, and download buttons above BQL query results.' },
-            bqlShowQuery: { name: 'Show query text', description: 'Display the BQL query text above the results in a collapsible section.' },
-            maxTransactionResults: { name: 'Max transaction results', description: 'Maximum number of transactions to load at once.' },
-            maxJournalResults: { name: 'Max journal results', description: 'Maximum number of journal entries to load at once.' },
-            createBackups: { name: 'Create backups', description: 'Create a backup file before modifying your Beancount file.' }
+            operatingCurrency: { name: t("Operating currency"), description: t("The currency to use for transaction defaults and for consolidating totals.") },
+            dashboardDefaultPeriod: { name: t("Default dashboard period"), description: t("Choose the period shown by dashboard summaries when the dashboard first loads.") },
+            investmentGainLossColors: { name: t("Investment gain/loss colors"), description: t("Choose how gains and losses are colored in investment reports.") },
+            structuredFolderName: { name: t("Base folder name"), description: t("The name of the root folder in your vault where Beancount files will be stored.") },
+            fileOrganization: { name: t("File organization"), description: t("How transactions should be split into separate files.") },
+            accountAutocomplete: { name: t("Editor autocomplete"), description: t("Show context-aware completions in .beancount files.") },
+            enableUserSnippets: { name: t("User-defined snippets"), description: t("Enable user-defined transaction snippets loaded from snippets.beancount.") },
+            formatOnSave: { name: t("Format on save"), description: t("Automatically format the Beancount file when saving.") },
+            lintMode: { name: t("Inline lint mode"), description: t("Show Beancount validation errors as inline squiggly underlines.") },
+            bqlShowTools: { name: t("Show query tools"), description: t("Display refresh, copy, and download buttons above BQL query results.") },
+            bqlShowQuery: { name: t("Show query text"), description: t("Display the BQL query text above the results in a collapsible section.") },
+            maxTransactionResults: { name: t("Max transaction results"), description: t("Maximum number of transactions to load at once.") },
+            maxJournalResults: { name: t("Max journal results"), description: t("Maximum number of journal entries to load at once.") },
+            createBackups: { name: t("Create backups"), description: t("Create a backup file before modifying your Beancount file.") }
         };
     }
 
@@ -180,7 +185,7 @@ export class BeancountSettingTab extends PluginSettingTab {
     displayTab(): void {
         const { containerEl } = this;
         containerEl.empty();
-        new Setting(containerEl).setName('Beancount configuration').setHeading();
+        new Setting(containerEl).setName(t("Beancount configuration")).setHeading();
 
         // Create tab navigation
         const tabsContainer = containerEl.createDiv({ cls: 'beancount-settings-tabs' });
@@ -189,13 +194,13 @@ export class BeancountSettingTab extends PluginSettingTab {
 
         // Define tabs
         const tabs = [
-            { id: 'general', label: '⚙️ General' },
-            { id: 'ledgers', label: '📚 Ledger profiles' },
-            { id: 'connection', label: '🔌 Connection' },
-            { id: 'files', label: '📁 File Organization' },
-            { id: 'editor', label: '📝 Editor' },
-            { id: 'bql', label: '📊 BQL' },
-            { id: 'performance', label: '⚡ Performance' }
+            { id: 'general', label: t("⚙️ General") },
+            { id: 'ledgers', label: t("📚 Ledger profiles") },
+            { id: 'connection', label: t("🔌 Connection") },
+            { id: 'files', label: t("📁 File Organization") },
+            { id: 'editor', label: t("📝 Editor") },
+            { id: 'bql', label: t("📊 BQL") },
+            { id: 'performance', label: t("⚡ Performance") }
         ];
 
         // Create tab buttons
@@ -240,17 +245,17 @@ export class BeancountSettingTab extends PluginSettingTab {
     }
 
     private renderLedgerProfilesTab(containerEl: HTMLElement): void {
-        new Setting(containerEl).setName('账套切换').setHeading();
+        new Setting(containerEl).setName(t("账套切换")).setHeading();
         containerEl.createEl('p', {
-            text: '每个账套保留自己的主文件目录、币种与文件组织。切换只改变插件的查询对象，不会把两个主体的交易合并。',
+            text: t("每个账套保留自己的主文件目录、币种与文件组织。切换只改变插件的查询对象，不会把两个主体的交易合并。"),
             cls: 'setting-item-description'
         });
 
         const profiles = this.plugin.settings.ledgerProfiles;
         const activeId = this.plugin.settings.activeLedgerProfileId;
         new Setting(containerEl)
-            .setName('当前账套')
-            .setDesc('仪表盘、BQL 与新增交易都会使用这个账套。')
+            .setName(t("当前账套"))
+            .setDesc(t("仪表盘、BQL 与新增交易都会使用这个账套。"))
             .addDropdown(dropdown => {
                 profiles.forEach(profile => {
                     dropdown.addOption(profile.id, `${profile.name}${profile.readOnly ? '（只读）' : ''}`);
@@ -266,13 +271,13 @@ export class BeancountSettingTab extends PluginSettingTab {
         profiles.forEach(profile => {
             if (this.editingLedgerProfileId === profile.id) {
                 new Setting(containerEl)
-                    .setName('账套名称')
-                    .setDesc('仅修改页面和设置中的显示名，不会移动文件或改变账套标识。')
+                    .setName(t("账套名称"))
+                    .setDesc(t("仅修改页面和设置中的显示名，不会移动文件或改变账套标识。"))
                     .addText(text => text
                         .setValue(this.editingLedgerName)
                         .onChange(value => { this.editingLedgerName = value; }))
                     .addButton(button => button
-                        .setButtonText('保存')
+                        .setButtonText(t("保存"))
                         .setCta()
                         .onClick(async () => {
                             const result = await this.plugin.renameLedgerProfile(profile.id, this.editingLedgerName);
@@ -285,7 +290,7 @@ export class BeancountSettingTab extends PluginSettingTab {
                             this.displayTab();
                         }))
                     .addButton(button => button
-                        .setButtonText('取消')
+                        .setButtonText(t("取消"))
                         .onClick(() => {
                             this.editingLedgerProfileId = null;
                             this.editingLedgerName = '';
@@ -298,8 +303,8 @@ export class BeancountSettingTab extends PluginSettingTab {
                 .setName(profile.name)
                 .setDesc(`${profile.structuredFolderName}/ledger.beancount · ${profile.operatingCurrency}${profile.readOnly ? ' · 只读查看层' : ''}`)
                 .addDropdown(dropdown => dropdown
-                    .addOption('personal', '个人：现金流')
-                    .addOption('corporate', '企业：权责损益')
+                    .addOption('personal', t("个人：现金流"))
+                    .addOption('corporate', t("企业：权责损益"))
                     .setValue(profile.reportingMode)
                     .onChange(async value => {
                         const result = await this.plugin.setLedgerProfileReportingMode(
@@ -318,7 +323,7 @@ export class BeancountSettingTab extends PluginSettingTab {
                         this.displayTab();
                     }))
                 .addButton(button => button
-                    .setButtonText('重命名')
+                    .setButtonText(t("重命名"))
                     .onClick(() => {
                         this.editingLedgerProfileId = profile.id;
                         this.editingLedgerName = profile.name;
@@ -326,44 +331,44 @@ export class BeancountSettingTab extends PluginSettingTab {
                     }));
         });
 
-        new Setting(containerEl).setName('新增账套').setHeading();
+        new Setting(containerEl).setName(t("新增账套")).setHeading();
         containerEl.createEl('p', {
-            text: '填写 vault 内、包含 ledger.beancount 的目录。新增前会检查文件存在；“只读”适用于由外部系统或生成器维护的账套。',
+            text: t("填写 vault 内、包含 ledger.beancount 的目录。新增前会检查文件存在；“只读”适用于由外部系统或生成器维护的账套。"),
             cls: 'setting-item-description'
         });
         new Setting(containerEl)
-            .setName('名称')
+            .setName(t("名称"))
             .addText(text => text
-                .setPlaceholder('例如：叹号科技外账')
+                .setPlaceholder(t("例如：叹号科技外账"))
                 .setValue(this.newLedgerName)
                 .onChange(value => { this.newLedgerName = value; }));
         new Setting(containerEl)
-            .setName('账套目录')
-            .setDesc('相对 vault 的目录，例如：02_财务/财务os/ledger')
+            .setName(t("账套目录"))
+            .setDesc(t("相对 vault 的目录，例如：02_财务/财务os/ledger"))
             .addText(text => text
-                .setPlaceholder('账套目录')
+                .setPlaceholder(t("账套目录"))
                 .setValue(this.newLedgerFolder)
                 .onChange(value => { this.newLedgerFolder = value; }));
         new Setting(containerEl)
-            .setName('记账币种')
+            .setName(t("记账币种"))
             .addText(text => text
                 .setPlaceholder('CNY')
                 .setValue(this.newLedgerCurrency)
                 .onChange(value => { this.newLedgerCurrency = value.toUpperCase(); }))
             .addToggle(toggle => toggle
                 .setValue(this.newLedgerReadOnly)
-                .setTooltip('只读查看层')
+                .setTooltip(t("只读查看层"))
                 .onChange(value => { this.newLedgerReadOnly = value; }))
         new Setting(containerEl)
-            .setName('报表口径')
-            .setDesc('个人账本按真实现金流统计；企业账套按权责发生额统计，并排除月末损益结转凭证。')
+            .setName(t("报表口径"))
+            .setDesc(t("个人账本按真实现金流统计；企业账套按权责发生额统计，并排除月末损益结转凭证。"))
             .addDropdown(dropdown => dropdown
-                .addOption('personal', '个人：现金流')
-                .addOption('corporate', '企业：权责损益')
+                .addOption('personal', t("个人：现金流"))
+                .addOption('corporate', t("企业：权责损益"))
                 .setValue(this.newLedgerReportingMode)
                 .onChange(value => { this.newLedgerReportingMode = value === 'corporate' ? 'corporate' : 'personal'; }))
             .addButton(button => button
-                .setButtonText('新增')
+                .setButtonText(t("新增"))
                 .setCta()
                 .onClick(async () => {
                     const result = await this.plugin.addLedgerProfile({
@@ -388,11 +393,24 @@ export class BeancountSettingTab extends PluginSettingTab {
     }
 
     private renderGeneralTab(containerEl: HTMLElement): void {
-        new Setting(containerEl).setName('Basic preferences').setHeading();
+        new Setting(containerEl).setName(t("Basic preferences")).setHeading();
 
         new Setting(containerEl)
-            .setName('Operating currency')
-            .setDesc('The currency to use for transaction defaults and for consolidating totals (e.g., USD, INR).')
+            .setName(t('Interface language'))
+            .setDesc(t('Choose the display language. Your ledger data stays unchanged.'))
+            .addDropdown(dropdown => dropdown
+                .addOption('auto', t('Follow Obsidian'))
+                .addOption('zh-CN', '简体中文')
+                .addOption('en', 'English')
+                .setValue(this.plugin.settings.language)
+                .onChange(async value => {
+                    await this.plugin.changeLanguage(value);
+                    this.displayTab();
+                }));
+
+        new Setting(containerEl)
+            .setName(t("Operating currency"))
+            .setDesc(t("The currency to use for transaction defaults and for consolidating totals (e.g., USD, INR)."))
             .addText(text => {
                 const validationEl = this.createValidationElement(containerEl);
 
@@ -421,16 +439,16 @@ export class BeancountSettingTab extends PluginSettingTab {
                 return text;
             })
             .addButton(button => button
-                .setButtonText('Save to ledger')
-                .setTooltip('Update the operating_currency option in your ledger.beancount file')
+                .setButtonText(t("Save to ledger"))
+                .setTooltip(t("Update the operating_currency option in your ledger.beancount file"))
                 .onClick(async () => {
 					if (!this.plugin.requireActiveLedgerWritable('更新账本币种')) return;
                     const currency = this.plugin.settings.operatingCurrency;
                     if (!currency) {
-                        new Notice('Operating currency is not set.');
+                        new Notice(t("Operating currency is not set."));
                         return;
                     }
-                    button.setButtonText('Saving…');
+                    button.setButtonText(t("Saving…"));
                     button.setDisabled(true);
                     const result = await updateOperatingCurrency(
                         this.plugin,
@@ -438,23 +456,23 @@ export class BeancountSettingTab extends PluginSettingTab {
                         this.plugin.settings.createBackups
                     );
                     button.setDisabled(false);
-                    button.setButtonText('Save to ledger');
+                    button.setButtonText(t("Save to ledger"));
                     if (result.success) {
-                        new Notice(`Operating currency updated to ${currency} in ledger file.`);
+                        new Notice(t("Operating currency updated to {0} in ledger file.", [currency]));
                     } else {
-                        new Notice(`Failed to update ledger: ${result.error}`);
+                        new Notice(t("Failed to update ledger: {0}", [result.error]));
                     }
                 })
             );
 
         new Setting(containerEl)
-            .setName('Default dashboard period')
-            .setDesc('Choose the period shown by dashboard summaries when the dashboard first loads.')
+            .setName(t("Default dashboard period"))
+            .setDesc(t("Choose the period shown by dashboard summaries when the dashboard first loads."))
             .addDropdown(dropdown => dropdown
-                .addOption('this-month', 'This month')
-                .addOption('last-month', 'Last month')
-                .addOption('this-year', 'This year')
-                .addOption('last-year', 'Last year')
+                .addOption('this-month', t("This month"))
+                .addOption('last-month', t("Last month"))
+                .addOption('this-year', t("This year"))
+                .addOption('last-year', t("Last year"))
                 .setValue(this.plugin.settings.dashboardDefaultPeriod || 'this-month')
                 .onChange(async (value) => {
                     this.plugin.settings.dashboardDefaultPeriod = value as DashboardDefaultPeriod;
@@ -462,12 +480,12 @@ export class BeancountSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Investment gain/loss colors')
-            .setDesc('Applies only to investment returns. Status, validation, budget, and other financial colors are unchanged. Direction arrows and gain/loss labels remain visible in every mode.')
+            .setName(t("Investment gain/loss colors"))
+            .setDesc(t("Applies only to investment returns. Status, validation, budget, and other financial colors are unchanged. Direction arrows and gain/loss labels remain visible in every mode."))
             .addDropdown(dropdown => dropdown
-                .addOption('china', 'China market — red gain, green loss')
-                .addOption('international', 'International — green gain, red loss')
-                .addOption('accessible', 'Accessible — neutral color with labels')
+                .addOption('china', t("China market — red gain, green loss"))
+                .addOption('international', t("International — green gain, red loss"))
+                .addOption('accessible', t("Accessible — neutral color with labels"))
                 .setValue(this.plugin.settings.investmentGainLossColors || 'china')
                 .onChange(async (value) => {
                     this.plugin.settings.investmentGainLossColors = value as InvestmentGainLossColorConvention;
@@ -476,8 +494,8 @@ export class BeancountSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Debug mode')
-            .setDesc('Enable debug logging to the console.')
+            .setName(t("Debug mode"))
+            .setDesc(t("Enable debug logging to the console."))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.debugMode)
                 .onChange(async (value) => {
@@ -486,14 +504,14 @@ export class BeancountSettingTab extends PluginSettingTab {
                 }));
 
         // Price Fetching Settings Section
-        new Setting(containerEl).setName('Price fetching').setHeading();
+        new Setting(containerEl).setName(t("Price fetching")).setHeading();
 
         new Setting(containerEl)
-            .setName('Price engine')
-            .setDesc('Choose the single writer used by the dashboard button, command palette, and optional schedule.')
+            .setName(t("Price engine"))
+            .setDesc(t("Choose the single writer used by the dashboard button, command palette, and optional schedule."))
             .addDropdown(dropdown => dropdown
-                .addOption('bean-price', 'Built-in bean-price')
-                .addOption('external', 'External validated pipeline')
+                .addOption('bean-price', t("Built-in bean-price"))
+                .addOption('external', t("External validated pipeline"))
                 .setValue(this.plugin.settings.priceFetchBackend)
                 .onChange(async (value) => {
                     this.plugin.settings.priceFetchBackend = value as PriceFetchBackend;
@@ -503,8 +521,8 @@ export class BeancountSettingTab extends PluginSettingTab {
 
         if (this.plugin.settings.priceFetchBackend === 'external') {
             new Setting(containerEl)
-                .setName('External price command')
-                .setDesc('Base command that accepts --ledger-dir, --execute, and --timeout, then emits one json result. Arguments are spawned without a shell.')
+                .setName(t("External price command"))
+                .setDesc(t("Base command that accepts --ledger-dir, --execute, and --timeout, then emits one json result. Arguments are spawned without a shell."))
                 .addText(text => text
                     .setPlaceholder('python3 /path/to/refresh_prices.py')
                     .setValue(this.plugin.settings.externalPriceCommand)
@@ -514,8 +532,8 @@ export class BeancountSettingTab extends PluginSettingTab {
                     }));
 
             new Setting(containerEl)
-                .setName('Pipeline timeout (seconds)')
-                .setDesc('Includes fetching, ledger validation, report refresh, audit, and rollback when needed.')
+                .setName(t("Pipeline timeout (seconds)"))
+                .setDesc(t("Includes fetching, ledger validation, report refresh, audit, and rollback when needed."))
                 .addText(text => text
                     .setPlaceholder('360')
                     .setValue(String(this.plugin.settings.externalPriceTimeoutSeconds))
@@ -529,8 +547,8 @@ export class BeancountSettingTab extends PluginSettingTab {
         }
 
         new Setting(containerEl)
-            .setName('Enable automatic price fetching')
-            .setDesc('Automatically run the selected price engine at scheduled intervals.')
+            .setName(t("Enable automatic price fetching"))
+            .setDesc(t("Automatically run the selected price engine at scheduled intervals."))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.autoPriceFetch)
                 .onChange(async (value) => {
@@ -546,8 +564,8 @@ export class BeancountSettingTab extends PluginSettingTab {
 
         if (this.plugin.settings.autoPriceFetch) {
             new Setting(containerEl)
-                .setName('Fetch interval (hours)')
-                .setDesc('How often to automatically fetch prices for all commodities with configured price sources.')
+                .setName(t("Fetch interval (hours)"))
+                .setDesc(t("How often to automatically fetch prices for all commodities with configured price sources."))
                 .addText(text => text
                     .setPlaceholder('24')
                     .setValue(String(this.plugin.settings.priceFetchIntervalHours))
@@ -598,11 +616,11 @@ export class BeancountSettingTab extends PluginSettingTab {
     }
 
     private renderBQLTab(containerEl: HTMLElement): void {
-        new Setting(containerEl).setName('BQL code blocks').setHeading();
+        new Setting(containerEl).setName(t("BQL code blocks")).setHeading();
 
         new Setting(containerEl)
-            .setName('Show query tools')
-            .setDesc('Display refresh, copy, and download buttons above BQL query results.')
+            .setName(t("Show query tools"))
+            .setDesc(t("Display refresh, copy, and download buttons above BQL query results."))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.bqlShowTools)
                 .onChange(async (value) => {
@@ -611,8 +629,8 @@ export class BeancountSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Show query text')
-            .setDesc('Display the BQL query text above the results in a collapsible section.')
+            .setName(t("Show query text"))
+            .setDesc(t("Display the BQL query text above the results in a collapsible section."))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.bqlShowQuery)
                 .onChange(async (value) => {
@@ -622,11 +640,11 @@ export class BeancountSettingTab extends PluginSettingTab {
     }
 
     private renderEditorTab(containerEl: HTMLElement): void {
-        new Setting(containerEl).setName('Editor configuration').setHeading();
+        new Setting(containerEl).setName(t("Editor configuration")).setHeading();
 
         new Setting(containerEl)
-            .setName('Editor autocomplete')
-            .setDesc('Show context-aware completions in .beancount files: account names, payees, narrations, currencies/commodities, tags (#), and links (^). Reopen the file to apply changes.')
+            .setName(t("Editor autocomplete"))
+            .setDesc(t("Show context-aware completions in .beancount files: account names, payees, narrations, currencies/commodities, tags (#), and links (^). Reopen the file to apply changes."))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.accountAutocomplete)
                 .onChange(async (value) => {
@@ -635,8 +653,8 @@ export class BeancountSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('User-defined snippets')
-            .setDesc('Enable user-defined transaction snippets loaded from snippets.beancount. Start typing at the start of a line to autocomplete.')
+            .setName(t("User-defined snippets"))
+            .setDesc(t("Enable user-defined transaction snippets loaded from snippets.beancount. Start typing at the start of a line to autocomplete."))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableUserSnippets)
                 .onChange(async (value) => {
@@ -650,8 +668,8 @@ export class BeancountSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Format on save')
-            .setDesc('Automatically format the Beancount file when saving: normalises indentation to 2 spaces, right-aligns amounts, and fixes @ price annotation spacing. Off by default.')
+            .setName(t("Format on save"))
+            .setDesc(t("Automatically format the Beancount file when saving: normalises indentation to 2 spaces, right-aligns amounts, and fixes @ price annotation spacing. Off by default."))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.formatOnSave)
                 .onChange(async (value) => {
@@ -660,12 +678,12 @@ export class BeancountSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Inline lint mode')
-            .setDesc('Show Beancount validation errors as inline squiggly underlines using the existing bean-query connection. Reopen the file to apply changes.')
+            .setName(t("Inline lint mode"))
+            .setDesc(t("Show Beancount validation errors as inline squiggly underlines using the existing bean-query connection. Reopen the file to apply changes."))
             .addDropdown(drop => drop
-                .addOption('off', 'Off')
-                .addOption('on-save', 'On save (recommended)')
-                .addOption('on-change', 'On change (2 s debounce)')
+                .addOption('off', t("Off"))
+                .addOption('on-save', t("On save (recommended)"))
+                .addOption('on-change', t("On change (2 s debounce)"))
                 .setValue(this.plugin.settings.lintMode)
                 .onChange(async (value) => {
                     this.plugin.settings.lintMode = value as LintMode;
@@ -674,11 +692,11 @@ export class BeancountSettingTab extends PluginSettingTab {
     }
 
     private renderPerformanceTab(containerEl: HTMLElement): void {
-        new Setting(containerEl).setName('Performance').setHeading();
+        new Setting(containerEl).setName(t("Performance")).setHeading();
 
         new Setting(containerEl)
-            .setName('Max transaction results')
-            .setDesc('Maximum number of transactions to load at once (to prevent memory issues with large datasets).')
+            .setName(t("Max transaction results"))
+            .setDesc(t("Maximum number of transactions to load at once (to prevent memory issues with large datasets)."))
             .addText(text => text
                 .setPlaceholder('2000')
                 .setValue(this.plugin.settings.maxTransactionResults.toString())
@@ -691,8 +709,8 @@ export class BeancountSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Max journal results')
-            .setDesc('Maximum number of journal entries to load at once.')
+            .setName(t("Max journal results"))
+            .setDesc(t("Maximum number of journal entries to load at once."))
             .addText(text => text
                 .setPlaceholder('1000')
                 .setValue(this.plugin.settings.maxJournalResults.toString())
@@ -704,11 +722,11 @@ export class BeancountSettingTab extends PluginSettingTab {
                     }
                 }));
 
-        new Setting(containerEl).setName('Backups').setHeading();
+        new Setting(containerEl).setName(t("Backups")).setHeading();
 
         new Setting(containerEl)
-            .setName('Create backups')
-            .setDesc('Create a backup file (<filename>.bak) before modifying your Beancount file. Highly recommended for data safety.')
+            .setName(t("Create backups"))
+            .setDesc(t("Create a backup file (<filename>.bak) before modifying your Beancount file. Highly recommended for data safety."))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.createBackups)
                 .onChange(async (value) => {
@@ -718,17 +736,17 @@ export class BeancountSettingTab extends PluginSettingTab {
     }
 
     private renderFilesTab(containerEl: HTMLElement): void {
-        new Setting(containerEl).setName('File organization').setHeading();
+        new Setting(containerEl).setName(t("File organization")).setHeading();
 
         containerEl.createEl('p', {
-            text: 'Your finances are organized using a structured folder layout with separate files for accounts, transactions, prices, and more.',
+            text: t("Your finances are organized using a structured folder layout with separate files for accounts, transactions, prices, and more."),
             cls: 'setting-item-description'
         });
 
         // Folder name setting
         const folderNameSetting = new Setting(containerEl)
-            .setName('Folder name')
-            .setDesc('Name of the folder containing your structured Beancount files.');
+            .setName(t("Folder name"))
+            .setDesc(t("Name of the folder containing your structured Beancount files."));
 
         if (this.isEditingFolderName) {
             folderNameSetting.addText(text => {
@@ -755,7 +773,7 @@ export class BeancountSettingTab extends PluginSettingTab {
             });
 
             folderNameSetting.addButton(btn => {
-                btn.setButtonText('Save')
+                btn.setButtonText(t("Save"))
                    .setCta()
                    .onClick(async () => {
                        await this.saveFolderNameRename();
@@ -763,7 +781,7 @@ export class BeancountSettingTab extends PluginSettingTab {
             });
 
             folderNameSetting.addButton(btn => {
-                btn.setButtonText('Cancel')
+                btn.setButtonText(t("Cancel"))
                    .onClick(() => {
                        this.isEditingFolderName = false;
                        this.displayTab();
@@ -777,7 +795,7 @@ export class BeancountSettingTab extends PluginSettingTab {
             });
 
             folderNameSetting.addButton(btn => {
-                btn.setButtonText('Edit')
+                btn.setButtonText(t("Edit"))
                    .onClick(() => {
                        this.isEditingFolderName = true;
                        this.tempFolderName = this.plugin.settings.structuredFolderName;
@@ -788,11 +806,11 @@ export class BeancountSettingTab extends PluginSettingTab {
 
         // File organization setting
         new Setting(containerEl)
-            .setName('Transaction file organization')
-            .setDesc('How transactions should be split into multiple files inside the transactions/ folder.')
+            .setName(t("Transaction file organization"))
+            .setDesc(t("How transactions should be split into multiple files inside the transactions/ folder."))
             .addDropdown(dropdown => dropdown
-                .addOption('yearly', 'Yearly (e.g. Transactions/2025.beancount)')
-                .addOption('monthly', 'Monthly (e.g. Transactions/2025/2025-01.beancount)')
+                .addOption('yearly', t("Yearly (e.g. Transactions/2025.beancount)"))
+                .addOption('monthly', t("Monthly (e.g. Transactions/2025/2025-01.beancount)"))
                 .setValue(this.plugin.settings.fileOrganization)
                 .onChange(async (value) => {
                     this.plugin.settings.fileOrganization = value as FileOrganization;
@@ -808,7 +826,7 @@ export class BeancountSettingTab extends PluginSettingTab {
             borderRadius: '5px'
         });
 
-        infoDiv.createEl('strong', { text: 'Structured layout file organization:' });
+        infoDiv.createEl('strong', { text: t("Structured layout file organization:") });
         const fileList = infoDiv.createEl('ul');
         fileList.setCssStyles({
             marginTop: '8px',
@@ -846,7 +864,7 @@ export class BeancountSettingTab extends PluginSettingTab {
             });
 
             pathDiv.createDiv({
-                text: 'Main ledger file path:',
+                text: t("Main ledger file path:"),
                 cls: 'setting-item-name'
             });
             const descEl = pathDiv.createDiv({
@@ -860,7 +878,7 @@ export class BeancountSettingTab extends PluginSettingTab {
 
     private validateCurrency(currency: string): { isValid: boolean; message: string } {
         if (!currency.trim()) {
-            return { isValid: false, message: 'Currency is required' };
+            return { isValid: false, message: t("Currency is required") };
         }
 
         // Beancount currency: starts with an uppercase letter, followed by uppercase
@@ -870,7 +888,7 @@ export class BeancountSettingTab extends PluginSettingTab {
             return { isValid: false, message: 'Currency must start with a letter and contain only uppercase letters, digits, or \' . _ -' };
         }
 
-        return { isValid: true, message: '✅ Valid currency code' };
+        return { isValid: true, message: t("✅ Valid currency code") };
     }
 
     private createValidationElement(container: HTMLElement): HTMLElement {
@@ -887,7 +905,7 @@ export class BeancountSettingTab extends PluginSettingTab {
     }
 
     private createConnectionSection(containerEl: HTMLElement) {
-        new Setting(containerEl).setName('Connection configuration').setHeading();
+        new Setting(containerEl).setName(t("Connection configuration")).setHeading();
 
         const desc = containerEl.createDiv({ cls: 'setting-item-description' });
         desc.setCssStyles({ marginBottom: '1em' });
@@ -907,7 +925,7 @@ export class BeancountSettingTab extends PluginSettingTab {
 
     private async saveFolderNameRename(): Promise<void> {
         if (!this.tempFolderName) {
-            new Notice('Folder name cannot be empty.');
+            new Notice(t("Folder name cannot be empty."));
             return;
         }
 
@@ -933,7 +951,7 @@ export class BeancountSettingTab extends PluginSettingTab {
         // Check if the target folder/file already exists in the vault
         const targetExists = this.app.vault.getAbstractFileByPath(this.tempFolderName);
         if (targetExists) {
-            new Notice(`Error: A folder or file named "${this.tempFolderName}" already exists in the vault. Please choose a different name.`);
+            new Notice(t("Error: A folder or file named \"{0}\" already exists in the vault. Please choose a different name.", [this.tempFolderName]));
             return;
         }
 
@@ -943,14 +961,14 @@ export class BeancountSettingTab extends PluginSettingTab {
             if (oldFolder instanceof TFolder) {
                 try {
                     await this.app.vault.rename(oldFolder, this.tempFolderName);
-                    new Notice(`Folder renamed from "${oldFolderName}" to "${this.tempFolderName}"`);
+                    new Notice(t("Folder renamed from \"{0}\" to \"{1}\"", [oldFolderName, this.tempFolderName]));
                 } catch (renameError) {
                     Logger.error('Failed to rename structured layout folder in vault:', renameError);
-                    new Notice(`Failed to rename folder: ${renameError instanceof Error ? renameError.message : String(renameError)}`);
+                    new Notice(t("Failed to rename folder: {0}", [renameError instanceof Error ? renameError.message : String(renameError)]));
                     return;
                 }
             } else {
-                new Notice(`Error: "${oldFolderName}" exists but is not a folder.`);
+                new Notice(t("Error: \"{0}\" exists but is not a folder.", [oldFolderName]));
                 return;
             }
         } else {
