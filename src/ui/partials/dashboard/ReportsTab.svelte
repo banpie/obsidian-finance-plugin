@@ -1454,7 +1454,7 @@
 				<span>{$tr("Project Income")}</span>
 				<strong>{formatCurrency(projectIncomeTotal)}</strong>
 			</button>
-			<button type="button" class="metric-card interactive-card" on:click={() => openProjectSummaryDetails('Project Expenses', projectExpensesTotal, $tr("Expense"))}>
+			<button type="button" class="metric-card interactive-card" on:click={() => openProjectSummaryDetails('Project Expenses', projectExpensesTotal, 'Expense')}>
 				<span>{$tr("Project Expenses")}</span>
 				<strong>{formatCurrency(projectExpensesTotal)}</strong>
 			</button>
