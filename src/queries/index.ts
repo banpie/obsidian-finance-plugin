@@ -202,8 +202,10 @@ export function getTransactionsQuery(filters: TransactionFilters, limit = 1000):
 	// across up to `limit` rows this can produce a multi-MB CSV response that freezes the UI thread
 	// during parsing/rendering on large ledgers. Only request it once scoped to a single account.
 	const selectPart = filters.account
-		? `SELECT date, payee, narration, position, balance`
-		: `SELECT date, payee, narration, position`;
+		? `SELECT date, payee, narration, str(position) AS position, str(units(balance)) AS balance, account`
+		: `SELECT date, payee, narration, str(position) AS position, '' AS balance, account`;
+	// String conversion preserves exact decimals instead of the ledger's typical display rounding.
+	// Each posting's account determines presentation direction, including mixed account filters.
 	const whereClauses: string[] = [];
 	const orderByPart = `ORDER BY date DESC, lineno DESC LIMIT ${limit}`;
 

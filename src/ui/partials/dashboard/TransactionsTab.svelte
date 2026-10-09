@@ -3,6 +3,7 @@
 	import { onMount, createEventDispatcher } from 'svelte';
 	import type { AccountNode } from '../../../models/account';
 	import { debounce } from '../../../utils/index';
+	import { presentTransactionRow, type TransactionDisplayRow } from '../../../utils/transactionDisplay';
 	import type { TransactionController } from '../../../controllers/TransactionController'; // Import controller type
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
@@ -65,7 +66,9 @@
 	type SortColumn = 'date' | 'payee' | 'narration' | 'amount' | 'balance';
 	let sortColumn: SortColumn = 'date';
 	let sortDirection: 'asc' | 'desc' = 'desc';
-	let sortedTransactions: string[][] = [];
+	let sortedTransactions: TransactionDisplayRow[] = [];
+	$: balanceLabel = /^Income(?::|$)/.test(selectedAccount.trim()) ? 'Net income'
+		: /^Expenses(?::|$)/.test(selectedAccount.trim()) ? 'Net expenses' : 'Balance';
 
 	// --- Debounce handlers - Optimized for better UX ---
 	const updateDebouncedPayee = debounce((value: string) => { debouncedPayeeFilter = value; }, 300);
@@ -87,28 +90,16 @@
 
 	// --- REMOVED onMount data fetching ---
 
-	function parseAmountNum(str: string): number {
-		if (!str) return 0;
-		const match = str.match(/(-?[\d,]+(?:\.\d+)?)/);
-		return match ? parseFloat(match[1].replace(/,/g, '')) || 0 : 0;
-	}
-
-	// --- Sorting logic (remains local) ---
+	// Sort the amounts users actually see, after account-specific direction conversion.
 	function sortTransactions(transactions: string[][]) {
-		const headers = ['date', 'payee', 'narration', 'amount', 'balance']; // Added balance column
-		const columnIndex = headers.indexOf(sortColumn);
-		if (columnIndex === -1) {
-			sortedTransactions = [...transactions]; return;
-		}
-		sortedTransactions = [...transactions].sort((a, b) => {
-			const valA = a.length > columnIndex ? a[columnIndex] : '';
-			const valB = b.length > columnIndex ? b[columnIndex] : '';
+		sortedTransactions = transactions.map(presentTransactionRow).sort((a, b) => {
 			if (sortColumn === 'amount') {
-				const numA = parseAmountNum(valA);
-				const numB = parseAmountNum(valB);
-				return sortDirection === 'asc' ? numA - numB : numB - numA;
+				return sortDirection === 'asc' ? a.amount.value - b.amount.value : b.amount.value - a.amount.value;
 			}
-			const comparison = valA.toLowerCase().localeCompare(valB.toLowerCase()); return sortDirection === 'asc' ? comparison : -comparison;
+			const valA = sortColumn === 'balance' ? a.balance.map(part => part.text).join(', ') : a[sortColumn];
+			const valB = sortColumn === 'balance' ? b.balance.map(part => part.text).join(', ') : b[sortColumn];
+			const comparison = valA.toLowerCase().localeCompare(valB.toLowerCase());
+			return sortDirection === 'asc' ? comparison : -comparison;
 		});
 	}
 	function handleSort(column: SortColumn) {
@@ -216,16 +207,16 @@
 						<th on:click={() => handleSort('narration')} class:active={sortColumn === 'narration'}>
 							{$tr("Narration")} {sortColumn === 'narration' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
 						</th>
-						<th on:click={() => handleSort('amount')} class:active={sortColumn === 'amount'}>
+						<th on:click={() => handleSort('amount')} class:active={sortColumn === 'amount'} title={$tr("Income and refunds are positive; expenses and returned income are negative.")}>
 							{$tr("Amount")} {sortColumn === 'amount' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
 						</th>
-						<th on:click={() => handleSort('balance')} class:active={sortColumn === 'balance'} title={state.currentFilters.account ? '' : $tr("Select an account to see its running balance")}>
-							{$tr("Balance")} {sortColumn === 'balance' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+						<th on:click={() => handleSort('balance')} class:active={sortColumn === 'balance'} title={state.currentFilters.account ? (balanceLabel === 'Balance' ? '' : $tr("Cumulative net amount of the filtered postings, shown separately by currency.")) : $tr("Select an account to see its running balance")}>
+							{$tr(balanceLabel)} {sortColumn === 'balance' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
 						</th>
 					</tr>
 				</thead>
 				<tbody>
-					{#each sortedTransactions as [date, payee, narration, position, balance]}
+					{#each sortedTransactions as {date, payee, narration, amount, balance}}
 						<tr>
 							<td>{date}</td>
 							<td>
@@ -238,8 +229,10 @@
 								{/if}
 							</td>
 							<td>{narration}</td>
-							<td class="align-right">{position}</td>
-							<td class="align-right">{balance || '—'}</td>
+							<td class="align-right {amount.color}">{amount.text}</td>
+							<td class="align-right">
+								{#each balance as part}<span class="balance-amount {part.color}">{part.text}</span>{:else}—{/each}
+							</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -295,6 +288,10 @@
 		box-shadow: none !important;
 	}
 	.align-right { text-align: right; font-family: var(--font-monospace); }
+	.positive { color: var(--color-green); }
+	.negative { color: var(--color-red); }
+	.neutral { color: var(--text-muted); }
+	.balance-amount { display: block; }
 	.error-message { color: var(--text-error); }
 	.btn {
 		padding: 0.4rem 0.8rem;
