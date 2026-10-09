@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { compile, preprocess } from 'svelte/compiler';
 import { createRequire } from 'node:module';
 import { runInNewContext } from 'node:vm';
+import { presentTransactionRow } from '../src/utils/transactionDisplay';
 // Resolve the package's actual CJS export instead of Vite's synthetic named exports.
 const { sveltePreprocess } = createRequire(import.meta.url)('svelte-preprocess') as typeof import('svelte-preprocess');
 
@@ -15,6 +16,22 @@ function componentFiles(folder: string): string[] {
 }
 
 describe('localized Svelte components', () => {
+    it('sorts the real transaction table by displayed income direction', async () => {
+        const filename = path.resolve('src/ui/partials/dashboard/TransactionsTab.svelte');
+        const result = await preprocess(readFileSync(filename, 'utf8'), sveltePreprocess(), { filename });
+        const sortFunction = result.code.match(/function sortTransactions\(transactions\)\s*\{[\s\S]*?\n\s*function handleSort/)?.[0].replace(/\s*function handleSort$/, '');
+        expect(sortFunction).toBeTruthy();
+        const rows = [
+            ['2026-09-30', '', 'Receipt', '-2400 CNY', '', 'Income:Rental'],
+            ['2026-09-30', '', 'Returned income', '600 CNY', '', 'Income:Rental'],
+            ['2026-09-30', '', 'Interest', '-0.31 CNY', '', 'Income:Interest'],
+        ];
+        const sorted = runInNewContext(`let sortedTransactions; ${sortFunction}; sortTransactions(rows); sortedTransactions`, {
+            rows, presentTransactionRow, sortColumn: 'amount', sortDirection: 'desc',
+        }) as ReturnType<typeof presentTransactionRow>[];
+        expect(sorted.map(row => row.amount.text)).toEqual(['+2,400.00 CNY', '+0.31 CNY', '-600.00 CNY']);
+    });
+
     it('keeps purchases and refunds in the expense filter when their display labels are translated', async () => {
         const filename = path.resolve('src/ui/partials/dashboard/ReportsTab.svelte');
         const result = await preprocess(readFileSync(filename, 'utf8'), sveltePreprocess(), { filename });
