@@ -482,6 +482,10 @@
 		return transaction.narration || transaction.payee || '';
 	}
 
+	function transactionType(transaction: ReportTransaction): 'Income' | 'Expense' | '' {
+		return 'type' in transaction ? (transaction as ReportProjectTransaction).type : '';
+	}
+
 	function transactionTypeLabel(transaction: ReportTransaction): string {
 		if (!('type' in transaction)) return '';
 		return $tr(projectTransactionTypeLabelKey((transaction as ReportProjectTransaction).type, transaction.amount));
@@ -999,7 +1003,7 @@
 		&& matchesReportSearch(detailRowSearch, [row.label, row.account, formatLoanDisplayName(row.label), loanAccountLabel(row.account), loanDirectionLabel(row), statusLabel(row)])
 	);
 	$: filteredDetailTransactions = detailTransactions.filter(transaction =>
-		(detailTransactionTypeFilter === 'all' || transactionTypeLabel(transaction) === detailTransactionTypeFilter)
+		(detailTransactionTypeFilter === 'all' || transactionType(transaction) === detailTransactionTypeFilter)
 		&& matchesReportSearch(detailTransactionSearch, transactionSearchValues(transaction))
 	);
 	$: holdingTransactionTypes = Array.from(new Set(holdingTransactions.map(transaction => transaction.type).filter(Boolean))).sort((a, b) => a.localeCompare(b));
