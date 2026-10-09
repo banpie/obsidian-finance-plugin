@@ -111,7 +111,6 @@ export class UnifiedDashboardView extends ItemView {
 				ledgerProfileName: this.plugin.getActiveLedgerProfile()?.name || '',
 				ledgerProfiles: this.plugin.settings.ledgerProfiles,
 				activeLedgerProfileId: this.plugin.settings.activeLedgerProfileId,
-				languagePreference: this.plugin.settings.language,
 			}
 		}) as NavigableDashboardComponent;
 

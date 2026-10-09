@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tr, type LanguagePreference } from "../../../i18n";
+	import { tr } from "../../../i18n";
     import { onMount } from 'svelte';
 
     // Components
@@ -33,7 +33,6 @@
     export let ledgerProfileName = '';
     export let ledgerProfiles: Array<{ id: string; name: string; readOnly?: boolean }> = [];
     export let activeLedgerProfileId = '';
-    export let languagePreference: LanguagePreference = 'auto';
 
     export let activeTab = 'overview';
     let isSwitchingLedger = false;
@@ -72,11 +71,6 @@
         isSwitchingLedger = false;
     }
 
-    async function handleLanguageChange(event: Event) {
-        languagePreference = (event.currentTarget as HTMLSelectElement).value as LanguagePreference;
-        await plugin?.changeLanguage(languagePreference);
-    }
-
     $: tabs = [
         { value: 'overview', label: $tr("Overview") },
         { value: 'reports', label: $tr("Reports") },
@@ -110,11 +104,6 @@
     {/if}
     <div class="tabs-header">
         <TabBar {tabs} bind:value={activeTab} fullWidth={false} ariaLabel={$tr("Dashboard sections")} />
-        <select class="language-switcher" value={languagePreference} on:change={handleLanguageChange} aria-label={$tr('Interface language')} title={$tr('Interface language')}>
-            <option value="auto">{$tr('Follow Obsidian')}</option>
-            <option value="zh-CN">简体中文</option>
-            <option value="en">English</option>
-        </select>
     </div>
 
     <div class="tab-content">
@@ -157,13 +146,6 @@
         overflow-x: auto;
         align-items: center;
         gap: var(--size-4-3);
-    }
-
-    .language-switcher {
-        margin-left: auto;
-        flex-shrink: 0;
-        font-size: var(--font-ui-small);
-        max-width: 10rem;
     }
 
     .ledger-profile-bar {
