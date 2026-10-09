@@ -6,7 +6,7 @@ export function localizeChartConfig(config: ChartConfiguration, language: Locale
     const label = (value: unknown): unknown => {
         if (typeof value !== 'string') return value;
         const match = /^(.*?) (\([A-Z][A-Z0-9._-]*\))$/.exec(value);
-        if (match) return `${label(match[1])} ${match[2]}`;
+        if (match) return `${String(label(match[1]))} ${match[2]}`;
         const trend = /^(.*?) Trend$/.exec(value);
         if (trend) return translate(language, '{0} Trend', [translate(language, trend[1])]);
         return translate(language, value);
