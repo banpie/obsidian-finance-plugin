@@ -1,5 +1,6 @@
 <!-- src/ui/modals/AddScheduleModal.svelte -->
 <script lang="ts">
+	import { tr } from "../../i18n";
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { nativeDatePicker } from '../actions/nativeDatePicker';
 	import PostingRow from './transaction-edit/PostingRow.svelte';
@@ -137,55 +138,55 @@
 </script>
 
 <div class="schedule-modal">
-	<h2>{editingSchedule ? 'Edit Scheduled Transaction' : 'Add Scheduled Transaction'}</h2>
+	<h2>{editingSchedule ? $tr("Edit Scheduled Transaction") : $tr("Add Scheduled Transaction")}</h2>
 
 	<div class="form-grid">
 		<div class="form-group full-width">
-			<label for="schedule-name">Name <span class="required">*</span></label>
+			<label for="schedule-name">{$tr("Name")} <span class="required">*</span></label>
 			<input
 				id="schedule-name"
 				type="text"
 				bind:value={name}
-				placeholder="e.g. Rent Payment"
+				placeholder={$tr("e.g. Rent Payment")}
 				class:error={nameError}
 			/>
 			{#if nameError}<span class="error-msg">{nameError}</span>{/if}
 		</div>
 
 		<div class="form-group">
-			<label for="schedule-frequency">Frequency</label>
+			<label for="schedule-frequency">{$tr("Frequency")}</label>
 			<select id="schedule-frequency" bind:value={frequency}>
-				<option value="One-time">One-time</option>
-				<option value="Weekly">Weekly</option>
-				<option value="Monthly">Monthly</option>
-				<option value="Quarterly">Quarterly</option>
-				<option value="Yearly">Yearly</option>
+				<option value="One-time">{$tr("One-time")}</option>
+				<option value="Weekly">{$tr("Weekly")}</option>
+				<option value="Monthly">{$tr("Monthly")}</option>
+				<option value="Quarterly">{$tr("Quarterly")}</option>
+				<option value="Yearly">{$tr("Yearly")}</option>
 			</select>
 		</div>
 
 		<div class="form-group">
-			<label for="schedule-start">{frequency === 'One-time' ? 'Date' : 'Start Date'}</label>
+			<label for="schedule-start">{frequency === 'One-time' ? $tr("Date") : $tr("Start Date")}</label>
 			<input id="schedule-start" type="date" bind:value={startDate} use:nativeDatePicker />
 		</div>
 
 		<div class="form-group">
-			<label for="schedule-payee">Payee</label>
-			<input id="schedule-payee" type="text" bind:value={payee} list="payees-list" placeholder="e.g. Landlord" />
+			<label for="schedule-payee">{$tr("Payee")}</label>
+			<input id="schedule-payee" type="text" bind:value={payee} list="payees-list" placeholder={$tr("e.g. Landlord")} />
 			<datalist id="payees-list">
 				{#each payees as p}<option value={p} />{/each}
 			</datalist>
 		</div>
 
 		<div class="form-group">
-			<label for="schedule-narration">Narration</label>
-			<input id="schedule-narration" type="text" bind:value={narration} placeholder="e.g. Monthly rent" />
+			<label for="schedule-narration">{$tr("Narration")}</label>
+			<input id="schedule-narration" type="text" bind:value={narration} placeholder={$tr("e.g. Monthly rent")} />
 		</div>
 	</div>
 
 	<div class="postings-section">
 		<div class="postings-header">
-			<h3>Postings</h3>
-			<button type="button" class="add-posting-btn" on:click={addPosting}>+ Add Posting</button>
+			<h3>{$tr("Postings")}</h3>
+			<button type="button" class="add-posting-btn" on:click={addPosting}>{$tr("+ Add Posting")}</button>
 		</div>
 		{#if postingsError}<span class="error-msg">{postingsError}</span>{/if}
 		<datalist id="accounts-list">
@@ -224,8 +225,8 @@
 	</div>
 
 	<div class="modal-footer">
-		<button class="cancel-btn" on:click={handleCancel}>Cancel</button>
-		<button class="save-btn" on:click={handleSave}>{editingSchedule ? 'Save Changes' : 'Save Schedule'}</button>
+		<button class="cancel-btn" on:click={handleCancel}>{$tr("Cancel")}</button>
+		<button class="save-btn" on:click={handleSave}>{editingSchedule ? $tr("Save Changes") : $tr("Save Schedule")}</button>
 	</div>
 </div>
 

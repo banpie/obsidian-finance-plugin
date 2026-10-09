@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { App, FuzzySuggestModal } from 'obsidian';
 import type { Completion } from '@codemirror/autocomplete';
 
@@ -9,7 +10,7 @@ export class SnippetSuggestModal extends FuzzySuggestModal<Completion> {
         super(app);
         this.items = items;
         this.onSelect = onSelect;
-        this.setPlaceholder("Search transaction snippet...");
+        this.setPlaceholder(t("Search transaction snippet..."));
     }
 
     getItems(): Completion[] {

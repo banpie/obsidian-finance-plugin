@@ -1,6 +1,7 @@
 // src/ui/views/dashboard/unified-dashboard-view.ts
 
 import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { t } from '../../../i18n';
 import type BeancountPlugin from '../../../main';
 import type { LedgerProfile } from '../../../settings';
 import UnifiedDashboardComponent from './UnifiedDashboardView.svelte';
@@ -52,7 +53,7 @@ export class UnifiedDashboardView extends ItemView {
 	}
 
 	getViewType(): string { return UNIFIED_DASHBOARD_VIEW_TYPE; }
-	getDisplayText(): string { return "Beancount dashboard"; }
+	getDisplayText(): string { return t('Beancount dashboard'); }
 	getIcon(): string { return "layout-dashboard"; }
 
 	/**
@@ -110,6 +111,7 @@ export class UnifiedDashboardView extends ItemView {
 				ledgerProfileName: this.plugin.getActiveLedgerProfile()?.name || '',
 				ledgerProfiles: this.plugin.settings.ledgerProfiles,
 				activeLedgerProfileId: this.plugin.settings.activeLedgerProfileId,
+				languagePreference: this.plugin.settings.language,
 			}
 		}) as NavigableDashboardComponent;
 

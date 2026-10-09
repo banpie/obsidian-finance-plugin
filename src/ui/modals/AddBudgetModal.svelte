@@ -1,5 +1,6 @@
 <!-- src/ui/modals/AddBudgetModal.svelte -->
 <script lang="ts">
+	import { tr } from "../../i18n";
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { groupCurrencyOptions } from '../../utils';
 	import { nativeDatePicker } from '../actions/nativeDatePicker';
@@ -104,51 +105,51 @@
 </script>
 
 <div class="indicator-modal">
-	<h2>{editingIndicator ? '编辑预算' : '新增预算'}</h2>
+	<h2>{editingIndicator ? $tr("编辑预算") : $tr("新增预算")}</h2>
 
 	<div class="form-grid">
 		<div class="form-group full-width">
-			<label for="budget-name">名称 <span class="required">*</span></label>
+			<label for="budget-name">{$tr("名称")} <span class="required">*</span></label>
 			<input
 				id="budget-name"
 				type="text"
 				bind:value={name}
-				placeholder="例如：每月总支出"
+				placeholder={$tr("例如：每月总支出")}
 				class:error={nameError}
 			/>
 			{#if nameError}<span class="error-msg">{nameError}</span>{/if}
 		</div>
 
 		<div class="form-group full-width">
-			<label for="budget-account">支出科目 <span class="required">*</span></label>
+			<label for="budget-account">{$tr("支出科目")} <span class="required">*</span></label>
 			<div class="account-rows">
 				{#each accountRows as row, i (i)}
 					<AccountQueryRow
 						bind:value={accountRows[i]}
 						accounts={expenseAccounts}
 						showRemove={accountRows.length > 1}
-						placeholder="例如：Expenses:Food"
+						placeholder={$tr("例如：Expenses:Food")}
 						hasError={!!accountError}
 						on:remove={() => removeAccountRow(i)}
 					/>
 				{/each}
 			</div>
-			<button type="button" class="add-row-btn" on:click={addAccountRow}>+ 添加科目</button>
+			<button type="button" class="add-row-btn" on:click={addAccountRow}>{$tr("+ 添加科目")}</button>
 			{#if accountError}<span class="error-msg">{accountError}</span>{/if}
 		</div>
 
 		<div class="form-group">
-			<label for="budget-cycle">周期</label>
+			<label for="budget-cycle">{$tr("周期")}</label>
 			<select id="budget-cycle" bind:value={cycle}>
-				<option value="Monthly">每月</option>
-				<option value="Weekly">每周</option>
-				<option value="Quarterly">每季度</option>
-				<option value="Yearly">每年</option>
+				<option value="Monthly">{$tr("每月")}</option>
+				<option value="Weekly">{$tr("每周")}</option>
+				<option value="Quarterly">{$tr("每季度")}</option>
+				<option value="Yearly">{$tr("每年")}</option>
 			</select>
 		</div>
 
 		<div class="form-group">
-			<label for="budget-target">目标金额 <span class="required">*</span></label>
+			<label for="budget-target">{$tr("目标金额")} <span class="required">*</span></label>
 			<input
 				id="budget-target"
 				type="number"
@@ -162,10 +163,10 @@
 		</div>
 
 		<div class="form-group">
-			<label for="budget-currency">货币</label>
+			<label for="budget-currency">{$tr("货币")}</label>
 			<select id="budget-currency" bind:value={currency}>
 				{#each currencyGroups as group}
-					<optgroup label={group.label}>
+					<optgroup label={$tr(group.label)}>
 						{#each group.options as c}
 							<option value={c}>{c}</option>
 						{/each}
@@ -177,32 +178,32 @@
 		<div class="form-group rollover-row">
 			<label class="toggle-label">
 				<input type="checkbox" bind:checked={isRollover} />
-				结转
+				{$tr("结转")}
 			</label>
 		</div>
 
 		{#if isRollover}
 			<div class="form-group full-width">
-				<label for="budget-start">开始日期</label>
+				<label for="budget-start">{$tr("开始日期")}</label>
 				<input id="budget-start" type="date" bind:value={startDate} use:nativeDatePicker />
 			</div>
 		{/if}
 
 		<div class="form-group full-width">
-			<label for="budget-tag">标签 <span class="optional">（可选）</span></label>
+			<label for="budget-tag">{$tr("标签")} <span class="optional">{$tr("（可选）")}</span></label>
 			<div class="tag-row">
 				<select id="budget-tag-mode" bind:value={tagMode}>
-					<option value="has">包含标签</option>
-					<option value="not_has">不包含标签</option>
+					<option value="has">{$tr("包含标签")}</option>
+					<option value="not_has">{$tr("不包含标签")}</option>
 				</select>
-				<input id="budget-tag" type="text" bind:value={tag} placeholder="例如：groceries" />
+				<input id="budget-tag" type="text" bind:value={tag} placeholder={$tr("例如：groceries")} />
 			</div>
 		</div>
 	</div>
 
 	<div class="modal-footer">
-		<button class="cancel-btn" on:click={handleCancel}>取消</button>
-		<button class="save-btn" on:click={handleSave}>{editingIndicator ? '保存修改' : '保存预算'}</button>
+		<button class="cancel-btn" on:click={handleCancel}>{$tr("取消")}</button>
+		<button class="save-btn" on:click={handleSave}>{editingIndicator ? $tr("保存修改") : $tr("保存预算")}</button>
 	</div>
 </div>
 

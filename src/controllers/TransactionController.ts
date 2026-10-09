@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // src/controllers/TransactionController.ts
 
 import { writable, type Writable, get } from 'svelte/store';
@@ -105,7 +106,7 @@ export class TransactionController {
 			const accountDataRows = firstAccountRowIsHeader ? accountRecords.slice(1) : accountRecords;
 			const allAccounts = [...new Set(accountDataRows.map(row => row?.[0]).filter(Boolean))];
 			const builtTree = buildAccountTree(allAccounts);
-			const allNode: AccountNode = { name: 'All Accounts', fullName: null, children: [] };
+			const allNode: AccountNode = { name: t("All Accounts"), fullName: null, children: [] };
 
 			// Process Tags
 			const cleanTagStdout = tagResult.replace(/\r/g, "").trim();
@@ -125,7 +126,7 @@ export class TransactionController {
 
 		} catch (e) {
 			Logger.error('Error fetching transaction filters:', e);
-			this.state.update(s => ({ ...s, isLoadingFilters: false, error: "Failed to load filters." }));
+			this.state.update(s => ({ ...s, isLoadingFilters: false, error: t("Failed to load filters.") }));
 		}
 	}
 

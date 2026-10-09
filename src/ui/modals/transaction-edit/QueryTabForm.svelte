@@ -1,5 +1,6 @@
 <!-- src/ui/modals/transaction-edit/QueryTabForm.svelte -->
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import { nativeDatePicker } from "../../actions/nativeDatePicker";
 
 	export let date: string;
@@ -18,7 +19,7 @@
 
 <div class="form-grid">
 	<div class="form-group">
-		<label for="query-date">Date *</label>
+		<label for="query-date">{$tr("Date *")}</label>
 		<input
 			type="date"
 			id="query-date"
@@ -29,7 +30,7 @@
 	</div>
 
 	<div class="form-group">
-		<label for="query-name">Query name *</label>
+		<label for="query-name">{$tr("Query name *")}</label>
 		<input
 			type="text"
 			id="query-name"
@@ -37,7 +38,7 @@
 			placeholder="e.g. my_expenses"
 			required
 		/>
-		<small class="query-hint">Use in notes with <code>bql-q:{queryName || 'name'}</code></small>
+		<small class="query-hint">{$tr("Use in notes with")} <code>bql-q:{queryName || 'name'}</code></small>
 	</div>
 
 	<div class="form-group full-width">
@@ -56,14 +57,14 @@
 			on:click={onTestQuerySQL}
 			disabled={queryTesting || !querySql.trim()}
 		>
-			{queryTesting ? "Running..." : "▶ Test Query"}
+			{queryTesting ? $tr("Running...") : $tr("▶ Test Query")}
 		</button>
 	</div>
 
 	{#if queryTestError}
 		<div class="form-group full-width">
 			<div class="query-test-error">
-				<strong>Error:</strong> {queryTestError}
+				<strong>{$tr("Error:")}</strong> {queryTestError}
 			</div>
 		</div>
 	{/if}
@@ -72,7 +73,7 @@
 		<div class="form-group full-width">
 			<div class="query-test-results">
 				<small class="query-preview-label">
-					Preview {Math.min(queryTestRows.length - 1, 5)} row(s)
+					{$tr("Preview")} {Math.min(queryTestRows.length - 1, 5)} {$tr("row(s)")}
 				</small>
 				<table class="query-preview-table">
 					<thead>
@@ -92,19 +93,19 @@
 <!-- Saved Queries Browser -->
 <div class="saved-queries-section">
 	<div class="saved-queries-header">
-		<span>Saved Named Queries</span>
+		<span>{$tr("Saved Named Queries")}</span>
 		<button
 			type="button"
 			class="btn-refresh-queries"
 			on:click={onLoadSavedQueries}
 			disabled={savedQueriesLoading}
-			title="Refresh list"
+			title={$tr("Refresh list")}
 		>↻</button>
 	</div>
 	{#if savedQueriesLoading}
-		<p class="saved-queries-empty">Loading…</p>
+		<p class="saved-queries-empty">{$tr("Loading…")}</p>
 	{:else if Object.keys(savedQueries).length === 0}
-		<p class="saved-queries-empty">No named queries saved yet.</p>
+		<p class="saved-queries-empty">{$tr("No named queries saved yet.")}</p>
 	{:else}
 		<ul class="saved-queries-list">
 			{#each Object.entries(savedQueries) as [name, sql]}
@@ -117,8 +118,8 @@
 						type="button"
 						class="btn-load-query"
 						on:click={() => onLoadQueryIntoForm(name, sql)}
-						title="Load into editor"
-					>Load</button>
+						title={$tr("Load into editor")}
+					>{$tr("Load")}</button>
 				</li>
 			{/each}
 		</ul>

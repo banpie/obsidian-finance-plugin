@@ -1,5 +1,6 @@
 <!-- src/ui/partials/dashboard/IndicatorsSection.svelte -->
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import { onMount, createEventDispatcher } from 'svelte';
 	import { parse as parseCsv } from 'csv-parse/sync';
 	import { runQuery, deleteIndicatorDirective, parsePeriodLabel } from '../../../utils';
@@ -219,13 +220,13 @@
 
 	function getStatusBadge(pct: number, isBudget: boolean): { label: string; cls: string } {
 		if (isBudget) {
-			if (pct >= 100) return { label: 'Over Budget', cls: 'status-over' };
-			if (pct >= 75)  return { label: 'Warning',     cls: 'status-warn' };
-			return { label: 'On Track', cls: 'status-good' };
+			if (pct >= 100) return { label: $tr("Over Budget"), cls: 'status-over' };
+			if (pct >= 75)  return { label: $tr("Warning"),     cls: 'status-warn' };
+			return { label: $tr("On Track"), cls: 'status-good' };
 		}
-		if (pct >= 100) return { label: 'Complete',   cls: 'status-good' };
-		if (pct >= 75)  return { label: 'On Track',   cls: 'status-good' };
-		return { label: 'In Progress', cls: 'status-neutral' };
+		if (pct >= 100) return { label: $tr("Complete"),   cls: 'status-good' };
+		if (pct >= 75)  return { label: $tr("On Track"),   cls: 'status-good' };
+		return { label: $tr("In Progress"), cls: 'status-neutral' };
 	}
 
 	async function loadAll() {
@@ -272,7 +273,7 @@
 		// dispatching queries that can't meaningfully return a status.
 		if (!item.accountString || !item.startDate || item.targetAmount <= 0) {
 			budgets = budgets.map((b, i) => i === index
-				? { ...b, loading: false, error: 'Indicator data incomplete — check the event directive in events.beancount.' }
+				? { ...b, loading: false, error: $tr("Indicator data incomplete — check the event directive in events.beancount.") }
 				: b);
 			return;
 		}
@@ -332,7 +333,7 @@
 		} catch (e) {
 			// Surface query/parse errors in the card itself rather than throwing globally.
 			budgets = budgets.map((b, i) => i === index
-				? { ...b, loading: false, error: e instanceof Error ? e.message : 'Error loading status' } : b);
+				? { ...b, loading: false, error: e instanceof Error ? e.message : $tr("Error loading status") } : b);
 		}
 	}
 
@@ -365,7 +366,7 @@
 		// Same renderability guard as for budgets — see loadBudgetStatus for rationale.
 		if (!item.accountString || !item.startDate || item.targetAmount <= 0) {
 			targets = targets.map((t, i) => i === index
-				? { ...t, loading: false, error: 'Indicator data incomplete — check the event directive in events.beancount.' }
+				? { ...t, loading: false, error: $tr("Indicator data incomplete — check the event directive in events.beancount.") }
 				: t);
 			return;
 		}
@@ -416,7 +417,7 @@
 				? { ...t, spent: current, remaining, loading: false } : t);
 		} catch (e) {
 			targets = targets.map((t, i) => i === index
-				? { ...t, loading: false, error: e instanceof Error ? e.message : 'Error loading status' } : t);
+				? { ...t, loading: false, error: e instanceof Error ? e.message : $tr("Error loading status") } : t);
 		}
 	}
 
@@ -439,7 +440,7 @@
 	async function handleDelete(item: IndicatorItem) {
 		if (!plugin) return;
 		if (!item.filename || !item.lineno) {
-			new Notice('Cannot find indicator location in file');
+			new Notice($tr("Cannot find indicator location in file"));
 			return;
 		}
 
@@ -449,13 +450,13 @@
 		try {
 			const result = await deleteIndicatorDirective(plugin, item.filename, item.lineno);
 			if (result.success) {
-				new Notice(`Indicator "${item.name}" deleted successfully`);
+				new Notice($tr("Indicator \"{0}\" deleted successfully", [item.name]));
 				await loadAll();
 			} else {
-				new Notice(`Failed to delete indicator: ${result.error || 'Unknown error'}`);
+				new Notice($tr("Failed to delete indicator: {0}", [result.error || 'Unknown error']));
 			}
 		} catch (error) {
-			new Notice(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			new Notice($tr("Error: {0}", [error instanceof Error ? error.message : $tr("Unknown error")]));
 		}
 	}
 </script>
@@ -464,24 +465,24 @@
 	<!-- Header -->
 	<div class="indicators-header">
 		<div class="title-row">
-			<h4>Financial Indicators</h4>
-			<button class="btn btn-primary" on:click={loadAll} disabled={isLoading}>Refresh</button>
+			<h4>{$tr("Financial Indicators")}</h4>
+			<button class="btn btn-primary" on:click={loadAll} disabled={isLoading}>{$tr("Refresh")}</button>
 		</div>
 		<div class="controls-row">
 			<CustomSelect
 				variant="secondary"
 				position="single"
 				options={[
-					{ value: 'Budgets', label: `Budgets (${budgets.length})` },
-					{ value: 'Targets', label: `Targets (${targets.length})` },
+					{ value: 'Budgets', label: `${$tr('Budgets')} (${budgets.length})` },
+					{ value: 'Targets', label: `${$tr('Targets')} (${targets.length})` },
 				]}
 				value={activeView}
 				on:change={(e) => handleViewChange(e.detail)}
-				ariaLabel="Select indicator view"
+				ariaLabel={$tr("Select indicator view")}
 			/>
 			<button class="add-btn" on:click={activeView === 'Budgets' ? handleAddBudget : handleAddTarget}>
 				<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-				{activeView === 'Budgets' ? 'Add Budget' : 'Add Target'}
+				{activeView === 'Budgets' ? $tr("Add Budget") : $tr("Add Target")}
 			</button>
 		</div>
 	</div>
@@ -503,10 +504,10 @@
 				<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3">
 					<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
 				</svg>
-				<p>No {activeView.toLowerCase()} defined yet.</p>
+				<p>{activeView === 'Budgets' ? $tr('No budgets yet.') : $tr('No targets yet.')}</p>
 				<button class="add-btn" on:click={activeView === 'Budgets' ? handleAddBudget : handleAddTarget}>
 					<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-					Add {activeView === 'Budgets' ? 'Budget' : 'Target'}
+					{$tr("Add")} {activeView === 'Budgets' ? $tr("Budget") : $tr("Target")}
 				</button>
 			</div>
 		{:else}
@@ -526,13 +527,13 @@
 								<div class="card-title-row">
 									<span class="card-name">{item.name}</span>
 									<div class="card-actions">
-										<button class="btn-icon view-btn" on:click={(e) => handleViewTransactions(item, e)} title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal">→ View</button>
-										<button class="btn-icon edit-btn" on:click={() => handleEdit(item)} title="Edit">✏️</button>
-										<button class="btn-icon delete-btn" on:click={() => handleDelete(item)} title="Delete">❌</button>
+										<button class="btn-icon view-btn" on:click={(e) => handleViewTransactions(item, e)} title={$tr("Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal")}>{$tr("→ View")}</button>
+										<button class="btn-icon edit-btn" on:click={() => handleEdit(item)} title={$tr("Edit")}>✏️</button>
+										<button class="btn-icon delete-btn" on:click={() => handleDelete(item)} title={$tr("Delete")}>❌</button>
 									</div>
 								</div>
 								<div class="card-meta">
-									<button type="button" class="meta-chip account-chip" on:click={(e) => handleViewTransactions(item, e)} title="Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal">
+									<button type="button" class="meta-chip account-chip" on:click={(e) => handleViewTransactions(item, e)} title={$tr("Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal")}>
 										<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
 										{item.accountString}
 									</button>
@@ -544,7 +545,7 @@
 							</div>
 							{#if !item.loading && !item.error}
 								<div class="card-remaining">
-									<span class="remaining-label">{isBudget ? 'Remaining' : 'Still needed'}</span>
+									<span class="remaining-label">{isBudget ? $tr("Remaining") : $tr("Still needed")}</span>
 									<span class="remaining-value" style="--bar-color: {barColor};">{formatAmount(Math.max(item.remaining, 0), item.currency)}</span>
 									<span class="status-badge {status.cls}">{status.label}</span>
 								</div>
@@ -563,8 +564,8 @@
 							<!-- Progress section -->
 							<div class="progress-section">
 								<div class="progress-label-row">
-									<span class="progress-label-text">{formatAmount(item.spent, item.currency)} of {effTarget < 0 ? formatSignedAmount(effTarget, item.currency) : formatAmount(effTarget, item.currency)}</span>
-									<span class="pct-text" style="--bar-color: {barColor};">{isFinite(pct) ? `${(Math.round(pct * 10) / 10).toFixed(1)}%` : 'Over'}</span>
+									<span class="progress-label-text">{formatAmount(item.spent, item.currency)} {$tr("of")} {effTarget < 0 ? formatSignedAmount(effTarget, item.currency) : formatAmount(effTarget, item.currency)}</span>
+									<span class="pct-text" style="--bar-color: {barColor};">{isFinite(pct) ? `${(Math.round(pct * 10) / 10).toFixed(1)}%` : $tr("Over")}</span>
 								</div>
 								<div class="progress-track">
 									<div class="progress-fill" style="--pct-width: {Math.min(pct, 100)}%; --bar-color: {barColor};"></div>
@@ -574,7 +575,7 @@
 							<!-- Bottom stats row -->
 							<div class="stats-row">
 								<div class="stat-block">
-									<span class="stat-label">{isBudget ? 'Base Target' : 'Goal'}</span>
+									<span class="stat-label">{isBudget ? $tr("Base Target") : $tr("Goal")}</span>
 									<span class="stat-value">{formatAmount(item.targetAmount, item.currency)}</span>
 								</div>
 								{#if item.isRollOver}
@@ -585,21 +586,21 @@
 											{:else}
 												<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
 											{/if}
-											Rollover
+											{$tr("Rollover")}
 										</span>
 										<span class="stat-value rollover-value" class:rollover-negative={rolloverAmt < 0}>{formatSignedAmount(rolloverAmt, item.currency)}</span>
 									</div>
 									<div class="stat-block">
-										<span class="stat-label">Available</span>
+										<span class="stat-label">{$tr("Available")}</span>
 										<span class="stat-value">{formatSignedAmount(effTarget, item.currency)}</span>
 									</div>
 								{:else}
 									<div class="stat-block">
-										<span class="stat-label">{isBudget ? 'Spent' : 'Saved'}</span>
+										<span class="stat-label">{isBudget ? $tr("Spent") : $tr("Saved")}</span>
 										<span class="stat-value">{formatAmount(item.spent, item.currency)}</span>
 									</div>
 									<div class="stat-block">
-										<span class="stat-label">{isBudget ? 'Remaining' : 'Still needed'}</span>
+										<span class="stat-label">{isBudget ? $tr("Remaining") : $tr("Still needed")}</span>
 										<span class="stat-value stat-value-colored" style="--bar-color: {barColor};">{formatAmount(Math.max(item.remaining, 0), item.currency)}</span>
 									</div>
 								{/if}

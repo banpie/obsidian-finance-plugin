@@ -1,5 +1,6 @@
 <!-- src/components/tabs/CommoditiesTab.svelte -->
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import { onMount, createEventDispatcher } from "svelte";
 	import type {
 		CommoditiesController,
@@ -98,10 +99,10 @@
 		const hours = Math.floor(minutes / 60);
 		const days = Math.floor(hours / 24);
 
-		if (days > 0) return `${days}d ago`;
-		if (hours > 0) return `${hours}h ago`;
-		if (minutes > 0) return `${minutes}m ago`;
-		return "just now";
+		if (days > 0) return $tr("{0}d ago", [days]);
+		if (hours > 0) return $tr("{0}h ago", [hours]);
+		if (minutes > 0) return $tr("{0}m ago", [minutes]);
+		return $tr("just now");
 	}
 </script>
 
@@ -109,17 +110,15 @@
 	<!-- Header with search and refresh -->
 	<div class="commodities-header">
 		<div class="header-left">
-			<h3>Commodities & Prices</h3>
+			<h3>{$tr("Commodities & Prices")}</h3>
 			{#if $lastUpdatedStore}
 				<span class="last-updated"
-					>Last updated: {$lastUpdatedStore.toLocaleTimeString()}</span
+					>{$tr("Last updated:")} {$lastUpdatedStore.toLocaleTimeString()}</span
 				>
 			{/if}
 			{#if !$hasCommodityDataStore && !$loadingStore}
 				<div class="price-notice">
-					ℹ️ No commodities found in your Beancount file. Add
-					commodity declarations to see price metadata and holdings
-					information.
+					{$tr("ℹ️ No commodities found in your Beancount file. Add\n\t\t\t\t\tcommodity declarations to see price metadata and holdings\n\t\t\t\t\tinformation.")}
 				</div>
 			{/if}
 		</div>
@@ -130,26 +129,26 @@
 				class="update-prices-button"
 				disabled={!$beanPriceAvailableStore || $loadingStore || $fetchingPricesStore}
 				title={$beanPriceAvailableStore
-					? "Fetch latest prices for commodities with configured price sources"
-					: "Set up a bean-price command in Settings → Connection to enable price fetching"}
+					? $tr("Fetch latest prices for commodities with configured price sources")
+					: $tr("Set up a bean-price command in Settings → Connection to enable price fetching")}
 			>
-				{$fetchingPricesStore ? "⟳ Fetching..." : "💰 Update Prices"}
+				{$fetchingPricesStore ? $tr("⟳ Fetching...") : $tr("💰 Update Prices")}
 			</button>
 			<button
 				on:click={handleAddCommodity}
 				class="add-commodity-button"
-				title="Add new commodity"
+				title={$tr("Add new commodity")}
 			>
-				+ Add Commodity
+				{$tr("+ Add Commodity")}
 			</button>
 			<input
 				type="text"
-				placeholder="Search commodities..."
+				placeholder={$tr("Search commodities...")}
 				value={$searchTermStore}
 				on:input={handleSearchInput}
 				class="search-input"
 			/>
-			<button class="btn btn-primary" on:click={handleRefresh} disabled={$loadingStore}>Refresh</button>
+			<button class="btn btn-primary" on:click={handleRefresh} disabled={$loadingStore}>{$tr("Refresh")}</button>
 		</div>
 	</div>
 
@@ -160,21 +159,21 @@
 				variant="primary"
 				position="single"
 				options={[
-					{ value: 'all', label: 'All Commodities', icon: 'layers' },
-					{ value: 'has_holding', label: 'Has Holding', icon: 'wallet' },
-					{ value: 'has_price', label: 'Has Price', icon: 'tag' },
-					{ value: 'has_both', label: 'Has Both', icon: 'sparkles' }
+					{ value: 'all', label: $tr("All Commodities"), icon: 'layers' },
+					{ value: 'has_holding', label: $tr("Has Holding"), icon: 'wallet' },
+					{ value: 'has_price', label: $tr("Has Price"), icon: 'tag' },
+					{ value: 'has_both', label: $tr("Has Both"), icon: 'sparkles' }
 				]}
 				bind:value={filterMode}
 				on:change={(e) => filterMode = e.detail}
-				ariaLabel="Filter commodities"
+				ariaLabel={$tr("Filter commodities")}
 			/>
 		</div>
-		<span class="filter-count">{displayCommodities.length} shown</span>
+		<span class="filter-count">{displayCommodities.length} {$tr("shown")}</span>
 	</div>
 	{#if $lastPriceFetchStore}
 		<div class="price-fetch-info">
-			ℹ️ Last price update: {formatTimeSince($lastPriceFetchStore.date)} —
+			{$tr("ℹ️ Last price update:")} {formatTimeSince($lastPriceFetchStore.date)} —
 			{$lastPriceFetchStore.summary}
 		</div>
 	{/if}
@@ -203,15 +202,15 @@
 			{/each}
 		</div>
 	{:else if !$loadingStore}
-		<EmptyState icon="🪙" title="No Commodities Found" description={$searchTermStore ? `No commodities match "${$searchTermStore}"` : filterMode !== 'all' ? `No commodities match the active filter` : 'No commodities found in your Beancount file.'}>
+		<EmptyState icon="🪙" title={$tr("No Commodities Found")} description={$searchTermStore ? `No commodities match "${$searchTermStore}"` : filterMode !== 'all' ? `No commodities match the active filter` : $tr("No commodities found in your Beancount file.")}>
 			{#if !$searchTermStore}
 				<p class="empty-hint">
-					Commodities appear when you declare them in your Beancount file:
+					{$tr("Commodities appear when you declare them in your Beancount file:")}
 				</p>
 				<ul class="empty-list">
-					<li>• Commodity declarations (e.g., <code>2024-01-01 commodity BTC</code>)</li>
-					<li>• With price source metadata (e.g., <code>price: "USD"</code>)</li>
-					<li>• Or other metadata like exchange symbols</li>
+					<li>{$tr("• Commodity declarations (e.g.,")} <code>2024-01-01 commodity BTC</code>)</li>
+					<li>{$tr("• With price source metadata (e.g.,")} <code>price: "USD"</code>)</li>
+					<li>{$tr("• Or other metadata like exchange symbols")}</li>
 				</ul>
 			{/if}
 		</EmptyState>

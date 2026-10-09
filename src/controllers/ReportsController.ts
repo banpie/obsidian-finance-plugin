@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { writable, type Writable, get } from 'svelte/store';
 import { parse as parseCsv } from 'csv-parse/sync';
 import type { ChartConfiguration } from 'chart.js/auto';
@@ -336,7 +337,7 @@ export class ReportsController {
 		const currency = this.plugin.settings.operatingCurrency;
 		if (!currency) {
 			if (!this.isCurrentLoad(loadRevision, activeProfileId)) return;
-			this.state.update(s => ({ ...s, isLoading: false, error: 'Operating currency not set.' }));
+			this.state.update(s => ({ ...s, isLoading: false, error: t("Operating currency not set.") }));
 			return;
 		}
 

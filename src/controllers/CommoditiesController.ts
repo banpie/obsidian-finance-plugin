@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // src/controllers/CommoditiesController.ts
 
 import { writable, type Writable, get } from 'svelte/store';
@@ -385,7 +386,7 @@ export class CommoditiesController {
             const lineno = current?.lineno;
 
             if (!filename || !lineno) {
-                throw new Error('Commodity location not available. Please reload the commodity details.');
+                throw new Error(t("Commodity location not available. Please reload the commodity details."));
             }
 
             // Use native TypeScript save function (no backend needed!)
@@ -426,7 +427,7 @@ export class CommoditiesController {
             Logger.log(`[CommoditiesController] testPriceSource: ${symbol}`);
 
             if (!priceMeta) {
-                return { success: false, error: 'No price metadata found for commodity' };
+                return { success: false, error: t("No price metadata found for commodity") };
             }
 
             // Use native TypeScript validation (no backend needed)
@@ -453,7 +454,7 @@ export class CommoditiesController {
         Logger.log(`[CommoditiesController] testLogoUrl: ${symbol}`);
         try {
             if (!url || url.trim() === '') {
-                return { success: false, error: 'No URL provided' };
+                return { success: false, error: t("No URL provided") };
             }
 
             // Use native TypeScript validation (no backend needed)
@@ -578,7 +579,7 @@ export class CommoditiesController {
             const lineno = current?.lineno;
 
             if (!filename || !lineno) {
-                throw new Error('Commodity location not available. Please reload the commodity details.');
+                throw new Error(t("Commodity location not available. Please reload the commodity details."));
             }
 
             const { deleteCommodityDirective } = await import('../utils/index');
@@ -612,7 +613,7 @@ export class CommoditiesController {
         // Prevent concurrent fetches
         if (get(this.fetchingPrices)) {
             Logger.log('[CommoditiesController] Price fetch already in progress');
-            new Notice('Price fetch already in progress');
+            new Notice(t("Price fetch already in progress"));
             return;
         }
 
@@ -637,15 +638,15 @@ export class CommoditiesController {
                     ? `Price update failed; prices.beancount was restored. ${msg}`
                     : `Error: ${msg}`);
             } else if (external && (result.failedCount ?? 0) > 0) {
-                new Notice(`✓ Price refresh completed; ${result.failedCount} item(s) need review in the price audit.`);
+                new Notice(t("✓ Price refresh completed; {0} item(s) need review in the price audit.", [result.failedCount]));
             } else if (external) {
                 new Notice(`✓ ${summary}`);
             } else if (result.fetchedCount === 0) {
-                new Notice('⚠ Bean-price returned no price directives. Check your commodity price metadata.');
+                new Notice(t("⚠ Bean-price returned no price directives. Check your commodity price metadata."));
             } else if (result.savedCount === 0) {
-                new Notice(`ℹ All ${result.fetchedCount} fetched price(s) were already up to date.`);
+                new Notice(t("ℹ All {0} fetched price(s) were already up to date.", [result.fetchedCount]));
             } else {
-                new Notice(`✓ Saved ${result.savedCount} new price(s) to prices.beancount`);
+                new Notice(t("✓ Saved {0} new price(s) to prices.beancount", [result.savedCount]));
             }
 
             // Refresh cards to show updated prices, and re-infer display precision
@@ -656,7 +657,7 @@ export class CommoditiesController {
             Logger.error('[CommoditiesController] fetchPrices error:', error);
             const errorMsg = error instanceof Error ? error.message : 'Failed to fetch prices';
             this.error.set(errorMsg);
-            new Notice(`Error fetching prices: ${errorMsg}`);
+            new Notice(t("Error fetching prices: {0}", [errorMsg]));
         } finally {
             this.fetchingPrices.set(false);
         }

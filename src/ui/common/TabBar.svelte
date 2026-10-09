@@ -1,9 +1,10 @@
 <script lang="ts">
+	import { tr } from "../../i18n";
 	import { createEventDispatcher, afterUpdate, onMount, onDestroy } from 'svelte';
 
 	export let tabs: { value: string; label: string; count?: number; tone?: 'error' | 'warning' }[] = [];
 	export let value: string = '';
-	export let ariaLabel: string = 'Tabs';
+	export let ariaLabel: string = $tr("Tabs");
 	// true (default): tabs stretch to fill the container, equal width (e.g. a full-width sidebar strip).
 	// false: the bar hugs its own content and each tab sizes to its label — pass this
 	// when the tab bar should sit off to one side instead of spanning its container.

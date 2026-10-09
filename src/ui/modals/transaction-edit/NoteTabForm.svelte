@@ -1,5 +1,6 @@
 <!-- src/ui/modals/transaction-edit/NoteTabForm.svelte -->
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import { nativeDatePicker } from "../../actions/nativeDatePicker";
 
 	export let date: string;
@@ -9,7 +10,7 @@
 
 <div class="form-grid">
 	<div class="form-group">
-		<label for="note-date">Date *</label>
+		<label for="note-date">{$tr("Date *")}</label>
 		<input
 			type="date"
 			id="note-date"
@@ -20,23 +21,23 @@
 	</div>
 
 	<div class="form-group">
-		<label for="note-account">Account *</label>
+		<label for="note-account">{$tr("Account *")}</label>
 		<input
 			type="text"
 			id="note-account"
 			bind:value={noteAccount}
 			list="accounts-list"
-			placeholder="Account for the note"
+			placeholder={$tr("Account for the note")}
 			required
 		/>
 	</div>
 
 	<div class="form-group full-width">
-		<label for="note-comment">Comment *</label>
+		<label for="note-comment">{$tr("Comment *")}</label>
 		<textarea
 			id="note-comment"
 			bind:value={noteComment}
-			placeholder="Note content"
+			placeholder={$tr("Note content")}
 			required
 			rows="3"
 		></textarea>

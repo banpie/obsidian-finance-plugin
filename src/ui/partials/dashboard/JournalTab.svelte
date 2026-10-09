@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../../i18n";
     import { onMount, onDestroy } from 'svelte';
     import { debounce, getOpenAccounts, getPayees, getTags, deleteTransaction, deleteBalance, deleteNote, createSnippet, type TransactionData, type CostData, type PriceDataPayload } from '../../../utils/index';
     import SkeletonLoader from '../../common/SkeletonLoader.svelte';
@@ -226,19 +227,19 @@
                     } else if (entry.type === 'note') {
                         result = await deleteNote(plugin, entry.id);
                     } else {
-                        new Notice(`Deleting ${entry.type} entries is not supported.`);
+                        new Notice($tr("Deleting {0} entries is not supported.", [entry.type]));
                         return;
                     }
                     
                     if (result.success) {
-                        new Notice(`${entry.type.charAt(0).toUpperCase() + entry.type.slice(1)} deleted successfully!`);
+                        new Notice($tr("{0} deleted successfully!", [entry.type.charAt(0).toUpperCase() + entry.type.slice(1)]));
                         await refresh();
                     } else {
-                        new Notice(`Failed to delete ${entry.type}: ${result.error || 'Unknown error'}`);
+                        new Notice($tr("Failed to delete {0}: {1}", [entry.type, result.error || 'Unknown error']));
                     }
                 } catch (error) {
                     console.error('Error deleting entry:', error);
-                    new Notice(`Failed to delete ${entry.type}. Check console for details.`);
+                    new Notice($tr("Failed to delete {0}. Check console for details.", [entry.type]));
                 }
             }
         ).open();
@@ -306,13 +307,13 @@
 
                     const result = await createSnippet(plugin, snippetName, transactionData);
                     if (result.success) {
-                        new Notice(`Snippet "${snippetName}" created successfully!`);
+                        new Notice($tr("Snippet \"{0}\" created successfully!", [snippetName]));
                     } else {
-                        new Notice(`Failed to create snippet: ${result.error || 'Unknown error'}`);
+                        new Notice($tr("Failed to create snippet: {0}", [result.error || 'Unknown error']));
                     }
                 } catch (error) {
                     console.error('Error creating snippet:', error);
-                    new Notice(`Failed to create snippet. Check console for details.`);
+                    new Notice($tr("Failed to create snippet. Check console for details."));
                 }
             }
         ).open();
@@ -420,20 +421,20 @@
     <div class="filters-container">
         <div class="filter-row">
             <div class="filter-group">
-                <label for="search">Search</label>
-                <input type="text" id="search" bind:value={searchTerm} on:input={updateFiltersDebounced} placeholder="Search (payee, narration, account)..." disabled={isLoading} />
+                <label for="search">{$tr("Search")}</label>
+                <input type="text" id="search" bind:value={searchTerm} on:input={updateFiltersDebounced} placeholder={$tr("Search (payee, narration, account)...")} disabled={isLoading} />
             </div>
             <div class="filter-group">
-                <label for="type">Type</label>
+                <label for="type">{$tr("Type")}</label>
                 <select id="type" bind:value={typeFilter} on:change={applyFilters} disabled={isLoading}>
-                    <option value="all">All Types</option>
-                    <option value="transaction">Transactions</option>
-                    <option value="note">Notes</option>
-                    <option value="balance">Balances</option>
+                    <option value="all">{$tr("All Types")}</option>
+                    <option value="transaction">{$tr("Transactions")}</option>
+                    <option value="note">{$tr("Notes")}</option>
+                    <option value="balance">{$tr("Balances")}</option>
                 </select>
             </div>
              <div class="filter-group">
-                <label for="account">Account</label>
+                <label for="account">{$tr("Account")}</label>
                 <div class="suggestion-wrapper">
                     <input
                         type="text"
@@ -443,7 +444,7 @@
                         on:focus={() => openSuggestions('account')}
                         on:blur={closeSuggestionsSoon}
                         on:keydown={handleSuggestionKeydown}
-                        placeholder="Account..."
+                        placeholder={$tr("Account...")}
                         autocomplete="off"
                         disabled={isLoading}
                     />
@@ -462,15 +463,15 @@
 
         <div class="filter-row">
              <div class="filter-group">
-                <label for="start">From</label>
+                <label for="start">{$tr("From")}</label>
                 <input type="date" id="start" bind:value={startDate} on:change={applyFilters} disabled={isLoading} use:nativeDatePicker />
             </div>
              <div class="filter-group">
-                <label for="end">To</label>
+                <label for="end">{$tr("To")}</label>
                 <input type="date" id="end" bind:value={endDate} on:change={applyFilters} disabled={isLoading} use:nativeDatePicker />
             </div>
             <div class="filter-group">
-                <label for="payee">Payee</label>
+                <label for="payee">{$tr("Payee")}</label>
                 <div class="suggestion-wrapper">
                     <input
                         type="text"
@@ -480,7 +481,7 @@
                         on:focus={() => openSuggestions('payee')}
                         on:blur={closeSuggestionsSoon}
                         on:keydown={handleSuggestionKeydown}
-                        placeholder="Payee..."
+                        placeholder={$tr("Payee...")}
                         autocomplete="off"
                         disabled={isLoading}
                     />
@@ -496,7 +497,7 @@
                 </div>
             </div>
             <div class="filter-group">
-                <label for="tag">Tag</label>
+                <label for="tag">{$tr("Tag")}</label>
                 <div class="suggestion-wrapper">
                     <input
                         type="text"
@@ -506,7 +507,7 @@
                         on:focus={() => openSuggestions('tag')}
                         on:blur={closeSuggestionsSoon}
                         on:keydown={handleSuggestionKeydown}
-                        placeholder="Tag..."
+                        placeholder={$tr("Tag...")}
                         autocomplete="off"
                         disabled={isLoading}
                     />
@@ -522,8 +523,8 @@
                 </div>
             </div>
             <div class="filter-actions">
-                 <button class="btn" on:click={handleClear} disabled={isLoading}>Clear</button>
-                 <button class="btn btn-primary" on:click={() => refresh()} disabled={isLoading}>Refresh</button>
+                 <button class="btn" on:click={handleClear} disabled={isLoading}>{$tr("Clear")}</button>
+                 <button class="btn btn-primary" on:click={() => refresh()} disabled={isLoading}>{$tr("Refresh")}</button>
             </div>
         </div>
     </div>
@@ -540,7 +541,7 @@
         {/if}
         
         {#if !isLoading && visibleEntriesArray.length === 0}
-            <EmptyState icon="📓" title="No Entries Found" description="No transactions, notes, or balances match your search criteria or active filters." />
+            <EmptyState icon="📓" title={$tr("No Entries Found")} description={$tr("No transactions, notes, or balances match your search criteria or active filters.")} />
         {/if}
         
         {#if !isLoading && visibleEntriesArray.length > 0}
@@ -579,14 +580,14 @@
     {#if totalEntries > 0}
     <div class="pagination-container">
         <span class="pagination-info">
-            Showing <span class="font-semibold">{(currentPageNum - 1) * pageSizeNum + 1}</span> to <span class="font-semibold">{Math.min(currentPageNum * pageSizeNum, totalEntries)}</span> of <span class="font-semibold">{totalEntries}</span>
+            {$tr("Showing")} <span class="font-semibold">{(currentPageNum - 1) * pageSizeNum + 1}</span> {$tr("to")} <span class="font-semibold">{Math.min(currentPageNum * pageSizeNum, totalEntries)}</span> {$tr("of")} <span class="font-semibold">{totalEntries}</span>
         </span>
         <div class="pagination-controls">
             <button class="btn-small" on:click={() => setPage(currentPageNum - 1)} disabled={currentPageNum === 1}>
-                Previous
+                {$tr("Previous")}
             </button>
             <button class="btn-small" on:click={() => setPage(currentPageNum + 1)} disabled={!hasMorePages}>
-                Next
+                {$tr("Next")}
             </button>
         </div>
     </div>

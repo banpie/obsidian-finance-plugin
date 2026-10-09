@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../i18n";
 	import { createEventDispatcher } from 'svelte';
 
 	// Props for the card content
@@ -30,7 +31,7 @@
 	role="button"
 	tabindex={clickable ? 0 : -1}
 	on:keydown={handleKeyDown}
-	title={clickable ? 'Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal' : undefined}
+	title={clickable ? $tr("Click: view in Transactions tab · Ctrl/Cmd+click: view in Journal") : undefined}
 >
 	{#if icon}
 		<div class="kpi-icon">{icon}</div>

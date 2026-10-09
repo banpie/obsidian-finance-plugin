@@ -1,5 +1,6 @@
 <!-- src/ui/views/sidebar/UpcomingTab.svelte -->
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import { onMount, createEventDispatcher } from 'svelte';
 	import { parse as parseCsv } from 'csv-parse/sync';
 	import { runQuery, deleteScheduleDirective, computeDueOccurrences } from '../../../utils';
@@ -21,11 +22,12 @@
 
 	type Period = 'today' | 'week' | 'month' | 'all';
 	let period: Period = 'all';
-	const PERIOD_OPTIONS: { value: Period; label: string; icon?: string }[] = [
-		{ value: 'today', label: 'Today', icon: 'today' },
-		{ value: 'week', label: 'This Week', icon: 'week' },
-		{ value: 'month', label: 'This Month', icon: 'month' },
-		{ value: 'all', label: 'All', icon: 'all' },
+	let PERIOD_OPTIONS: { value: Period; label: string; icon?: string }[];
+	$: PERIOD_OPTIONS = [
+		{ value: 'today', label: $tr("Today"), icon: 'today' },
+		{ value: 'week', label: $tr("This Week"), icon: 'week' },
+		{ value: 'month', label: $tr("This Month"), icon: 'month' },
+		{ value: 'all', label: $tr("All"), icon: 'all' },
 	];
 
 	$: activeItems = items.filter((i) => i.active);
@@ -167,7 +169,7 @@
 		event.stopPropagation();
 		if (!plugin) return;
 		if (!item.filename || !item.lineno) {
-			new Notice('Cannot find schedule location in file');
+			new Notice($tr("Cannot find schedule location in file"));
 			return;
 		}
 		const confirmed = window.confirm(`Are you sure you want to delete the schedule "${item.name}"?`);
@@ -176,13 +178,13 @@
 		try {
 			const result = await deleteScheduleDirective(plugin, item.filename, item.lineno);
 			if (result.success) {
-				new Notice(`Schedule "${item.name}" deleted successfully`);
+				new Notice($tr("Schedule \"{0}\" deleted successfully", [item.name]));
 				await loadAll();
 			} else {
-				new Notice(`Failed to delete schedule: ${result.error || 'Unknown error'}`);
+				new Notice($tr("Failed to delete schedule: {0}", [result.error || 'Unknown error']));
 			}
 		} catch (error) {
-			new Notice(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			new Notice($tr("Error: {0}", [error instanceof Error ? error.message : $tr("Unknown error")]));
 		}
 	}
 
@@ -196,7 +198,7 @@
 			}
 		}
 		if (dueOccurrences.length === 0) {
-			new Notice('No transactions due');
+			new Notice($tr("No transactions due"));
 			return;
 		}
 		new ConfirmDueSchedulesModal(plugin.app, plugin, dueOccurrences, () => loadAll()).open();
@@ -210,35 +212,35 @@
 			position="single"
 			options={PERIOD_OPTIONS}
 			bind:value={period}
-			ariaLabel="Filter upcoming by period"
+			ariaLabel={$tr("Filter upcoming by period")}
 		/>
 		<div class="upcoming-controls-buttons">
-			<button type="button" class="icon-btn icon-btn-labeled" on:click={handleRefresh} disabled={isLoading} title="Check for due transactions">
+			<button type="button" class="icon-btn icon-btn-labeled" on:click={handleRefresh} disabled={isLoading} title={$tr("Check for due transactions")}>
 				<svg class:loading-spinner={isLoading} xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<path d="M3 12a9 9 0 013.5-7.1"/>
 					<path d="M20.5 5.5a9 9 0 01.5 6.5"/>
 					<path d="M3 12a9 9 0 016.5 8.1"/>
 					<path d="M20.5 18.5a9 9 0 01-6.5-5.5"/>
 				</svg>
-				<span>Process dues</span>
+				<span>{$tr("Process dues")}</span>
 			</button>
-			<button type="button" class="icon-btn" on:click={handleAdd} title="Add scheduled transaction">
+			<button type="button" class="icon-btn" on:click={handleAdd} title={$tr("Add scheduled transaction")}>
 				<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 			</button>
 		</div>
 	</div>
 
 	{#if isLoading && activeItems.length === 0}
-		<div class="tab-empty-state">Loading…</div>
+		<div class="tab-empty-state">{$tr("Loading…")}</div>
 	{:else if loadError}
 		<div class="tab-empty-state error-text">{loadError}</div>
 	{:else if activeItems.length === 0}
 		<div class="tab-empty-state">
-			<span>No scheduled transactions.<br>Click + to add one.</span>
+			<span>{$tr("No scheduled transactions.")}<br>{$tr("Click + to add one.")}</span>
 		</div>
 	{:else if displayedItems.length === 0}
 		<div class="tab-empty-state">
-			<span>No transactions due in this period.</span>
+			<span>{$tr("No transactions due in this period.")}</span>
 		</div>
 	{:else}
 		<div class="upcoming-list">
@@ -254,15 +256,15 @@
 							{item.displayAmount !== undefined && item.displayCurrency ? formatAmount(item.displayAmount, item.displayCurrency) : '—'}
 						</span>
 						<div class="upcoming-actions">
-							<button type="button" class="btn-icon edit-btn" on:click={() => handleEdit(item)} title="Edit">✏️</button>
-							<button type="button" class="btn-icon delete-btn" on:click={(e) => handleDelete(item, e)} title="Delete">❌</button>
+							<button type="button" class="btn-icon edit-btn" on:click={() => handleEdit(item)} title={$tr("Edit")}>✏️</button>
+							<button type="button" class="btn-icon delete-btn" on:click={(e) => handleDelete(item, e)} title={$tr("Delete")}>❌</button>
 						</div>
 					</div>
 					<div class="upcoming-detail-row">
 						<span class="upcoming-frequency">{item.frequency}</span>
 						<span class="upcoming-sep">·</span>
 						<span class="upcoming-next-date" class:due-text={item.isDue}>
-							{item.isDue ? 'Due' : 'Next'} {formatShortDate(item.nextDate)}
+							{item.isDue ? $tr("Due") : $tr("Next")} {formatShortDate(item.nextDate)}
 						</span>
 					</div>
 				</div>

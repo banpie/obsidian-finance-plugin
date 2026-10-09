@@ -1,8 +1,9 @@
 <script lang="ts">
+	import { tr } from "../../i18n";
 	import { createEventDispatcher } from 'svelte';
 
 	export let query = '';
-	export let placeholder = 'Search…';
+	export let placeholder = $tr("Search…");
 	export let shownCount = 0;
 	export let totalCount = 0;
 	export let hasActiveFilters = false;
@@ -14,21 +15,21 @@
 <div class="report-filter-bar">
 	<label class="search-control">
 		<span class="search-icon" aria-hidden="true">⌕</span>
-		<input type="search" bind:value={query} {placeholder} aria-label={searchLabel} />
+		<input type="search" bind:value={query} {placeholder} aria-label={$tr(searchLabel)} />
 	</label>
 
 	<div class="filter-controls">
 		<slot />
 	</div>
 
-	<div class="filter-summary" aria-live="polite">{shownCount} of {totalCount}</div>
+	<div class="filter-summary" aria-live="polite">{shownCount} {$tr("of")} {totalCount}</div>
 	<button
 		type="button"
 		class="clear-filters"
 		disabled={!hasActiveFilters}
 		on:click={() => dispatch('clear')}
 	>
-		Clear
+		{$tr("Clear")}
 	</button>
 </div>
 

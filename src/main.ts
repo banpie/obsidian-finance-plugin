@@ -1,6 +1,8 @@
+import { t } from "./i18n";
+import { normalizeLanguage, setLanguage } from './i18n';
 // src/main.ts
 
-import { MarkdownPreviewRenderer, Plugin, Notice, TFile, type MarkdownPostProcessor } from 'obsidian';
+import { getLanguage, MarkdownPreviewRenderer, Plugin, Notice, TFile, type Command, type MarkdownPostProcessor } from 'obsidian';
 import { BeancountSettingTab, type BeancountPluginSettings, type LedgerProfile, type LedgerReportingMode, DEFAULT_SETTINGS } from './settings';
 import type { Completion } from '@codemirror/autocomplete';
 import { parseSnippetsFile } from './lang/beancount-snippets';
@@ -35,6 +37,7 @@ import { createLedgerProfileId, createLegacyLedgerProfile, normalizeLedgerFolder
  */
 export default class BeancountPlugin extends Plugin {
 	settings: BeancountPluginSettings;
+	private localizedCommands: Command[] = [];
 	private bqlProcessor: BQLCodeBlockProcessor;
 	private bqlPostProcessor?: MarkdownPostProcessor;
 	public inlineBqlProcessor: InlineBQLProcessor;
@@ -123,19 +126,19 @@ export default class BeancountPlugin extends Plugin {
 		this.registerExtensions(['beancount', 'bean'], BEANCOUNT_FILE_VIEW_TYPE);
 
 		// Add Ribbon Icons
-		this.addRibbonIcon('plus-circle', 'Add transaction', () => {
+		this.addRibbonIcon('plus-circle', t("Add transaction"), () => {
 			if (!this.requireActiveLedgerWritable('新增交易')) return;
 			new UnifiedTransactionModal(this.app, this, null, this.getDashboardRefreshCallback()).open();
 		});
-		this.addRibbonIcon('repeat-2', '切换账套', () => {
+		this.addRibbonIcon('repeat-2', t("切换账套"), () => {
 			void this.switchToNextLedgerProfile();
 		});
-		this.addRibbonIcon('layout-dashboard', 'Open Beancount dashboard', () => {
+		this.addRibbonIcon('layout-dashboard', t("Open Beancount dashboard"), () => {
 			void this.activateView(UNIFIED_DASHBOARD_VIEW_TYPE, 'tab'); // Open the NEW view
 		});
 
 		// Add Commands
-		this.addCommand({
+		this.addLocalizedCommand({
 			id: 'add-beancount-transaction',
 			name: 'Add Beancount transaction',
 			callback: () => {
@@ -143,23 +146,23 @@ export default class BeancountPlugin extends Plugin {
 				new UnifiedTransactionModal(this.app, this, null, this.getDashboardRefreshCallback()).open();
 			}
 		});
-		this.addCommand({
+		this.addLocalizedCommand({
 			id: 'switch-to-next-ledger-profile',
 			name: '切换至下一个账套',
 			callback: () => { void this.switchToNextLedgerProfile(); }
 		});
 		// 'Insert BQL Query Block' command removed — use manual insertion or BQL templates instead
-		this.addCommand({
+		this.addLocalizedCommand({
 			id: 'open-beancount-unified-dashboard', // This ID now opens the new unified view
 			name: 'Open Beancount unified dashboard',
 			callback: () => { void this.activateView(UNIFIED_DASHBOARD_VIEW_TYPE, 'tab'); }
 		});
-		this.addCommand({
+		this.addLocalizedCommand({
 			id: 'open-beancount-snapshot',
 			name: 'Open Beancount snapshot',
 			callback: () => { void this.activateView(BEANCOUNT_VIEW_TYPE, 'right'); }
 		});
-		this.addCommand({
+		this.addLocalizedCommand({
 			id: 'run-beancount-onboarding',
 			name: 'Run setup/onboarding',
 			callback: () => {
@@ -177,7 +180,7 @@ export default class BeancountPlugin extends Plugin {
 				}
 			}
 		});
-		this.addCommand({
+		this.addLocalizedCommand({
 			id: 'format-beancount-document',
 			name: 'Format Beancount document',
 			callback: () => {
@@ -185,13 +188,13 @@ export default class BeancountPlugin extends Plugin {
 				if (active) {
 					formatBeancountCommand((active as unknown as { editorView: EditorView }).editorView);
 				} else {
-					new Notice('Open a .beancount file first.');
+					new Notice(t("Open a .beancount file first."));
 				}
 			}
 		});
 
 		// Add Fetch Commodity Prices command
-		this.addCommand({
+		this.addLocalizedCommand({
 			id: 'fetch-commodity-prices',
 			name: 'Fetch commodity prices',
 			callback: async () => {
@@ -209,13 +212,13 @@ export default class BeancountPlugin extends Plugin {
 				const result = await this.priceService.fetchAndSavePrices();
 				if (result.failed.length > 0) {
 					const suffix = result.restored ? ' The original price file was restored.' : '';
-					new Notice(`Price update failed: ${result.failed[0].error}.${suffix}`);
+					new Notice(t("Price update failed: {0}.{1}", [result.failed[0].error, suffix]));
 				} else if (result.summary) {
 					new Notice(`✓ ${result.summary}`);
 				} else if (result.savedCount > 0) {
-					new Notice(`✓ Fetched and saved ${result.savedCount} price(s)`);
+					new Notice(t("✓ Fetched and saved {0} price(s)", [result.savedCount]));
 				} else {
-					new Notice('No prices fetched. Check commodity price sources.');
+					new Notice(t("No prices fetched. Check commodity price sources."));
 				}
 			}
 		});
@@ -270,7 +273,7 @@ export default class BeancountPlugin extends Plugin {
 		);
 
 		// Add Command to open snippets file
-		this.addCommand({
+		this.addLocalizedCommand({
 			id: 'open-beancount-snippets',
 			name: 'Open Beancount snippets file',
 			callback: async () => {
@@ -286,7 +289,7 @@ export default class BeancountPlugin extends Plugin {
 					if (createdFile && createdFile instanceof TFile) {
 						await this.app.workspace.getLeaf(true).openFile(createdFile);
 					} else {
-						new Notice('Could not find or create snippets.beancount');
+						new Notice(t("Could not find or create snippets.beancount"));
 					}
 				}
 			}
@@ -321,7 +324,7 @@ export default class BeancountPlugin extends Plugin {
 						// Only show notice on errors (don't spam on success)
 						if (result.failed.length > 0) {
 							const failedSymbols = result.failed.map(f => f.commodity).join(', ');
-							new Notice(`⚠ Automatic price fetch: Failed for ${failedSymbols}`);
+							new Notice(t("⚠ Automatic price fetch: Failed for {0}", [failedSymbols]));
 						}
 
 						Logger.log(`[Main] Automatic price fetch complete: ${result.savedCount} saved, ${result.failed.length} failed`);
@@ -470,6 +473,8 @@ export default class BeancountPlugin extends Plugin {
 	async loadSettings() {
 		const raw = (await this.loadData()) as Record<string, unknown> | null;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, raw);
+		this.settings.language = normalizeLanguage(this.settings.language);
+		setLanguage(this.settings.language, this.getObsidianLanguage());
 		let needsSave = false;
 
 		// Migration: consolidate legacy `reportingCurrency` / `defaultCurrency` into `operatingCurrency`
@@ -522,6 +527,32 @@ export default class BeancountPlugin extends Plugin {
 		return this.settings.ledgerProfiles.find(profile => profile.id === this.settings.activeLedgerProfileId) || null;
 	}
 
+	private getObsidianLanguage(): string {
+		// Older Obsidian releases store the language in localStorage.
+		// eslint-disable-next-line obsidianmd/no-unsupported-api, obsidianmd/prefer-get-language -- Feature detection preserves support before 1.8.7.
+		return typeof getLanguage === 'function' ? getLanguage() : window.localStorage.getItem('language') || 'en';
+	}
+
+	private addLocalizedCommand(command: Command): void {
+		this.localizedCommands.push(command);
+		this.addCommand({ ...command, name: t(command.name) });
+	}
+
+	/** Update UI without reloading the plugin or changing the active ledger. */
+	public async changeLanguage(value: string): Promise<void> {
+		this.settings.language = normalizeLanguage(value);
+		setLanguage(this.settings.language, this.getObsidianLanguage());
+		await this.saveSettings();
+		for (const command of this.localizedCommands) {
+			this.addCommand({ ...command, name: t(command.name) });
+		}
+		for (const leaf of this.app.workspace.getLeavesOfType(UNIFIED_DASHBOARD_VIEW_TYPE)) {
+			if (leaf.view instanceof UnifiedDashboardView) {
+				leaf.view.component?.$set({ languagePreference: this.settings.language });
+			}
+		}
+	}
+
 	public isActiveLedgerReadOnly(): boolean {
 		return this.getActiveLedgerProfile()?.readOnly === true;
 	}
@@ -529,7 +560,7 @@ export default class BeancountPlugin extends Plugin {
 	public requireActiveLedgerWritable(action: string): boolean {
 		const profile = this.getActiveLedgerProfile();
 		if (!profile?.readOnly) return true;
-		new Notice(`“${profile.name}”是只读账套，不能${action}。`);
+		new Notice(t("“{0}”是只读账套，不能{1}。", [profile.name, action]));
 		return false;
 	}
 
@@ -537,14 +568,14 @@ export default class BeancountPlugin extends Plugin {
 		const name = draft.name.trim();
 		const folder = normalizeLedgerFolder(draft.structuredFolderName);
 		const currency = draft.operatingCurrency.trim().toUpperCase();
-		if (!name) return { success: false, error: '请输入账套名称。' };
-		if (!folder) return { success: false, error: '账套目录必须在当前 Vault 内，且不能包含 ..。' };
-		if (!/^[A-Z]{3}$/.test(currency)) return { success: false, error: '记账币种应为三位大写代码，例如 CNY。' };
+		if (!name) return { success: false, error: t("请输入账套名称。") };
+		if (!folder) return { success: false, error: t("账套目录必须在当前 Vault 内，且不能包含 ..。") };
+		if (!/^[A-Z]{3}$/.test(currency)) return { success: false, error: t("记账币种应为三位大写代码，例如 CNY。") };
 		if (this.settings.ledgerProfiles.some(profile => profile.structuredFolderName === folder)) {
-			return { success: false, error: '该账套目录已存在。' };
+			return { success: false, error: t("该账套目录已存在。") };
 		}
 		if (!(await this.app.vault.adapter.exists(`${folder}/ledger.beancount`))) {
-			return { success: false, error: '目录中未找到 ledger.beancount。' };
+			return { success: false, error: t("目录中未找到 ledger.beancount。") };
 		}
 		this.settings.ledgerProfiles = [
 			...this.settings.ledgerProfiles,
@@ -568,7 +599,7 @@ export default class BeancountPlugin extends Plugin {
 		reportingMode: LedgerReportingMode,
 	): Promise<{ success: boolean; error?: string }> {
 		const index = this.settings.ledgerProfiles.findIndex(profile => profile.id === profileId);
-		if (index < 0) return { success: false, error: '未找到该账套。' };
+		if (index < 0) return { success: false, error: t("未找到该账套。") };
 		this.settings.ledgerProfiles[index] = {
 			...this.settings.ledgerProfiles[index],
 			reportingMode,
@@ -581,13 +612,13 @@ export default class BeancountPlugin extends Plugin {
 	/** Change only the user-facing profile label; its id and ledger location stay stable. */
 	public async renameLedgerProfile(profileId: string, nextName: string): Promise<{ success: boolean; error?: string }> {
 		const name = nextName.trim();
-		if (!name) return { success: false, error: '请输入账套名称。' };
+		if (!name) return { success: false, error: t("请输入账套名称。") };
 		if (this.settings.ledgerProfiles.some(profile => profile.id !== profileId && profile.name === name)) {
-			return { success: false, error: '已有同名账套，请使用不同名称。' };
+			return { success: false, error: t("已有同名账套，请使用不同名称。") };
 		}
 
 		const index = this.settings.ledgerProfiles.findIndex(profile => profile.id === profileId);
-		if (index < 0) return { success: false, error: '未找到该账套。' };
+		if (index < 0) return { success: false, error: t("未找到该账套。") };
 
 		this.settings.ledgerProfiles[index] = {
 			...this.settings.ledgerProfiles[index],
@@ -600,9 +631,9 @@ export default class BeancountPlugin extends Plugin {
 
 	public async switchLedgerProfile(profileId: string): Promise<{ success: boolean; error?: string }> {
 		const profile = this.settings.ledgerProfiles.find(candidate => candidate.id === profileId);
-		if (!profile) return { success: false, error: '未找到该账套。' };
+		if (!profile) return { success: false, error: t("未找到该账套。") };
 		if (!(await this.app.vault.adapter.exists(`${profile.structuredFolderName}/ledger.beancount`))) {
-			return { success: false, error: `找不到 ${profile.name} 的 ledger.beancount。` };
+			return { success: false, error: t("找不到 {0} 的 ledger.beancount。", [profile.name]) };
 		}
 		this.settings.activeLedgerProfileId = profile.id;
 		this.applyLedgerProfile(profile);
@@ -613,14 +644,14 @@ export default class BeancountPlugin extends Plugin {
 			this.snippetCompletions = [];
 		}
 		await this.refreshLedgerViews();
-		new Notice(`已切换到“${profile.name}”${profile.readOnly ? '（只读）' : ''}。`);
+		new Notice(t("已切换到“{0}”{1}。", [profile.name, profile.readOnly ? '（只读）' : '']));
 		return { success: true };
 	}
 
 	private async switchToNextLedgerProfile(): Promise<void> {
 		const profiles = this.settings.ledgerProfiles;
 		if (profiles.length < 2) {
-			new Notice('请先在“ledger profiles”设置中新增另一个账套。');
+			new Notice(t("请先在“ledger profiles”设置中新增另一个账套。"));
 			return;
 		}
 		const currentIndex = Math.max(0, profiles.findIndex(profile => profile.id === this.settings.activeLedgerProfileId));
@@ -682,11 +713,11 @@ export default class BeancountPlugin extends Plugin {
 
 		if (resolution.status === 'unavailable') {
 			Logger.warn(`Configured bean-query command is not usable on this device: ${savedCommand}`);
-			new Notice('Beancount command is unavailable on this device. The shared setting was preserved.');
+			new Notice(t("Beancount command is unavailable on this device. The shared setting was preserved."));
 			return;
 		}
 
-		new Notice('Beancount command is not configured. Install beanquery and set bean-query in plugin settings.');
+		new Notice(t("Beancount command is not configured. Install beanquery and set bean-query in plugin settings."));
 	}
 
 	async saveSettings() {

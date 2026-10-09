@@ -1,13 +1,14 @@
 <!-- src/ui/modals/onboarding/FolderTreePreview.svelte -->
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	export let structuredFolderName = 'Finances';
 	export let fileOrganization: 'yearly' | 'monthly' = 'yearly';
 </script>
 
 <div class="folder-preview">
 	<div class="folder-preview-header">
-		<span>Folder structure preview</span>
-		<span class="preview-badge">{fileOrganization === 'monthly' ? 'Monthly' : 'Yearly'} layout</span>
+		<span>{$tr("Folder structure preview")}</span>
+		<span class="preview-badge">{fileOrganization === 'monthly' ? $tr("Monthly") : $tr("Yearly")} {$tr("layout")}</span>
 	</div>
 	<div class="tree-container">
 		<div class="tree-item folder-root">
@@ -15,10 +16,10 @@
 			<span class="tree-name">{structuredFolderName}/</span>
 		</div>
 		<div class="tree-children">
-			<div class="tree-item"><span class="tree-icon">📄</span><span class="tree-name">ledger.beancount</span> <span class="tree-desc">master include file</span></div>
-			<div class="tree-item"><span class="tree-icon">📄</span><span class="tree-name">accounts.beancount</span> <span class="tree-desc">chart of accounts</span></div>
-			<div class="tree-item"><span class="tree-icon">📄</span><span class="tree-name">commodities.beancount</span> <span class="tree-desc">currencies & commodities</span></div>
-			<div class="tree-item"><span class="tree-icon">📄</span><span class="tree-name">prices.beancount</span> <span class="tree-desc">price history</span></div>
+			<div class="tree-item"><span class="tree-icon">📄</span><span class="tree-name">ledger.beancount</span> <span class="tree-desc">{$tr("master include file")}</span></div>
+			<div class="tree-item"><span class="tree-icon">📄</span><span class="tree-name">accounts.beancount</span> <span class="tree-desc">{$tr("chart of accounts")}</span></div>
+			<div class="tree-item"><span class="tree-icon">📄</span><span class="tree-name">commodities.beancount</span> <span class="tree-desc">{$tr("currencies & commodities")}</span></div>
+			<div class="tree-item"><span class="tree-icon">📄</span><span class="tree-name">prices.beancount</span> <span class="tree-desc">{$tr("price history")}</span></div>
 			<div class="tree-item folder-sub">
 				<span class="tree-icon">📁</span>
 				<span class="tree-name">transactions/</span>
@@ -29,11 +30,11 @@
 					<div class="tree-children nested-children">
 						<div class="tree-item"><span class="tree-icon">📊</span><span class="tree-name">2026-01.beancount</span></div>
 						<div class="tree-item"><span class="tree-icon">📊</span><span class="tree-name">2026-02.beancount</span></div>
-						<div class="tree-item muted"><span class="tree-icon">…</span><span class="tree-name">monthly transaction files</span></div>
+						<div class="tree-item muted"><span class="tree-icon">…</span><span class="tree-name">{$tr("monthly transaction files")}</span></div>
 					</div>
 				{:else}
 					<div class="tree-item"><span class="tree-icon">📊</span><span class="tree-name">2026.beancount</span></div>
-					<div class="tree-item muted"><span class="tree-icon">…</span><span class="tree-name">yearly transaction files</span></div>
+					<div class="tree-item muted"><span class="tree-icon">…</span><span class="tree-name">{$tr("yearly transaction files")}</span></div>
 				{/if}
 			</div>
 		</div>

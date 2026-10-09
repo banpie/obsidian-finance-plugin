@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { App, Modal, Notice } from 'obsidian';
 import type BeancountPlugin from '../../main';
 import CommodityCreateModalComponent from './CommodityCreateModal.svelte';
@@ -50,7 +51,7 @@ export class CommodityCreateModal extends Modal {
                     );
 
                     if (result.success) {
-                        new Notice(`Successfully created commodity ${symbol}`);
+                        new Notice(t("Successfully created commodity {0}", [symbol]));
                         this.close();
                         
                         // Call success callback if provided
@@ -58,11 +59,11 @@ export class CommodityCreateModal extends Modal {
                             this.onSuccess();
                         }
                     } else {
-                        new Notice(`Failed to create commodity: ${result.error || 'Unknown error'}`);
+                        new Notice(t("Failed to create commodity: {0}", [result.error || 'Unknown error']));
                     }
                 } catch (error) {
                     Logger.error('[CommodityCreateModal] Error creating commodity:', error);
-                    new Notice(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    new Notice(t("Error: {0}", [error instanceof Error ? error.message : 'Unknown error']));
                 }
             })();
         });
@@ -83,13 +84,13 @@ export class CommodityCreateModal extends Modal {
                     const result = await this.controller.testPriceSource(symbol);
                     
                     if (result && result.success) {
-                        new Notice('✅ Price source test successful');
+                        new Notice(t("✅ Price source test successful"));
                     } else {
-                        new Notice(`❌ Price test failed: ${result?.error || 'Unable to fetch price'}`);
+                        new Notice(t("❌ Price test failed: {0}", [result?.error || 'Unable to fetch price']));
                     }
                 } catch (error) {
                     Logger.error('[CommodityCreateModal] test-price error:', error);
-                    new Notice(`❌ Price test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    new Notice(t("❌ Price test failed: {0}", [error instanceof Error ? error.message : 'Unknown error']));
                 }
             })();
         });
@@ -104,13 +105,13 @@ export class CommodityCreateModal extends Modal {
                     const result = await this.controller.testLogoUrl(symbol, url);
                     
                     if (result && result.success) {
-                        new Notice('✅ Logo URL is valid');
+                        new Notice(t("✅ Logo URL is valid"));
                     } else {
-                        new Notice(`❌ Logo test failed: ${result?.error || 'Invalid URL'}`);
+                        new Notice(t("❌ Logo test failed: {0}", [result?.error || 'Invalid URL']));
                     }
                 } catch (error) {
                     Logger.error('[CommodityCreateModal] test-logo error:', error);
-                    new Notice(`❌ Logo test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    new Notice(t("❌ Logo test failed: {0}", [error instanceof Error ? error.message : 'Unknown error']));
                 }
             })();
         });

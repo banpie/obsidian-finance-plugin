@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../i18n";
 	import { createEventDispatcher, onMount, tick } from "svelte";
 	import type { ChartConfiguration } from "chart.js/auto";
 	import ChartComponent from "../common/ChartComponent.svelte";
@@ -119,7 +120,7 @@
 			);
 			const [borderColor, backgroundColor] = colors[index % colors.length];
 			return {
-				label: `Price (${currency})`,
+				label: $tr("Price ({0})", [currency]),
 				data: dates.map((date) => values.get(date) ?? null),
 				borderColor,
 				backgroundColor,
@@ -196,13 +197,13 @@
 			{/if}
 			{#if showNativePrice}
 				<div class="current-price">
-					Original price: <strong>{nativeCurrentPrice}</strong>
+					{$tr("Original price:")} <strong>{nativeCurrentPrice}</strong>
 					{#if nativePriceDate}<span class="price-date">({nativePriceDate})</span>{/if}
 				</div>
 			{/if}
 			{#if currentPrice}
 				<div class="current-price">
-					Converted price: <strong>{currentPrice}</strong>
+					{$tr("Converted price:")} <strong>{currentPrice}</strong>
 					{#if convertedPriceDate}<span class="price-date">({convertedPriceDate})</span>{/if}
 				</div>
 			{/if}
@@ -212,35 +213,35 @@
 	<!-- Tabs -->
 	<TabBar
 		tabs={[
-			{ value: 'metadata', label: 'Metadata' },
-			{ value: 'price-history', label: 'Price History' },
+			{ value: 'metadata', label: $tr("Metadata") },
+			{ value: 'price-history', label: $tr("Price History") },
 		]}
 		bind:value={activeTab}
 		fullWidth={false}
-		ariaLabel="Commodity detail sections"
+		ariaLabel={$tr("Commodity detail sections")}
 	/>
 
 	{#if activeTab === "price-history"}
 		<!-- Price History -->
 		<div class="section">
 			<div class="section-heading">
-				<p class="section-title">Price History</p>
+				<p class="section-title">{$tr("Price History")}</p>
 				{#if priceHistory.length > 0}
 					<CustomSelect
 						variant="secondary"
 						position="single"
 						options={[
-							{ value: 'chart', label: 'Chart', icon: 'trend' },
-							{ value: 'table', label: 'Table', icon: 'table' },
+							{ value: 'chart', label: $tr("Chart"), icon: 'trend' },
+							{ value: 'table', label: $tr("Table"), icon: 'table' },
 						]}
 						bind:value={priceHistoryView}
-						ariaLabel="Price history view"
+						ariaLabel={$tr("Price history view")}
 					/>
 				{/if}
 			</div>
 			<div class="section-card history-card">
 				{#if priceHistory.length === 0}
-					<div class="empty-history">No price directives found for this commodity.</div>
+					<div class="empty-history">{$tr("No price directives found for this commodity.")}</div>
 				{:else if priceHistoryView === "chart" && priceHistoryChartConfig}
 					<div class="price-history-chart">
 						<ChartComponent config={priceHistoryChartConfig} height="240px" />
@@ -250,9 +251,9 @@
 						<table class="price-history-table">
 							<thead>
 								<tr>
-									<th>Date</th>
-									<th>Price</th>
-									<th>Currency</th>
+									<th>{$tr("Date")}</th>
+									<th>{$tr("Price")}</th>
+									<th>{$tr("Currency")}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -272,20 +273,20 @@
 	{:else}
 		<!-- Price Source -->
 		<div class="section">
-			<p class="section-title">Price Source</p>
+			<p class="section-title">{$tr("Price Source")}</p>
 			<div class="section-card">
 				{#if !editingPrice}
 					<div class="kv-row">
-						<span class="kv-key">Source</span>
+						<span class="kv-key">{$tr("Source")}</span>
 						<span class="kv-value">{priceSource || "—"}</span>
 						<div class="kv-actions">
 							<button
 								class="btn btn-ghost"
 								on:click={testPrice}
-								title="Test this price source">Test</button
+								title={$tr("Test this price source")}>{$tr("Test")}</button
 							>
 							<button class="btn" on:click={toggleEditPrice}
-								>{priceSource ? "Edit" : "Add"}</button
+								>{priceSource ? $tr("Edit") : $tr("Add")}</button
 							>
 						</div>
 					</div>
@@ -298,18 +299,18 @@
 							placeholder="e.g. yahoo/BTC-USD or crypto:coingecko/bitcoin"
 						/>
 						<span class="edit-hint"
-							>Format: provider/symbol — e.g. <code>yahoo/AAPL</code>
-							or <code>crypto:coingecko/bitcoin</code></span
+							>{$tr("Format: provider/symbol — e.g.")} <code>yahoo/AAPL</code>
+							{$tr("or")} <code>crypto:coingecko/bitcoin</code></span
 						>
 						<div class="edit-buttons">
 							<button class="btn btn-primary" on:click={saveMetadata}
-								>Save</button
+								>{$tr("Save")}</button
 							>
 							<button class="btn btn-ghost" on:click={testPrice}
-								>Test</button
+								>{$tr("Test")}</button
 							>
 							<button class="btn btn-ghost" on:click={toggleEditPrice}
-								>Cancel</button
+								>{$tr("Cancel")}</button
 							>
 						</div>
 					</div>
@@ -319,7 +320,7 @@
 
 		<!-- Logo -->
 		<div class="section">
-			<p class="section-title">Logo</p>
+			<p class="section-title">{$tr("Logo")}</p>
 			<div class="section-card">
 				{#if !editingLogo}
 					<div class="kv-row">
@@ -330,11 +331,11 @@
 								<button
 									class="btn btn-ghost"
 									on:click={testLogo}
-									title="Verify logo URL">Test</button
+									title={$tr("Verify logo URL")}>{$tr("Test")}</button
 								>
 							{/if}
 							<button class="btn" on:click={toggleEditLogo}
-								>{logoUrl ? "Edit" : "Add"}</button
+								>{logoUrl ? $tr("Edit") : $tr("Add")}</button
 							>
 						</div>
 					</div>
@@ -347,17 +348,17 @@
 							placeholder="https://example.com/logo.png"
 						/>
 						<span class="edit-hint"
-							>Direct image URL (PNG, SVG, or JPG)</span
+							>{$tr("Direct image URL (PNG, SVG, or JPG)")}</span
 						>
 						<div class="edit-buttons">
 							<button class="btn btn-primary" on:click={saveMetadata}
-								>Save</button
+								>{$tr("Save")}</button
 							>
 							<button class="btn btn-ghost" on:click={testLogo}
-								>Test URL</button
+								>{$tr("Test URL")}</button
 							>
 							<button class="btn btn-ghost" on:click={toggleEditLogo}
-								>Cancel</button
+								>{$tr("Cancel")}</button
 							>
 						</div>
 					</div>
@@ -368,7 +369,7 @@
 		<!-- Other Metadata -->
 		{#if otherMeta.length > 0}
 			<div class="section">
-				<p class="section-title">Other Metadata</p>
+				<p class="section-title">{$tr("Other Metadata")}</p>
 				<div class="section-card">
 					{#each otherMeta as [key, value]}
 						<div class="kv-row">
@@ -388,9 +389,9 @@
 	<!-- Footer -->
 	<div class="footer">
 		<button class="btn btn-danger" on:click={requestDelete}
-			>Delete Commodity</button
+			>{$tr("Delete Commodity")}</button
 		>
-		<button class="btn btn-primary" on:click={close}>Done</button>
+		<button class="btn btn-primary" on:click={close}>{$tr("Done")}</button>
 	</div>
 </div>
 
@@ -401,21 +402,19 @@
 	<div
 		class="confirm-overlay"
 	>
-		<button class="confirm-backdrop" type="button" on:click={cancelDelete} aria-label="Close dialog"></button>
+		<button class="confirm-backdrop" type="button" on:click={cancelDelete} aria-label={$tr("Close dialog")}></button>
 		<div class="confirm-dialog" role="dialog" aria-modal="true" tabindex="-1">
-			<h4>Delete {symbol}</h4>
+			<h4>{$tr("Delete")} {symbol}</h4>
 			<p>
-				Are you sure you want to delete the <strong>{symbol}</strong>
-				commodity directive? This removes the declaration from your ledger
-				file. Existing transactions that use <strong>{symbol}</strong> will
-				not be affected.
+				{$tr("Are you sure you want to delete the")} <strong>{symbol}</strong>
+				{$tr("commodity directive? This removes the declaration from your ledger\n\t\t\t\tfile. Existing transactions that use")} <strong>{symbol}</strong> {$tr("will\n\t\t\t\tnot be affected.")}
 			</p>
 			<div class="confirm-actions">
 				<button class="btn btn-ghost" on:click={cancelDelete}
-					>Cancel</button
+					>{$tr("Cancel")}</button
 				>
 				<button class="btn btn-danger" on:click={confirmDelete}
-					>Delete</button
+					>{$tr("Delete")}</button
 				>
 			</div>
 		</div>

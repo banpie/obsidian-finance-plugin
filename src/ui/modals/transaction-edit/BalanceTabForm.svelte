@@ -1,5 +1,6 @@
 <!-- src/ui/modals/transaction-edit/BalanceTabForm.svelte -->
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import { nativeDatePicker } from "../../actions/nativeDatePicker";
 
 	export let date: string;
@@ -10,7 +11,7 @@
 
 <div class="form-grid">
 	<div class="form-group">
-		<label for="balance-date">Date *</label>
+		<label for="balance-date">{$tr("Date *")}</label>
 		<input
 			type="date"
 			id="balance-date"
@@ -21,31 +22,31 @@
 	</div>
 
 	<div class="form-group">
-		<label for="balance-account">Account *</label>
+		<label for="balance-account">{$tr("Account *")}</label>
 		<input
 			type="text"
 			id="balance-account"
 			bind:value={balanceAccount}
 			list="accounts-list"
-			placeholder="Account to check balance"
+			placeholder={$tr("Account to check balance")}
 			required
 		/>
 	</div>
 
 	<div class="form-group">
-		<label for="balance-amount">Amount *</label>
+		<label for="balance-amount">{$tr("Amount *")}</label>
 		<input
 			type="number"
 			step="0.01"
 			id="balance-amount"
 			bind:value={balanceAmount}
-			placeholder="Expected balance"
+			placeholder={$tr("Expected balance")}
 			required
 		/>
 	</div>
 
 	<div class="form-group">
-		<label for="balance-currency">Currency *</label>
+		<label for="balance-currency">{$tr("Currency *")}</label>
 		<input
 			type="text"
 			id="balance-currency"

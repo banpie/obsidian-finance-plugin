@@ -1,5 +1,6 @@
 <!-- src/ui/modals/OnboardingModal.svelte -->
 <script lang="ts">
+	import { tr } from "../../i18n";
 	import { onMount } from 'svelte';
 	import { App, Notice, TFile, Platform } from 'obsidian';
 	import type BeancountPlugin from '../../main';
@@ -53,9 +54,9 @@
 	// ── Folder name validation ──
 	const INVALID_FOLDER_CHARS = /[/\\:*?"<>|]/;
 	$: folderNameError = !structuredFolderName.trim()
-		? 'Folder name cannot be empty'
+		? $tr("Folder name cannot be empty")
 		: INVALID_FOLDER_CHARS.test(structuredFolderName)
-			? 'Folder name contains invalid characters ( / \\ : * ? " < > | )'
+			? $tr("Folder name contains invalid characters ( / \\ : * ? \" < > | )")
 			: '';
 	$: isFolderNameValid = !folderNameError;
 
@@ -211,12 +212,12 @@
 		if (isSubmitting) return;
 
 		if (!dataChoice) {
-			new Notice('Please select an option');
+			new Notice($tr("Please select an option"));
 			return;
 		}
 
 		if (dataChoice === 'existing' && !existingFilePath.trim()) {
-			new Notice('Please select or enter an existing Beancount file path');
+			new Notice($tr("Please select or enter an existing Beancount file path"));
 			return;
 		}
 
@@ -237,11 +238,11 @@
 			plugin.isConnectionReady = beanQueryValid;
 
 			currentStep = 'ready';
-			new Notice('🎉 Setup completed successfully!');
+			new Notice($tr("🎉 Setup completed successfully!"));
 		} catch (error: any) {
 			Logger.error('[Onboarding] Setup failed', error);
 			const msg = error?.message || 'Setup failed. See console for details.';
-			new Notice(`Setup failed: ${msg}`, 8000);
+			new Notice($tr("Setup failed: {0}", [msg]), 8000);
 		} finally {
 			isSubmitting = false;
 		}
@@ -257,7 +258,7 @@
 				await adapter.remove(tempFilePath);
 				await new Promise(r => setTimeout(r, 200));
 			} catch (e: any) {
-				throw new Error(`Could not delete existing temp file: ${e.message}`);
+				throw new Error($tr("Could not delete existing temp file: {0}", [e.message]));
 			}
 		}
 
@@ -266,7 +267,7 @@
 
 		const tempFile = app.vault.getAbstractFileByPath(tempFilePath) as TFile;
 		if (!tempFile) {
-			throw new Error('Failed to register temporary demo file in vault');
+			throw new Error($tr("Failed to register temporary demo file in vault"));
 		}
 
 		// @ts-ignore
@@ -274,7 +275,7 @@
 
 		const result = await migrateToStructuredLayout(plugin, structuredFolderName, tempAbsolutePath);
 		if (!result.success) {
-			throw new Error(`Migration failed: ${result.error}`);
+			throw new Error($tr("Migration failed: {0}", [result.error]));
 		}
 
 		try {
@@ -294,18 +295,18 @@
 				// @ts-ignore
 				sourcePath = app.vault.adapter.getFullPath(file.path);
 			} else {
-				throw new Error(`Could not find file in vault: ${sourcePath}`);
+				throw new Error($tr("Could not find file in vault: {0}", [sourcePath]));
 			}
 		}
 
 		const result = await migrateToStructuredLayout(plugin, structuredFolderName, sourcePath);
 		if (!result.success) {
-			throw new Error(`Migration failed: ${result.error}`);
+			throw new Error($tr("Migration failed: {0}", [result.error]));
 		}
 	}
 
 	function skipOnboarding() {
-		new Notice('You can set up bean-query anytime in Settings → Connection.');
+		new Notice($tr("You can set up bean-query anytime in Settings → Connection."));
 		modal.close();
 	}
 
@@ -319,7 +320,7 @@
 <div class="onboarding-container">
 	<!-- Header -->
 	<div class="onboarding-header">
-		<h2>Welcome to Obsidian Finance</h2>
+		<h2>{$tr("Welcome to Obsidian Finance")}</h2>
 		<!-- Step progress bar -->
 		<div class="step-bar">
 			<button
@@ -329,7 +330,7 @@
 				on:click={() => { if (currentStep !== 'connect') currentStep = 'connect'; }}
 			>
 				<span class="step-circle">1</span>
-				<span class="step-label">Connect</span>
+				<span class="step-label">{$tr("Connect")}</span>
 			</button>
 			<div class="step-line" class:is-done={currentStep === 'organize' || currentStep === 'ready'}></div>
 			<button
@@ -339,7 +340,7 @@
 				on:click={() => { if (currentStep !== 'organize') currentStep = 'organize'; }}
 			>
 				<span class="step-circle">2</span>
-				<span class="step-label">Organize</span>
+				<span class="step-label">{$tr("Organize")}</span>
 			</button>
 			<div class="step-line" class:is-done={currentStep === 'ready'}></div>
 			<button
@@ -348,7 +349,7 @@
 				disabled
 			>
 				<span class="step-circle">3</span>
-				<span class="step-label">Ready</span>
+				<span class="step-label">{$tr("Ready")}</span>
 			</button>
 		</div>
 	</div>

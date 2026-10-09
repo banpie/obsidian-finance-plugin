@@ -1,5 +1,6 @@
 <!-- src/ui/modals/transaction-edit/PostingRow.svelte -->
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import type { JournalPosting } from "../../../models/journal";
 	import { nativeDatePicker } from "../../actions/nativeDatePicker";
 
@@ -30,31 +31,31 @@
 <div class="posting-container">
 	<div class="posting-row">
 		<div class="posting-account">
-			<label for="posting-account-{index}">Account *</label>
+			<label for="posting-account-{index}">{$tr("Account *")}</label>
 			<input
 				id="posting-account-{index}"
 				type="text"
 				bind:value={posting.account}
 				list="accounts-list"
-				placeholder="Account name"
+				placeholder={$tr("Account name")}
 				required
 			/>
 		</div>
 
 		<div class="posting-amount">
-			<label for="posting-amount-{index}">Amount</label>
+			<label for="posting-amount-{index}">{$tr("Amount")}</label>
 			<input
 				id="posting-amount-{index}"
 				type="number"
 				step="0.01"
 				bind:value={posting.amount}
-				placeholder="Optional amount"
+				placeholder={$tr("Optional amount")}
 				on:wheel|preventDefault
 			/>
 		</div>
 
 		<div class="posting-currency">
-			<label for="posting-currency-{index}">Currency</label>
+			<label for="posting-currency-{index}">{$tr("Currency")}</label>
 			<input
 				id="posting-currency-{index}"
 				bind:value={posting.currency}
@@ -70,42 +71,42 @@
 				class="posting-toggle-btn cost-btn"
 				class:active={showCost}
 				on:click={() => onToggleCost(index)}
-				title="Cost"
+				title={$tr("Cost")}
 			>$</button>
 			<button
 				type="button"
 				class="posting-toggle-btn price-btn"
 				class:active={showPrice}
 				on:click={() => onTogglePrice(index)}
-				title="Price"
+				title={$tr("Price")}
 			>@</button>
 			<button
 				type="button"
 				class="posting-toggle-btn flag-btn"
 				class:active={showPostingFlag}
 				on:click={() => onToggleFlag(index)}
-				title="Flag"
+				title={$tr("Flag")}
 			>!</button>
 			<button
 				type="button"
 				class="posting-toggle-btn comment-btn"
 				class:active={showPostingComment}
 				on:click={() => onToggleComment(index)}
-				title="Comment"
+				title={$tr("Comment")}
 			>💬</button>
 			<button
 				type="button"
 				class="posting-toggle-btn metadata-btn"
 				class:active={showPostingMetadata}
 				on:click={() => onToggleMetadata(index)}
-				title="Metadata"
+				title={$tr("Metadata")}
 			>📋</button>
 			{#if totalPostings > 2}
 				<button
 					type="button"
 					class="remove-posting"
 					on:click={() => onRemovePosting(index)}
-					title="Remove posting"
+					title={$tr("Remove posting")}
 				>&times;</button>
 			{/if}
 		</div>
@@ -116,7 +117,7 @@
 		<div class="posting-advanced cost-section">
 			<div class="advanced-grid">
 				<div class="advanced-field">
-					<label for="cost-amount-{index}">Amount</label>
+					<label for="cost-amount-{index}">{$tr("Amount")}</label>
 					<input
 						id="cost-amount-{index}"
 						type="number"
@@ -128,7 +129,7 @@
 				</div>
 
 				<div class="advanced-field">
-					<label for="cost-currency-{index}">Currency</label>
+					<label for="cost-currency-{index}">{$tr("Currency")}</label>
 					<input
 						id="cost-currency-{index}"
 						type="text"
@@ -140,7 +141,7 @@
 				</div>
 
 				<div class="advanced-field">
-					<label for="cost-date-{index}">Date</label>
+					<label for="cost-date-{index}">{$tr("Date")}</label>
 					<input
 						id="cost-date-{index}"
 						type="date"
@@ -151,7 +152,7 @@
 				</div>
 
 				<div class="advanced-field">
-					<label for="cost-label-{index}">Label</label>
+					<label for="cost-label-{index}">{$tr("Label")}</label>
 					<input
 						id="cost-label-{index}"
 						bind:value={posting.cost.label}
@@ -165,7 +166,7 @@
 							type="checkbox"
 							bind:checked={posting.cost.isTotal}
 						/>
-						Total Cost {'{{}}'}
+						{$tr("Total Cost")} {'{{}}'}
 					</label>
 				</div>
 			</div>
@@ -177,7 +178,7 @@
 		<div class="posting-advanced price-section">
 			<div class="advanced-grid">
 				<div class="advanced-field">
-					<label for="price-amount-{index}">Amount</label>
+					<label for="price-amount-{index}">{$tr("Amount")}</label>
 					<input
 						id="price-amount-{index}"
 						type="number"
@@ -189,7 +190,7 @@
 				</div>
 
 				<div class="advanced-field">
-					<label for="price-currency-{index}">Currency</label>
+					<label for="price-currency-{index}">{$tr("Currency")}</label>
 					<input
 						id="price-currency-{index}"
 						bind:value={posting.price.currency}
@@ -205,7 +206,7 @@
 							type="checkbox"
 							bind:checked={posting.price.isTotal}
 						/>
-						Total Price @@
+						{$tr("Total Price @@")}
 					</label>
 				</div>
 			</div>
@@ -222,7 +223,7 @@
 						bind:group={posting.flag}
 						value="!"
 					/>
-					! Incomplete
+					{$tr("! Incomplete")}
 				</label>
 				<label>
 					<input
@@ -230,7 +231,7 @@
 						bind:group={posting.flag}
 						value="*"
 					/>
-					* Complete
+					{$tr("* Complete")}
 				</label>
 			</div>
 		</div>
@@ -239,11 +240,11 @@
 	<!-- Comment Section -->
 	{#if showPostingComment}
 		<div class="posting-advanced comment-section">
-			<label for="posting-comment-{index}">Comment</label>
+			<label for="posting-comment-{index}">{$tr("Comment")}</label>
 			<input
 				id="posting-comment-{index}"
 				bind:value={posting.comment}
-				placeholder="Inline comment"
+				placeholder={$tr("Inline comment")}
 				class="comment-input"
 			/>
 		</div>
@@ -258,14 +259,14 @@
 						<input
 							type="text"
 							value={key}
-							placeholder="key"
+							placeholder={$tr("key")}
 							class="metadata-key"
 							on:change={(e) => onUpdateMetadataKey(index, key, e.currentTarget.value)}
 						/>
 						<input
 							type="text"
 							bind:value={posting.metadata[key]}
-							placeholder="Value"
+							placeholder={$tr("Value")}
 							class="metadata-value"
 						/>
 						<button
@@ -279,7 +280,7 @@
 					type="button"
 					class="add-metadata-btn"
 					on:click={() => onAddMetadata(index)}
-				>+ Add Metadata</button>
+				>{$tr("+ Add Metadata")}</button>
 			</div>
 		</div>
 	{/if}

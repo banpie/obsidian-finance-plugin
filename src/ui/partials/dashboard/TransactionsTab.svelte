@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import { onMount, createEventDispatcher } from 'svelte';
 	import type { AccountNode } from '../../../models/account';
 	import { debounce } from '../../../utils/index';
@@ -150,16 +151,16 @@
 		{#each state.allTags as tag} <option value={tag}></option> {/each}
 	</datalist>
 	{#if state.isLoadingFilters}
-		<p>Loading filters...</p>
+		<p>{$tr("Loading filters...")}</p>
 	{:else}
 		<div class="controls">
 			<div>
-				<label for="account-input">Account:</label>
+				<label for="account-input">{$tr("Account:")}</label>
 				<input 
 					type="text" 
 					id="account-input" 
 					bind:value={selectedAccount} 
-					placeholder="Type account name..." 
+					placeholder={$tr("Type account name...")}
 					disabled={state.isLoading || state.isLoadingFilters}
 					list="account-list"
 				/>
@@ -170,22 +171,22 @@
 				</datalist>
 			</div>
 			<div class="date-range">
-				<label for="start-date">From:</label>
+				<label for="start-date">{$tr("From:")}</label>
 				<input type="date" id="start-date" bind:value={startDate} disabled={state.isLoading} use:nativeDatePicker />
-				<label for="end-date">To:</label>
+				<label for="end-date">{$tr("To:")}</label>
 				<input type="date" id="end-date" bind:value={endDate} disabled={state.isLoading} use:nativeDatePicker />
 			</div>
 			<div>
-				<label for="payee-filter">Payee:</label>
-				<input type="text" id="payee-filter" bind:value={payeeFilter} placeholder="Filter by payee..." disabled={state.isLoading} />
+				<label for="payee-filter">{$tr("Payee:")}</label>
+				<input type="text" id="payee-filter" bind:value={payeeFilter} placeholder={$tr("Filter by payee...")} disabled={state.isLoading} />
 			</div>
 			<div>
-				<label for="tag-filter">Tag:</label>
-				<input type="text" id="tag-filter" bind:value={tagFilter} placeholder="Filter by tag..." disabled={state.isLoading} list="beancount-tags" />
+				<label for="tag-filter">{$tr("Tag:")}</label>
+				<input type="text" id="tag-filter" bind:value={tagFilter} placeholder={$tr("Filter by tag...")} disabled={state.isLoading} list="beancount-tags" />
 			</div>
 			<div>
-				<button class="btn" on:click={handleClear} disabled={state.isLoading || state.isLoadingFilters}>Clear</button>
-				<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading || state.isLoadingFilters}>Refresh</button>
+				<button class="btn" on:click={handleClear} disabled={state.isLoading || state.isLoadingFilters}>{$tr("Clear")}</button>
+				<button class="btn btn-primary" on:click={handleRefresh} disabled={state.isLoading || state.isLoadingFilters}>{$tr("Refresh")}</button>
 			</div>
 		</div>
 
@@ -194,7 +195,7 @@
 		{:else if state.error}
 			<ErrorBanner message={state.error} on:retry={handleRefresh} />
 		{:else if sortedTransactions.length === 0}
-			<EmptyState icon="💸" title="No Transactions Found" description="Try selecting a different account or adjusting the date range and filters." />
+			<EmptyState icon="💸" title={$tr("No Transactions Found")} description={$tr("Try selecting a different account or adjusting the date range and filters.")} />
 		{:else}
 			<table class="transaction-table sortable">
 				<colgroup>
@@ -207,19 +208,19 @@
 				<thead>
 					<tr>
 						<th on:click={() => handleSort('date')} class:active={sortColumn === 'date'}>
-							Date {sortColumn === 'date' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+							{$tr("Date")} {sortColumn === 'date' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
 						</th>
 						<th on:click={() => handleSort('payee')} class:active={sortColumn === 'payee'}>
-							Payee {sortColumn === 'payee' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+							{$tr("Payee")} {sortColumn === 'payee' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
 						</th>
 						<th on:click={() => handleSort('narration')} class:active={sortColumn === 'narration'}>
-							Narration {sortColumn === 'narration' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+							{$tr("Narration")} {sortColumn === 'narration' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
 						</th>
 						<th on:click={() => handleSort('amount')} class:active={sortColumn === 'amount'}>
-							Amount {sortColumn === 'amount' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+							{$tr("Amount")} {sortColumn === 'amount' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
 						</th>
-						<th on:click={() => handleSort('balance')} class:active={sortColumn === 'balance'} title={state.currentFilters.account ? '' : 'Select an account to see its running balance'}>
-							Balance {sortColumn === 'balance' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+						<th on:click={() => handleSort('balance')} class:active={sortColumn === 'balance'} title={state.currentFilters.account ? '' : $tr("Select an account to see its running balance")}>
+							{$tr("Balance")} {sortColumn === 'balance' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
 						</th>
 					</tr>
 				</thead>

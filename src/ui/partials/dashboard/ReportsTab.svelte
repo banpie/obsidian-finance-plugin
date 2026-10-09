@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import { writable, type Writable } from 'svelte/store';
 	import type { ReportsController, ReportsState, ReportRow, ReportTransaction, ReportInvestmentTransaction, ReportAccountTransaction, ReportProjectRow, ReportProjectTransaction, ReportLoanRow, ReportsView } from '../../../controllers/ReportsController';
 	import ChartComponent from '../../common/ChartComponent.svelte';
@@ -169,19 +170,19 @@
 	}
 
 	function statusLabel(row: { status?: string; closeDate?: string }): string {
-		if (row.status === 'needs-review') return 'Needs review';
-		if (row.status === 'closed') return 'Closed';
-		if (row.status === 'zero-balance') return 'Zero balance';
-		if (row.status === 'inactive') return 'No activity';
-		return 'Active';
+		if (row.status === 'needs-review') return $tr("Needs review");
+		if (row.status === 'closed') return $tr("Closed");
+		if (row.status === 'zero-balance') return $tr("Zero balance");
+		if (row.status === 'inactive') return $tr("No activity");
+		return $tr("Active");
 	}
 
 	function statusTitle(row: { status?: string; closeDate?: string }): string {
-		if (row.status === 'needs-review') return row.closeDate ? `Closed on ${row.closeDate}, but still has a non-zero balance.` : 'Non-zero balance needs review.';
-		if (row.status === 'closed') return row.closeDate ? `Closed on ${row.closeDate}.` : 'Closed.';
-		if (row.status === 'zero-balance') return 'No balance as of the selected period.';
-		if (row.status === 'inactive') return 'No transactions in the selected period.';
-		return 'Active in the selected period.';
+		if (row.status === 'needs-review') return row.closeDate ? $tr("Closed on {0}, but still has a non-zero balance.", [row.closeDate]) : $tr("Non-zero balance needs review.");
+		if (row.status === 'closed') return row.closeDate ? $tr("Closed on {0}.", [row.closeDate]) : $tr("Closed.");
+		if (row.status === 'zero-balance') return $tr("No balance as of the selected period.");
+		if (row.status === 'inactive') return $tr("No transactions in the selected period.");
+		return $tr("Active in the selected period.");
 	}
 
 	function statusClass(row: { status?: string }): string {
@@ -202,7 +203,7 @@
 	}
 
 	function investmentQuantityTitle(row: ReportRow): string {
-		return row.quantityRaw || (row.quantity !== null && row.quantity !== undefined && row.commodity ? `${row.quantity} ${row.commodity}` : 'No quantity available');
+		return row.quantityRaw || (row.quantity !== null && row.quantity !== undefined && row.commodity ? `${row.quantity} ${row.commodity}` : $tr("No quantity available"));
 	}
 
 	function investmentPrice(row: ReportRow): string {
@@ -217,11 +218,11 @@
 	}
 
 	function investmentPriceTitle(row: ReportRow): string {
-		if (row.currentPrice === null || row.currentPrice === undefined) return 'No current price available for this holding.';
-		const unit = row.commodity ? `1 ${row.commodity}` : '1 unit';
+		if (row.currentPrice === null || row.currentPrice === undefined) return $tr("No current price available for this holding.");
+		const unit = row.commodity ? `1 ${row.commodity}` : $tr("1 unit");
 		const nativePrice = investmentNativePrice(row);
-		const nativeLine = nativePrice ? `\nOriginal quote: ${nativePrice}${row.nativePriceDate ? ` on ${row.nativePriceDate}` : ''}` : '';
-		return `Current report-currency price per ${unit}${nativeLine}`;
+		const nativeLine = nativePrice ? $tr("\nOriginal quote: {0}{1}", [nativePrice, row.nativePriceDate ? ` on ${row.nativePriceDate}` : '']) : '';
+		return $tr("Current report-currency price per {0}{1}", [unit, nativeLine]);
 	}
 
 	function investmentCostBasis(row: ReportRow): string {
@@ -233,9 +234,9 @@
 
 	function investmentCostTitle(row: ReportRow): string {
 		if (row.costStatus === 'available') return row.costBasisRaw || investmentCostBasis(row);
-		if (row.costStatus === 'cashflow') return `Cash-flow basis: net invested after buy and sell cash flows. This is not a Beancount lot cost.`;
-		if (row.costStatus === 'mixed-currency') return `Cost is not in ${state.currency}: ${row.costBasisRaw || 'mixed cost inventory'}`;
-		return 'No cost basis available for this holding.';
+		if (row.costStatus === 'cashflow') return $tr("Cash-flow basis: net invested after buy and sell cash flows. This is not a Beancount lot cost.");
+		if (row.costStatus === 'mixed-currency') return $tr("Cost is not in {0}: {1}", [state.currency, row.costBasisRaw || 'mixed cost inventory']);
+		return $tr("No cost basis available for this holding.");
 	}
 
 	function investmentAverageCost(row: ReportRow): string {
@@ -245,9 +246,9 @@
 	}
 
 	function investmentAverageCostTitle(row: ReportRow): string {
-		if (row.averageCost === null || row.averageCost === undefined) return 'No average cost available for this holding.';
-		if (row.costStatus === 'cashflow') return row.commodity ? `Average cash-flow basis per 1 ${row.commodity}` : 'Average cash-flow basis per unit';
-		return row.commodity ? `Average cost per 1 ${row.commodity}` : 'Average cost per unit';
+		if (row.averageCost === null || row.averageCost === undefined) return $tr("No average cost available for this holding.");
+		if (row.costStatus === 'cashflow') return row.commodity ? $tr("Average cash-flow basis per 1 {0}", [row.commodity]) : $tr("Average cash-flow basis per unit");
+		return row.commodity ? $tr("Average cost per 1 {0}", [row.commodity]) : $tr("Average cost per unit");
 	}
 
 	function investmentGain(row: ReportRow): string {
@@ -260,10 +261,10 @@
 	}
 
 	function investmentGainTitle(row: ReportRow): string {
-		if (row.status === 'closed') return 'Current unrealized gain does not apply to a closed investment. Use the lifetime columns.';
-		if (row.costStatus === 'cashflow') return 'Cash-flow return: current value minus net invested cash flow.';
-		if (row.costStatus === 'available') return 'Unrealized gain/loss based on holding cost basis.';
-		return 'No return basis available for this holding.';
+		if (row.status === 'closed') return $tr("Current unrealized gain does not apply to a closed investment. Use the lifetime columns.");
+		if (row.costStatus === 'cashflow') return $tr("Cash-flow return: current value minus net invested cash flow.");
+		if (row.costStatus === 'available') return $tr("Unrealized gain/loss based on holding cost basis.");
+		return $tr("No return basis available for this holding.");
 	}
 
 	function investmentGainClass(row: ReportRow): string {
@@ -272,30 +273,30 @@
 	}
 
 	function lifecycleCurrency(row: ReportRow, value: number | undefined): string {
-		if (row.lifecycleVerification === 'needs-review') return 'Review';
+		if (row.lifecycleVerification === 'needs-review') return $tr("Review");
 		return value === undefined ? '—' : formatCurrency(value);
 	}
 
 	function lifecycleReturnCurrency(row: ReportRow, value: number | undefined): string {
-		if (row.lifecycleVerification === 'needs-review') return 'Review';
+		if (row.lifecycleVerification === 'needs-review') return $tr("Review");
 		return formatInvestmentReturn(value, formatSignedCurrency);
 	}
 
 	function lifecycleReturnPercent(row: ReportRow): string {
-		if (row.lifecycleVerification === 'needs-review') return 'Review';
+		if (row.lifecycleVerification === 'needs-review') return $tr("Review");
 		return formatInvestmentReturn(row.totalRoi, formatSignedPercent);
 	}
 
 	function lifecycleTitle(row: ReportRow): string {
 		if (row.lifecycleVerification === 'verified') {
-			return `Verified lifetime cash flows${row.lifecycleAsOfDate ? ` through ${row.lifecycleAsOfDate}` : ''}.`;
+			return $tr("Verified lifetime cash flows{0}.", [row.lifecycleAsOfDate ? $tr(" through {0}", [row.lifecycleAsOfDate]) : '']);
 		}
 		if (row.lifecycleVerification === 'needs-review') {
-			return 'Historical cash flows do not reconcile with locally recorded realized profit. Review before showing a numeric lifetime return.';
+			return $tr("Historical cash flows do not reconcile with locally recorded realized profit. Review before showing a numeric lifetime return.");
 		}
 		return row.status === 'closed'
-			? 'No verified lifecycle report is available for this closed investment.'
-			: 'Lifetime return is shown for closed investments.';
+			? $tr("No verified lifecycle report is available for this closed investment.")
+			: $tr("Lifetime return is shown for closed investments.");
 	}
 
 	function investmentReturnClass(value: number | null | undefined): string {
@@ -312,9 +313,9 @@
 	}
 
 	function investmentReturnLabel(value: number): string {
-		if (value > 0) return 'Gain';
-		if (value < 0) return 'Loss';
-		return 'Even';
+		if (value > 0) return $tr("Gain");
+		if (value < 0) return $tr("Loss");
+		return $tr("Even");
 	}
 
 	function formatInvestmentReturn(
@@ -498,12 +499,12 @@
 	}
 
 	function detailSectionTitle(kind: DetailKind): string {
-		if (kind === 'investment') return detailSelection?.summary ? 'Holdings by Type' : 'Current Holdings';
-		if (kind === 'asset' || kind === 'liability' || kind === 'networth') return detailSelection?.summary ? 'Balances by Category' : 'Current Balances';
-		if (kind === 'loan') return 'Loan Balances';
-		if (kind === 'project') return 'Project Transactions';
-		if (detailSelection?.category) return 'Selected Category';
-		return 'Category Breakdown';
+		if (kind === 'investment') return detailSelection?.summary ? $tr("Holdings by Type") : $tr("Current Holdings");
+		if (kind === 'asset' || kind === 'liability' || kind === 'networth') return detailSelection?.summary ? $tr("Balances by Category") : $tr("Current Balances");
+		if (kind === 'loan') return $tr("Loan Balances");
+		if (kind === 'project') return $tr("Project Transactions");
+		if (detailSelection?.category) return $tr("Selected Category");
+		return $tr("Category Breakdown");
 	}
 
 	function detailValue(selection: DetailSelection): string {
@@ -554,7 +555,7 @@
 		return [
 			...assetDetailGroups(),
 			...state.liabilitiesByCategory.map(group => ({
-				label: `Liabilities / ${group.label}`,
+				label: $tr("Liabilities / {0}", [$tr(group.label)]),
 				amount: -group.amount,
 				rows: rowsForCategory(state.liabilitiesByAccount, group.label).map(asNetWorthLiabilityRow),
 			})),
@@ -572,22 +573,22 @@
 	function parentDetailSelection(selection: DetailSelection): DetailSelection | null {
 		if (!selection.category || selection.summary) return null;
 		if (selection.kind === 'income') {
-			return { kind: 'income', title: 'Income', amount: state.totalIncome, category: null };
+			return { kind: 'income', title: $tr("Income"), amount: state.totalIncome, category: null };
 		}
 		if (selection.kind === 'expense') {
-			return { kind: 'expense', title: 'Expenses', amount: state.totalExpenses, category: null };
+			return { kind: 'expense', title: $tr("Expenses"), amount: state.totalExpenses, category: null };
 		}
 		if (selection.kind === 'asset') {
-			return { kind: 'asset', title: 'Total Assets', amount: state.totalAssets, category: null, summary: true };
+			return { kind: 'asset', title: $tr("Total Assets"), amount: state.totalAssets, category: null, summary: true };
 		}
 		if (selection.kind === 'liability') {
-			return { kind: 'liability', title: 'Liabilities', amount: state.totalLiabilities, category: null, summary: true };
+			return { kind: 'liability', title: $tr("Liabilities"), amount: state.totalLiabilities, category: null, summary: true };
 		}
 		if (selection.kind === 'investment') {
-			return { kind: 'investment', title: 'Investment Assets', amount: investmentTotal, category: null, summary: true };
+			return { kind: 'investment', title: $tr("Investment Assets"), amount: investmentTotal, category: null, summary: true };
 		}
 		if (selection.kind === 'project') {
-			return { kind: 'project', title: 'Project Net Income', amount: projectNetIncomeTotal, category: null, summary: true };
+			return { kind: 'project', title: $tr("Project Net Income"), amount: projectNetIncomeTotal, category: null, summary: true };
 		}
 		return null;
 	}
@@ -777,8 +778,8 @@
 	}
 
 	function loanDirectionLabel(row: ReportLoanRow): string {
-		if (!row.receivable && !row.payable) return 'Settled';
-		return row.direction === 'receivable' ? 'To receive' : 'To pay';
+		if (!row.receivable && !row.payable) return $tr("Settled");
+		return row.direction === 'receivable' ? $tr("To receive") : $tr("To pay");
 	}
 
 	function loanDirectionClass(row: ReportLoanRow): string {
@@ -1039,7 +1040,7 @@
 <div class={`reports-tab investment-colors-${state.investmentGainLossColors}`}>
 	<div class="reports-header">
 		<div class="reports-title">
-			<h2>Reports</h2>
+			<h2>{$tr("Reports")}</h2>
 			<div class="period-label">{state.periodLabel}</div>
 		</div>
 
@@ -1062,11 +1063,11 @@
 
 	<div class="reports-subnav">
 		<div class="toolbar-group">
-			<div class="segmented-control primary-switch" aria-label="Report view">
-				<button class:active={state.activeView === 'cashflow'} on:click={() => handleViewChange('cashflow')}>Cash Flow</button>
-				<button class:active={state.activeView === 'assets'} on:click={() => handleViewChange('assets')}>Assets</button>
-				<button class:active={state.activeView === 'loans'} on:click={() => handleViewChange('loans')}>Loans</button>
-				<button class:active={state.activeView === 'projects'} on:click={() => handleViewChange('projects')}>Projects</button>
+			<div class="segmented-control primary-switch" aria-label={$tr("Report view")}>
+				<button class:active={state.activeView === 'cashflow'} on:click={() => handleViewChange('cashflow')}>{$tr("Cash Flow")}</button>
+				<button class:active={state.activeView === 'assets'} on:click={() => handleViewChange('assets')}>{$tr("Assets")}</button>
+				<button class:active={state.activeView === 'loans'} on:click={() => handleViewChange('loans')}>{$tr("Loans")}</button>
+				<button class:active={state.activeView === 'projects'} on:click={() => handleViewChange('projects')}>{$tr("Projects")}</button>
 			</div>
 		</div>
 	</div>
@@ -1078,43 +1079,43 @@
 	{:else if state.activeView === 'cashflow'}
 		<div class="metric-grid">
 			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('income', 'Income', state.totalIncome)}>
-				<span>Income</span>
+				<span>{$tr("Income")}</span>
 				<strong>{formatCurrency(state.totalIncome)}</strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('expense', 'Expenses', state.totalExpenses)}>
-				<span>Expenses</span>
+				<span>{$tr("Expenses")}</span>
 				<strong>{formatCurrency(state.totalExpenses)}</strong>
 			</button>
 			<div class="metric-card">
-				<span>Net Income</span>
+				<span>{$tr("Net Income")}</span>
 				<strong class={amountClass(state.netIncome)}>{formatCurrency(state.netIncome)}</strong>
 			</div>
 			<div class="metric-card">
-				<span>Savings Rate</span>
+				<span>{$tr("Savings Rate")}</span>
 				<strong>{state.totalIncome > 0 ? formatPercent((state.netIncome / state.totalIncome) * 100) : 'N/A'}</strong>
 			</div>
 		</div>
 
 		<ReportFilterBar
 			bind:query={cashflowSearch}
-			placeholder="Search income or expense categories…"
+			placeholder={$tr("Search income or expense categories…")}
 			searchLabel="Search cash flow categories"
 			shownCount={cashflowShownCount}
 			totalCount={cashflowTotalCount}
 			hasActiveFilters={cashflowHasActiveFilters}
 			on:clear={clearCashflowFilters}
 		>
-			<select bind:value={cashflowTypeFilter} aria-label="Cash flow type">
-				<option value="all">All cash flow</option>
-				<option value="income">Income</option>
-				<option value="expense">Expenses</option>
+			<select bind:value={cashflowTypeFilter} aria-label={$tr("Cash flow type")}>
+				<option value="all">{$tr("All cash flow")}</option>
+				<option value="income">{$tr("Income")}</option>
+				<option value="expense">{$tr("Expenses")}</option>
 			</select>
 		</ReportFilterBar>
 
 		<div class="two-column">
 			<section class="report-section">
 				<div class="section-header">
-					<h3>Income Structure</h3>
+					<h3>{$tr("Income Structure")}</h3>
 				</div>
 				{#if state.incomeChartConfig}
 					<div class="chart-box"><ChartComponent config={state.incomeChartConfig} height="260px" /></div>
@@ -1126,10 +1127,10 @@
 							class="breakdown-row interactive"
 							class:active={detailSelection?.kind === 'income' && detailSelection?.category === row.label}
 							on:click={() => openDetails('income', row.label, row.amount, row.label)}
-							title="View details"
+							title={$tr("View details")}
 						>
 							<div class="breakdown-main">
-								<span class="row-label">{row.label}</span>
+								<span class="row-label">{$tr(row.label)}</span>
 								<span class="row-value">{formatCurrency(row.amount)}</span>
 							</div>
 							<div class="bar-track">
@@ -1141,7 +1142,7 @@
 						</button>
 					{:else}
 						<div class="empty-state compact">
-							{cashflowHasActiveFilters ? 'No matching income categories.' : 'No income records in the selected period.'}
+							{cashflowHasActiveFilters ? $tr("No matching income categories.") : $tr("No income records in the selected period.")}
 						</div>
 					{/each}
 				</div>
@@ -1149,7 +1150,7 @@
 
 			<section class="report-section">
 				<div class="section-header">
-					<h3>Expense Structure</h3>
+					<h3>{$tr("Expense Structure")}</h3>
 				</div>
 				{#if state.expensesChartConfig}
 					<div class="chart-box"><ChartComponent config={state.expensesChartConfig} height="260px" /></div>
@@ -1161,10 +1162,10 @@
 							class="breakdown-row interactive"
 							class:active={detailSelection?.kind === 'expense' && detailSelection?.category === row.label}
 							on:click={() => openDetails('expense', row.label, row.amount, row.label)}
-							title="View details"
+							title={$tr("View details")}
 						>
 							<div class="breakdown-main">
-								<span class="row-label">{row.label}</span>
+								<span class="row-label">{$tr(row.label)}</span>
 								<span class="row-value">{formatCurrency(row.amount)}</span>
 							</div>
 							<div class="bar-track">
@@ -1176,7 +1177,7 @@
 						</button>
 					{:else}
 						<div class="empty-state compact">
-							{cashflowHasActiveFilters ? 'No matching expense categories.' : 'No expense records in the selected period.'}
+							{cashflowHasActiveFilters ? $tr("No matching expense categories.") : $tr("No expense records in the selected period.")}
 						</div>
 					{/each}
 				</div>
@@ -1186,19 +1187,19 @@
 	{:else if state.activeView === 'assets'}
 		<div class="metric-grid">
 			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('asset', 'Total Assets', state.totalAssets, null, true)}>
-				<span>Total Assets</span>
+				<span>{$tr("Total Assets")}</span>
 				<strong>{formatCurrency(state.totalAssets)}</strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('liability', 'Liabilities', state.totalLiabilities, null, true)}>
-				<span>Liabilities</span>
+				<span>{$tr("Liabilities")}</span>
 				<strong>{formatCurrency(state.totalLiabilities)}</strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('networth', 'Net Worth', state.netWorth, null, true)}>
-				<span>Net Worth</span>
+				<span>{$tr("Net Worth")}</span>
 				<strong>{formatCurrency(state.netWorth)}</strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('investment', 'Investment Assets', investmentTotal, null, true)}>
-				<span>Investment Assets</span>
+				<span>{$tr("Investment Assets")}</span>
 				<strong>{formatCurrency(investmentTotal)}</strong>
 			</button>
 		</div>
@@ -1206,7 +1207,7 @@
 		<div class="two-column">
 			<section class="report-section">
 				<div class="section-header">
-					<h3>Asset Allocation</h3>
+					<h3>{$tr("Asset Allocation")}</h3>
 				</div>
 				{#if state.assetsChartConfig}
 					<div class="chart-box"><ChartComponent config={state.assetsChartConfig} height="260px" /></div>
@@ -1218,10 +1219,10 @@
 							class="breakdown-row interactive"
 							class:active={detailSelection?.kind === 'asset' && detailSelection?.category === row.label}
 							on:click={() => openDetails('asset', row.label, row.amount, row.label)}
-							title="View details"
+							title={$tr("View details")}
 						>
 							<div class="breakdown-main">
-								<span class="row-label">{row.label}</span>
+								<span class="row-label">{$tr(row.label)}</span>
 								<span class="row-value">{formatCurrency(row.amount)}</span>
 							</div>
 							<div class="bar-track">
@@ -1237,7 +1238,7 @@
 
 			<section class="report-section">
 				<div class="section-header">
-					<h3>Investment Allocation</h3>
+					<h3>{$tr("Investment Allocation")}</h3>
 				</div>
 				{#if state.investmentsChartConfig}
 					<div class="chart-box"><ChartComponent config={state.investmentsChartConfig} height="260px" /></div>
@@ -1249,10 +1250,10 @@
 							class="breakdown-row interactive"
 							class:active={detailSelection?.kind === 'investment' && detailSelection?.category === row.label}
 							on:click={() => openDetails('investment', row.label, row.amount, row.label)}
-							title="View details"
+							title={$tr("View details")}
 						>
 							<div class="breakdown-main">
-								<span class="row-label">{row.label}</span>
+								<span class="row-label">{$tr(row.label)}</span>
 								<span class="row-value">{formatCurrency(row.amount)}</span>
 							</div>
 							<div class="bar-track">
@@ -1269,52 +1270,52 @@
 
 		<section class="report-section">
 			<div class="section-header">
-				<h3>{state.showClosedItems ? 'Investment Holdings' : 'Top Holdings'}</h3>
+				<h3>{state.showClosedItems ? $tr("Investment Holdings") : $tr("Top Holdings")}</h3>
 			</div>
 			<ReportFilterBar
 				bind:query={investmentSearch}
-				placeholder="Search holding, code, account, or type…"
+				placeholder={$tr("Search holding, code, account, or type…")}
 				searchLabel="Search investment holdings"
 				shownCount={displayedInvestmentRows.length}
 				totalCount={investmentLifecycleRows.length}
 				hasActiveFilters={investmentFiltersActive}
 				on:clear={clearInvestmentFilters}
 			>
-				<select bind:value={investmentTypeFilter} aria-label="Investment type">
-					<option value="all">All investment types</option>
+				<select bind:value={investmentTypeFilter} aria-label={$tr("Investment type")}>
+					<option value="all">{$tr("All investment types")}</option>
 					{#each availableInvestmentTypes as type}
-						<option value={type}>{getInvestmentTypeLabel(type)}</option>
+						<option value={type}>{$tr(getInvestmentTypeLabel(type))}</option>
 					{/each}
 				</select>
-				<select value={investmentLifecycleFilter} on:change={handleInvestmentLifecycleChange} aria-label="Investment lifecycle">
-					<option value="current">Current</option>
-					<option value="closed">Closed / inactive</option>
-					<option value="needs-review">Needs review</option>
-					<option value="all">All records</option>
+				<select value={investmentLifecycleFilter} on:change={handleInvestmentLifecycleChange} aria-label={$tr("Investment lifecycle")}>
+					<option value="current">{$tr("Current")}</option>
+					<option value="closed">{$tr("Closed / inactive")}</option>
+					<option value="needs-review">{$tr("Needs review")}</option>
+					<option value="all">{$tr("All records")}</option>
 				</select>
 			</ReportFilterBar>
 			<div class="detail-table-wrap">
-				<h4>{state.showClosedItems ? 'Current and Closed Holdings' : 'Current Holdings'}</h4>
+				<h4>{state.showClosedItems ? $tr("Current and Closed Holdings") : $tr("Current Holdings")}</h4>
 				<table class="reports-table">
 					<thead>
 						<tr>
-							<th>Holding</th>
-							<th>Code</th>
-							<th>Ledger Account</th>
-							<th>Status</th>
-							<th class="align-right">Quantity</th>
-							<th class="align-right">Price</th>
-							<th class="align-right">Market Value</th>
-							<th class="align-right">Cost Basis</th>
-							<th class="align-right">Avg Cost / Unit</th>
-							<th class="align-right">Gain/Loss</th>
+							<th>{$tr("Holding")}</th>
+							<th>{$tr("Code")}</th>
+							<th>{$tr("Ledger Account")}</th>
+							<th>{$tr("Status")}</th>
+							<th class="align-right">{$tr("Quantity")}</th>
+							<th class="align-right">{$tr("Price")}</th>
+							<th class="align-right">{$tr("Market Value")}</th>
+							<th class="align-right">{$tr("Cost Basis")}</th>
+							<th class="align-right">{$tr("Avg Cost / Unit")}</th>
+							<th class="align-right">{$tr("Gain/Loss")}</th>
 							{#if state.showClosedItems}
-								<th class="align-right">Invested</th>
+								<th class="align-right">{$tr("Invested")}</th>
 								<th class="align-right">Recovered</th>
-								<th class="align-right">Lifetime P/L</th>
-								<th class="align-right">Total ROI</th>
+								<th class="align-right">{$tr("Lifetime P/L")}</th>
+								<th class="align-right">{$tr("Total ROI")}</th>
 							{/if}
-							<th class="align-right">Share</th>
+							<th class="align-right">{$tr("Share")}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -1326,7 +1327,7 @@
 								tabindex="0"
 								on:click={(event) => handleHoldingRowClick(event, row)}
 								on:keydown={(event) => handleHoldingRowKeydown(event, row)}
-								title="View holding transactions"
+								title={$tr("View holding transactions")}
 							>
 								<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 								<td>{row.commodity || ''}</td>
@@ -1352,7 +1353,7 @@
 								<td class="align-right">{formatPercent(row.percent)}</td>
 							</tr>
 						{:else}
-							<tr><td colspan={state.showClosedItems ? 15 : 11}>No matching holdings. Try clearing filters or selecting All records.</td></tr>
+							<tr><td colspan={state.showClosedItems ? 15 : 11}>{$tr("No matching holdings. Try clearing filters or selecting All records.")}</td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -1361,61 +1362,61 @@
 	{:else if state.activeView === 'loans'}
 		<div class="metric-grid">
 			<button type="button" class="metric-card interactive-card" on:click={() => openLoanSummaryDetails('To Receive', loanReceivableTotal, 'receivable')}>
-				<span>To Receive</span>
+				<span>{$tr("To Receive")}</span>
 				<strong>{formatCurrency(loanReceivableTotal)}</strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openLoanSummaryDetails('To Pay', loanPayableTotal, 'payable')}>
-				<span>To Pay</span>
+				<span>{$tr("To Pay")}</span>
 				<strong>{formatCurrency(loanPayableTotal)}</strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openLoanSummaryDetails('Net Position', loanNetTotal, 'net')}>
-				<span>Net Position</span>
+				<span>{$tr("Net Position")}</span>
 				<strong class={amountClass(loanNetTotal)}>{formatCurrency(loanNetTotal)}</strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openLoanSummaryDetails('Open Loans', activeLoanCount, 'all', String(activeLoanCount))}>
-				<span>Open Loans</span>
+				<span>{$tr("Open Loans")}</span>
 				<strong>{activeLoanCount}</strong>
 			</button>
 		</div>
 
 		<section class="report-section">
 			<div class="section-header">
-				<h3>Loan Balances</h3>
+				<h3>{$tr("Loan Balances")}</h3>
 				<span>{state.periodLabel}</span>
 			</div>
 			<ReportFilterBar
 				bind:query={loanSearch}
-				placeholder="Search loan name or account…"
+				placeholder={$tr("Search loan name or account…")}
 				searchLabel="Search loan balances"
 				shownCount={displayedLoanRows.length}
 				totalCount={loanLifecycleRows.length}
 				hasActiveFilters={Boolean(loanSearch.trim()) || loanDirectionFilter !== 'all' || loanLifecycleFilter !== 'current'}
 				on:clear={clearLoanFilters}
 			>
-				<select bind:value={loanDirectionFilter} aria-label="Loan direction">
-					<option value="all">All directions</option>
-					<option value="receivable">To receive</option>
-					<option value="payable">To pay</option>
+				<select bind:value={loanDirectionFilter} aria-label={$tr("Loan direction")}>
+					<option value="all">{$tr("All directions")}</option>
+					<option value="receivable">{$tr("To receive")}</option>
+					<option value="payable">{$tr("To pay")}</option>
 				</select>
-				<select value={loanLifecycleFilter} on:change={handleLoanLifecycleChange} aria-label="Loan lifecycle">
-					<option value="current">Current</option>
-					<option value="closed">Closed / settled</option>
-					<option value="needs-review">Needs review</option>
-					<option value="all">All records</option>
+				<select value={loanLifecycleFilter} on:change={handleLoanLifecycleChange} aria-label={$tr("Loan lifecycle")}>
+					<option value="current">{$tr("Current")}</option>
+					<option value="closed">{$tr("Closed / settled")}</option>
+					<option value="needs-review">{$tr("Needs review")}</option>
+					<option value="all">{$tr("All records")}</option>
 				</select>
 			</ReportFilterBar>
 			<div class="detail-table-wrap">
 				<table class="reports-table">
 					<thead>
 						<tr>
-							<th>Loan</th>
-							<th>Direction</th>
-							<th>Status</th>
-							<th>Ledger Account</th>
-							<th class="align-right">To Receive</th>
-							<th class="align-right">To Pay</th>
-							<th class="align-right">Net</th>
-							<th class="align-right">Share</th>
+							<th>{$tr("Loan")}</th>
+							<th>{$tr("Direction")}</th>
+							<th>{$tr("Status")}</th>
+							<th>{$tr("Ledger Account")}</th>
+							<th class="align-right">{$tr("To Receive")}</th>
+							<th class="align-right">{$tr("To Pay")}</th>
+							<th class="align-right">{$tr("Net")}</th>
+							<th class="align-right">{$tr("Share")}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -1427,7 +1428,7 @@
 								tabindex="0"
 								on:click={(event) => handleLoanRowClick(event, row)}
 								on:keydown={(event) => handleLoanRowKeydown(event, row)}
-								title="View loan transactions"
+								title={$tr("View loan transactions")}
 							>
 								<td><span class="table-link">{row.label}</span></td>
 								<td class={loanDirectionClass(row)}>{loanDirectionLabel(row)}</td>
@@ -1440,7 +1441,7 @@
 							</tr>
 						{:else}
 							<tr>
-							<td colspan="8">No matching loan balances. Try clearing filters or selecting All records.</td>
+							<td colspan="8">{$tr("No matching loan balances. Try clearing filters or selecting All records.")}</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -1450,59 +1451,59 @@
 	{:else}
 		<div class="metric-grid">
 			<button type="button" class="metric-card interactive-card" on:click={() => openProjectSummaryDetails('Project Income', projectIncomeTotal, 'Income')}>
-				<span>Project Income</span>
+				<span>{$tr("Project Income")}</span>
 				<strong>{formatCurrency(projectIncomeTotal)}</strong>
 			</button>
-			<button type="button" class="metric-card interactive-card" on:click={() => openProjectSummaryDetails('Project Expenses', projectExpensesTotal, 'Expense')}>
-				<span>Project Expenses</span>
+			<button type="button" class="metric-card interactive-card" on:click={() => openProjectSummaryDetails('Project Expenses', projectExpensesTotal, $tr("Expense"))}>
+				<span>{$tr("Project Expenses")}</span>
 				<strong>{formatCurrency(projectExpensesTotal)}</strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openProjectSummaryDetails('Project Net Income', projectNetIncomeTotal)}>
-				<span>Project Net Income</span>
+				<span>{$tr("Project Net Income")}</span>
 				<strong class={amountClass(projectNetIncomeTotal)}>{formatCurrency(projectNetIncomeTotal)}</strong>
 			</button>
 			<div class="metric-card">
-				<span>Projects</span>
+				<span>{$tr("Projects")}</span>
 				<strong>{activeProjectCount}</strong>
 			</div>
 		</div>
 
 		<section class="report-section">
 			<div class="section-header">
-				<h3>Project Performance</h3>
+				<h3>{$tr("Project Performance")}</h3>
 			</div>
 			<ReportFilterBar
 				bind:query={projectSearch}
-				placeholder="Search project name or tag…"
+				placeholder={$tr("Search project name or tag…")}
 				searchLabel="Search projects"
 				shownCount={displayedProjectRows.length}
 				totalCount={projectLifecycleRows.length}
 				hasActiveFilters={Boolean(projectSearch.trim()) || projectTagFilter !== 'all' || projectLifecycleFilter !== 'current'}
 				on:clear={clearProjectFilters}
 			>
-				<select bind:value={projectTagFilter} aria-label="Project tag">
-					<option value="all">All tags</option>
+				<select bind:value={projectTagFilter} aria-label={$tr("Project tag")}>
+					<option value="all">{$tr("All tags")}</option>
 					{#each availableProjectTags as tag}
 						<option value={tag}>{tag}</option>
 					{/each}
 				</select>
-				<select value={projectLifecycleFilter} on:change={handleProjectLifecycleChange} aria-label="Project lifecycle">
-					<option value="current">Current</option>
-					<option value="closed">Inactive</option>
-					<option value="all">All records</option>
+				<select value={projectLifecycleFilter} on:change={handleProjectLifecycleChange} aria-label={$tr("Project lifecycle")}>
+					<option value="current">{$tr("Current")}</option>
+					<option value="closed">{$tr("Inactive")}</option>
+					<option value="all">{$tr("All records")}</option>
 				</select>
 			</ReportFilterBar>
 			<div class="detail-table-wrap">
 				<table class="reports-table project-table">
 					<thead>
 						<tr>
-							<th>Project</th>
-							<th>Tag</th>
-							<th>Status</th>
-							<th class="align-right">Income</th>
-							<th class="align-right">Expenses</th>
-							<th class="align-right">Net Income</th>
-							<th class="align-right">Transactions</th>
+							<th>{$tr("Project")}</th>
+							<th>{$tr("Tag")}</th>
+							<th>{$tr("Status")}</th>
+							<th class="align-right">{$tr("Income")}</th>
+							<th class="align-right">{$tr("Expenses")}</th>
+							<th class="align-right">{$tr("Net Income")}</th>
+							<th class="align-right">{$tr("Transactions")}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -1514,7 +1515,7 @@
 								tabindex="0"
 								on:click={() => openProjectDetails(project)}
 								on:keydown={(event) => handleProjectRowKeydown(event, project)}
-								title="View project transactions"
+								title={$tr("View project transactions")}
 							>
 								<td><span class="table-link">{project.label}</span></td>
 								<td>{project.tag || '—'}</td>
@@ -1525,7 +1526,7 @@
 								<td class="align-right">{project.transactionCount}</td>
 							</tr>
 						{:else}
-							<tr><td colspan="7">No matching projects. Try clearing filters or selecting All records.</td></tr>
+							<tr><td colspan="7">{$tr("No matching projects. Try clearing filters or selecting All records.")}</td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -1535,23 +1536,23 @@
 
 	{#if detailSelection}
 		<div class="detail-modal-backdrop" role="presentation" on:click={closeDetails}></div>
-		<section class="detail-modal" role="dialog" aria-modal="true" aria-label="Report details">
+		<section class="detail-modal" role="dialog" aria-modal="true" aria-label={$tr("Report details")}>
 			<header class="detail-modal-header">
 				<div class="detail-modal-left">
-					<div class="detail-nav-actions" aria-label="Detail navigation">
-						<button type="button" class="nav-button" on:click={goBackInDetails} disabled={!canGoBack} aria-label="Back to previous details" title="Back">←</button>
-						<button type="button" class="nav-button" on:click={goForwardInDetails} disabled={!canGoForward} aria-label="Forward to next details" title="Forward">→</button>
+					<div class="detail-nav-actions" aria-label={$tr("Detail navigation")}>
+						<button type="button" class="nav-button" on:click={goBackInDetails} disabled={!canGoBack} aria-label={$tr("Back to previous details")} title={$tr("Back")}>←</button>
+						<button type="button" class="nav-button" on:click={goForwardInDetails} disabled={!canGoForward} aria-label={$tr("Forward to next details")} title={$tr("Forward")}>→</button>
 					</div>
 					<div class="detail-modal-title">
 						<div>
-							<h3>{detailSelection.title}</h3>
+							<h3>{$tr(detailSelection.title)}</h3>
 							<div class="period-label">{state.periodLabel}</div>
 						</div>
 					</div>
 				</div>
 				<div class="detail-modal-actions">
 					<strong class={detailValueClass(detailSelection)}>{detailValue(detailSelection)}</strong>
-					<button type="button" class="close-button" on:click={closeDetails} aria-label="Close details">Close</button>
+					<button type="button" class="close-button" on:click={closeDetails} aria-label={$tr("Close details")}>{$tr("Close")}</button>
 				</div>
 			</header>
 
@@ -1564,31 +1565,31 @@
 						</div>
 						<ReportFilterBar
 							bind:query={detailRowSearch}
-							placeholder="Search loan name or account…"
+							placeholder={$tr("Search loan name or account…")}
 							searchLabel="Search loan detail rows"
 							shownCount={filteredDetailLoanRows.length}
 							totalCount={detailLoanBaseRows.length}
 							hasActiveFilters={Boolean(detailRowSearch.trim()) || detailRowLifecycleFilter !== loanLifecycleFilter}
 							on:clear={clearDetailRowFilters}
 						>
-							<select value={detailRowLifecycleFilter} on:change={handleDetailLifecycleChange} aria-label="Loan detail lifecycle">
-								<option value="current">Current</option>
-								<option value="closed">Closed / settled</option>
-								<option value="needs-review">Needs review</option>
-								<option value="all">All records</option>
+							<select value={detailRowLifecycleFilter} on:change={handleDetailLifecycleChange} aria-label={$tr("Loan detail lifecycle")}>
+								<option value="current">{$tr("Current")}</option>
+								<option value="closed">{$tr("Closed / settled")}</option>
+								<option value="needs-review">{$tr("Needs review")}</option>
+								<option value="all">{$tr("All records")}</option>
 							</select>
 						</ReportFilterBar>
 						<table class="reports-table">
 							<thead>
 								<tr>
-									<th>Loan</th>
-									<th>Direction</th>
-									<th>Status</th>
-									<th>Ledger Account</th>
-									<th class="align-right">To Receive</th>
-									<th class="align-right">To Pay</th>
-									<th class="align-right">Net</th>
-									<th class="align-right">Share</th>
+									<th>{$tr("Loan")}</th>
+									<th>{$tr("Direction")}</th>
+									<th>{$tr("Status")}</th>
+									<th>{$tr("Ledger Account")}</th>
+									<th class="align-right">{$tr("To Receive")}</th>
+									<th class="align-right">{$tr("To Pay")}</th>
+									<th class="align-right">{$tr("Net")}</th>
+									<th class="align-right">{$tr("Share")}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -1600,7 +1601,7 @@
 										tabindex="0"
 										on:click={(event) => handleLoanRowClick(event, row)}
 										on:keydown={(event) => handleLoanRowKeydown(event, row)}
-										title="View loan transactions"
+										title={$tr("View loan transactions")}
 									>
 										<td><span class="table-link">{row.label}</span></td>
 										<td class={loanDirectionClass(row)}>{loanDirectionLabel(row)}</td>
@@ -1613,7 +1614,7 @@
 									</tr>
 								{:else}
 									<tr>
-										<td colspan="8">No matching loan balances for this period.</td>
+										<td colspan="8">{$tr("No matching loan balances for this period.")}</td>
 									</tr>
 								{/each}
 							</tbody>
@@ -1626,7 +1627,7 @@
 					</div>
 					<ReportFilterBar
 						bind:query={detailRowSearch}
-						placeholder={detailSelection.kind === 'investment' ? 'Search holding, code, account, or type…' : 'Search category or account…'}
+						placeholder={detailSelection.kind === 'investment' ? $tr("Search holding, code, account, or type…") : $tr("Search category or account…")}
 						searchLabel="Search report detail rows"
 						shownCount={detailRowShownCount}
 						totalCount={detailRowTotalCount}
@@ -1634,37 +1635,37 @@
 						on:clear={clearDetailRowFilters}
 					>
 						{#if detailSelection.kind === 'investment'}
-							<select value={detailRowLifecycleFilter} on:change={handleDetailLifecycleChange} aria-label="Investment detail lifecycle">
-								<option value="current">Current</option>
-								<option value="closed">Closed / inactive</option>
-								<option value="needs-review">Needs review</option>
-								<option value="all">All records</option>
+							<select value={detailRowLifecycleFilter} on:change={handleDetailLifecycleChange} aria-label={$tr("Investment detail lifecycle")}>
+								<option value="current">{$tr("Current")}</option>
+								<option value="closed">{$tr("Closed / inactive")}</option>
+								<option value="needs-review">{$tr("Needs review")}</option>
+								<option value="all">{$tr("All records")}</option>
 							</select>
 						{/if}
 					</ReportFilterBar>
 					<table class="reports-table">
 						<thead>
 							<tr>
-								<th>Category</th>
+								<th>{$tr("Category")}</th>
 								{#if detailSelection.kind === 'investment'}
-									<th>Holding</th>
-									<th>Code</th>
-									<th>Status</th>
+									<th>{$tr("Holding")}</th>
+									<th>{$tr("Code")}</th>
+									<th>{$tr("Status")}</th>
 								{/if}
-								<th class="align-right">Amount</th>
+								<th class="align-right">{$tr("Amount")}</th>
 								{#if detailSelection.kind === 'investment'}
-									<th class="align-right">Cost</th>
-									<th class="align-right">Avg Cost / Unit</th>
-									<th class="align-right">Gain/Loss</th>
+									<th class="align-right">{$tr("Cost")}</th>
+									<th class="align-right">{$tr("Avg Cost / Unit")}</th>
+									<th class="align-right">{$tr("Gain/Loss")}</th>
 								{/if}
-								<th class="align-right">Share</th>
+								<th class="align-right">{$tr("Share")}</th>
 							</tr>
 						</thead>
 						<tbody>
 							{#if detailGroups.length}
 								{#each filteredDetailGroups as group}
 									<tr class="group-row">
-										<td colspan={detailSelection.kind === 'investment' ? 4 : 1}>{group.label}</td>
+										<td colspan={detailSelection.kind === 'investment' ? 4 : 1}>{$tr(group.label)}</td>
 										<td class={`align-right ${detailAmountClass(detailSelection.kind, group.amount)}`}>{formatCurrency(group.amount)}</td>
 										{#if detailSelection.kind === 'investment'}
 											<td class="align-right">{formatOptionalCurrency(groupCostBasis(group.rows))}</td>
@@ -1699,7 +1700,7 @@
 										</tr>
 									{/each}
 								{:else}
-									<tr><td colspan={detailSelection.kind === 'investment' ? 9 : 3}>No matching report rows.</td></tr>
+									<tr><td colspan={detailSelection.kind === 'investment' ? 9 : 3}>{$tr("No matching report rows.")}</td></tr>
 								{/each}
 							{:else}
 								{#each filteredDetailAccounts as row}
@@ -1726,7 +1727,7 @@
 										<td class="align-right">{detailPercent(row.amount, detailSelection.amount)}</td>
 									</tr>
 								{:else}
-									<tr><td colspan={detailSelection.kind === 'investment' ? 9 : 3}>No matching report rows.</td></tr>
+									<tr><td colspan={detailSelection.kind === 'investment' ? 9 : 3}>{$tr("No matching report rows.")}</td></tr>
 								{/each}
 							{/if}
 						</tbody>
@@ -1736,10 +1737,10 @@
 
 				{#if isCashFlowDetail(detailSelection.kind)}
 					<div class="detail-table-wrap">
-						<h4>{detailSelection.kind === 'project' ? 'Project Transactions' : 'Transactions'}</h4>
+						<h4>{detailSelection.kind === 'project' ? $tr("Project Transactions") : $tr("Transactions")}</h4>
 						<ReportFilterBar
 							bind:query={detailTransactionSearch}
-							placeholder="Search date, payee, description, or account…"
+							placeholder={$tr("Search date, payee, description, or account…")}
 							searchLabel="Search report transactions"
 							shownCount={filteredDetailTransactions.length}
 							totalCount={detailTransactions.length}
@@ -1747,24 +1748,24 @@
 							on:clear={clearDetailTransactionFilters}
 						>
 							{#if detailSelection.kind === 'project'}
-								<select bind:value={detailTransactionTypeFilter} aria-label="Project transaction type">
-									<option value="all">All transaction types</option>
-									<option value="Income">Income</option>
-									<option value="Expense">Expenses</option>
+								<select bind:value={detailTransactionTypeFilter} aria-label={$tr("Project transaction type")}>
+									<option value="all">{$tr("All transaction types")}</option>
+									<option value="Income">{$tr("Income")}</option>
+									<option value="Expense">{$tr("Expenses")}</option>
 								</select>
 							{/if}
 						</ReportFilterBar>
 						<table class="reports-table transaction-table">
 							<thead>
 								<tr>
-									<th>Date</th>
-									<th>Transaction</th>
+									<th>{$tr("Date")}</th>
+									<th>{$tr("Transaction")}</th>
 									{#if detailSelection.kind === 'project'}
-										<th>Type</th>
+										<th>{$tr("Type")}</th>
 									{/if}
-									<th>Counterpart</th>
-									<th>Category</th>
-									<th class="align-right">Amount</th>
+									<th>{$tr("Counterpart")}</th>
+									<th>{$tr("Category")}</th>
+									<th class="align-right">{$tr("Amount")}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -1780,7 +1781,7 @@
 										<td class={`align-right ${amountClass(transaction.amount)}`}>{formatCurrency(transaction.amount)}</td>
 									</tr>
 								{:else}
-									<tr><td colspan={detailSelection.kind === 'project' ? 6 : 5}>No matching transactions.</td></tr>
+									<tr><td colspan={detailSelection.kind === 'project' ? 6 : 5}>{$tr("No matching transactions.")}</td></tr>
 								{/each}
 							</tbody>
 						</table>
@@ -1793,22 +1794,22 @@
 
 	{#if holdingSelection}
 		<div class="detail-modal-backdrop" role="presentation" on:click={closeHoldingTransactions}></div>
-		<section class="detail-modal" role="dialog" aria-modal="true" aria-label="Holding transactions">
+		<section class="detail-modal" role="dialog" aria-modal="true" aria-label={$tr("Holding transactions")}>
 			<header class="detail-modal-header">
 				<div>
 					<h3>{commodityNameLabel(holdingSelection)}</h3>
-					<div class="period-label">Code: {holdingSelection.commodity || '—'} · {holdingSelection.label}</div>
+					<div class="period-label">{$tr("Code:")} {holdingSelection.commodity || '—'} · {holdingSelection.label}</div>
 				</div>
 				<div class="detail-modal-actions">
 					<strong>{formatCurrency(holdingSelection.amount)}</strong>
-					<button type="button" class="close-button" on:click={closeHoldingTransactions} aria-label="Close holding transactions">Close</button>
+					<button type="button" class="close-button" on:click={closeHoldingTransactions} aria-label={$tr("Close holding transactions")}>{$tr("Close")}</button>
 				</div>
 			</header>
 
 			<div class="detail-modal-body" role="presentation" on:click={(event) => closeOnBlankClick(event, closeHoldingTransactions)}>
 				<div class="detail-modal-content" role="presentation" on:click={(event) => closeOnBlankClick(event, closeHoldingTransactions)}>
 				<div class="detail-table-wrap">
-					<h4>Transactions</h4>
+					<h4>{$tr("Transactions")}</h4>
 					{#if holdingTransactionsLoading}
 						<SkeletonLoader rows={4} />
 					{:else if holdingTransactionsError}
@@ -1816,17 +1817,17 @@
 					{:else}
 						<ReportFilterBar
 							bind:query={holdingTransactionSearch}
-							placeholder="Search date, transaction, type, or account…"
+							placeholder={$tr("Search date, transaction, type, or account…")}
 							searchLabel="Search holding transactions"
 							shownCount={filteredHoldingTransactions.length}
 							totalCount={holdingTransactions.length}
 							hasActiveFilters={Boolean(holdingTransactionSearch.trim()) || holdingTransactionTypeFilter !== 'all'}
 							on:clear={clearHoldingTransactionFilters}
 						>
-							<select bind:value={holdingTransactionTypeFilter} aria-label="Holding transaction type">
-								<option value="all">All transaction types</option>
+							<select bind:value={holdingTransactionTypeFilter} aria-label={$tr("Holding transaction type")}>
+								<option value="all">{$tr("All transaction types")}</option>
 								{#each holdingTransactionTypes as type}
-									<option value={type}>{type}</option>
+									<option value={type}>{$tr(type)}</option>
 								{/each}
 							</select>
 						</ReportFilterBar>
@@ -1835,14 +1836,14 @@
 						<table class="reports-table transaction-table">
 							<thead>
 								<tr>
-									<th>Date</th>
-									<th>Transaction</th>
-									<th>Type</th>
-									<th class="align-right">Quantity</th>
-									<th class="align-right">Unit Cost</th>
-									<th class="align-right">Cash Amount</th>
-									<th class="align-right">Cost Basis</th>
-									<th>Accounts</th>
+									<th>{$tr("Date")}</th>
+									<th>{$tr("Transaction")}</th>
+									<th>{$tr("Type")}</th>
+									<th class="align-right">{$tr("Quantity")}</th>
+									<th class="align-right">{$tr("Unit Cost")}</th>
+									<th class="align-right">{$tr("Cash Amount")}</th>
+									<th class="align-right">{$tr("Cost Basis")}</th>
+									<th>{$tr("Accounts")}</th>
 									<th></th>
 								</tr>
 							</thead>
@@ -1851,7 +1852,7 @@
 									<tr>
 										<td>{transaction.date}</td>
 										<td title={transaction.payee}>{holdingTransactionLabel(transaction)}</td>
-										<td>{transaction.type}</td>
+										<td>{$tr(transaction.type)}</td>
 										<td class="align-right">{transaction.quantity}</td>
 										<td class="align-right">{transaction.unitCost || '—'}</td>
 										<td class="align-right">{transaction.cashAmount || '—'}</td>
@@ -1859,7 +1860,7 @@
 										<td title={transaction.accounts}>{transaction.accounts}</td>
 										<td class="align-right">
 											<button type="button" class="table-link detail-toggle" on:click={() => toggleHoldingTransaction(transaction.key)}>
-												{expandedHoldingTransactions.has(transaction.key) ? 'Hide' : 'Details'}
+												{expandedHoldingTransactions.has(transaction.key) ? $tr("Hide") : $tr("Details")}
 											</button>
 										</td>
 									</tr>
@@ -1869,8 +1870,8 @@
 												<table class="reports-table posting-table">
 													<thead>
 														<tr>
-															<th>Posting Account</th>
-															<th class="align-right">Posting</th>
+															<th>{$tr("Posting Account")}</th>
+															<th class="align-right">{$tr("Posting")}</th>
 														</tr>
 													</thead>
 													<tbody>
@@ -1889,7 +1890,7 @@
 							</tbody>
 						</table>
 					{:else if !holdingTransactionsLoading && !holdingTransactionsError}
-						<div class="empty-state">No matching transactions found for this holding.</div>
+						<div class="empty-state">{$tr("No matching transactions found for this holding.")}</div>
 					{/if}
 				</div>
 				</div>
@@ -1899,7 +1900,7 @@
 
 	{#if accountSelection}
 		<div class="detail-modal-backdrop" role="presentation" on:click={closeAccountTransactions}></div>
-		<section class="detail-modal" role="dialog" aria-modal="true" aria-label="Account transactions">
+		<section class="detail-modal" role="dialog" aria-modal="true" aria-label={$tr("Account transactions")}>
 			<header class="detail-modal-header">
 				<div>
 					<h3>{detailRowLabel(accountSelection)}</h3>
@@ -1907,14 +1908,14 @@
 				</div>
 				<div class="detail-modal-actions">
 					<strong>{formatCurrency(accountSelection.amount)}</strong>
-					<button type="button" class="close-button" on:click={closeAccountTransactions} aria-label="Close account transactions">Close</button>
+					<button type="button" class="close-button" on:click={closeAccountTransactions} aria-label={$tr("Close account transactions")}>{$tr("Close")}</button>
 				</div>
 			</header>
 
 			<div class="detail-modal-body" role="presentation" on:click={(event) => closeOnBlankClick(event, closeAccountTransactions)}>
 				<div class="detail-modal-content" role="presentation" on:click={(event) => closeOnBlankClick(event, closeAccountTransactions)}>
 				<div class="detail-table-wrap">
-					<h4>Account Transactions</h4>
+					<h4>{$tr("Account Transactions")}</h4>
 					{#if accountTransactionsLoading}
 						<SkeletonLoader rows={4} />
 					{:else if accountTransactionsError}
@@ -1922,7 +1923,7 @@
 					{:else}
 						<ReportFilterBar
 							bind:query={accountTransactionSearch}
-							placeholder="Search date, transaction, posting, or balance…"
+							placeholder={$tr("Search date, transaction, posting, or balance…")}
 							searchLabel="Search account transactions"
 							shownCount={filteredAccountTransactions.length}
 							totalCount={accountTransactions.length}
@@ -1934,10 +1935,10 @@
 						<table class="reports-table transaction-table">
 							<thead>
 								<tr>
-									<th>Date</th>
-									<th>Transaction</th>
-									<th class="align-right">Posting</th>
-									<th class="align-right">Balance</th>
+									<th>{$tr("Date")}</th>
+									<th>{$tr("Transaction")}</th>
+									<th class="align-right">{$tr("Posting")}</th>
+									<th class="align-right">{$tr("Balance")}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -1952,7 +1953,7 @@
 							</tbody>
 						</table>
 					{:else if !accountTransactionsLoading && !accountTransactionsError}
-						<div class="empty-state">No matching transactions found for this account in the selected period.</div>
+						<div class="empty-state">{$tr("No matching transactions found for this account in the selected period.")}</div>
 					{/if}
 				</div>
 				</div>

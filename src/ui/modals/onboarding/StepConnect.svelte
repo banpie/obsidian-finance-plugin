@@ -1,5 +1,6 @@
 <!-- src/ui/modals/onboarding/StepConnect.svelte -->
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	import InstallationHelp from './InstallationHelp.svelte';
 
 	export let isDetecting = false;
@@ -26,14 +27,13 @@
 </script>
 
 <p class="step-description">
-	This plugin uses <strong>bean-query</strong>, a command-line tool from the Beancount ecosystem to query your financial data.
-	Obsidian must be able to run it.
+	{$tr("This plugin uses")} <strong>bean-query</strong>{$tr(", a command-line tool from the Beancount ecosystem to query your financial data.\n\tObsidian must be able to run it.")}
 </p>
 
 {#if isDetecting}
 	<div class="detect-loading">
 		<div class="spinner"></div>
-		<span>Detecting bean-query on your system…</span>
+		<span>{$tr("Detecting bean-query on your system…")}</span>
 	</div>
 {:else}
 	<!-- ── bean-query status ── -->
@@ -42,7 +42,7 @@
 			<div class="command-status-left">
 				<span class="status-dot" class:is-active={beanQueryValid}></span>
 				<strong>bean-query</strong>
-				<span class="required-badge">required</span>
+				<span class="required-badge">{$tr("required")}</span>
 			</div>
 			{#if beanQueryValid && beanQueryVersion}
 				<span class="version-badge">v{beanQueryVersion}</span>
@@ -53,14 +53,14 @@
 			<div class="command-status-body">
 				<div class="command-display">
 					<code>{beanQueryCommand}</code>
-					<button class="edit-link" on:click={onStartEditing}>Edit</button>
+					<button class="edit-link" on:click={onStartEditing}>{$tr("Edit")}</button>
 				</div>
 			</div>
 		{:else}
 			<div class="command-status-body">
 				{#if !beanQueryValid && !isEditing}
 					<p class="not-found-text">
-						Not detected automatically. If it's installed, enter the full command below.
+						{$tr("Not detected automatically. If it's installed, enter the full command below.")}
 					</p>
 				{/if}
 				<div class="manual-entry">
@@ -72,10 +72,10 @@
 							on:keydown={(e) => { if (e.key === 'Enter') onVerifyManualCommand(); }}
 						/>
 						<button class="mod-cta verify-btn" on:click={onVerifyManualCommand} disabled={isVerifying || !manualCommand.trim()}>
-							{isVerifying ? '⏳ Verifying…' : 'Verify'}
+							{isVerifying ? $tr("⏳ Verifying…") : $tr("Verify")}
 						</button>
 						{#if isEditing}
-							<button class="cancel-edit-btn" on:click={onCancelEditing}>Cancel</button>
+							<button class="cancel-edit-btn" on:click={onCancelEditing}>{$tr("Cancel")}</button>
 						{/if}
 					</div>
 					{#if verifyResult !== 'idle'}
@@ -84,7 +84,7 @@
 						</div>
 					{/if}
 					<p class="command-hint">
-						💡 This is the exact command Obsidian will execute. Common values:
+						{$tr("💡 This is the exact command Obsidian will execute. Common values:")}
 						<code>bean-query</code>, <code>wsl bean-query</code>,
 						<code>/home/user/.local/bin/bean-query</code>
 					</p>
@@ -98,15 +98,15 @@
 		<div class="optional-dep-header">
 			<span class="status-dot" class:is-active={beanPriceValid}></span>
 			<strong>bean-price</strong>
-			<span class="optional-badge">optional</span>
+			<span class="optional-badge">{$tr("optional")}</span>
 		</div>
 		<div class="optional-dep-body">
 			{#if beanPriceValid}
 				<code>{beanPriceCommand}</code>
 				{#if beanPriceVersion}<span class="version-text">v{beanPriceVersion}</span>{/if}
-				— automatic commodity price fetching available.
+				{$tr("— automatic commodity price fetching available.")}
 			{:else}
-				Not detected. Install with <code>pip install beanprice</code> to enable automatic price fetching. You can set this up later in Settings.
+				{$tr("Not detected. Install with")} <code>pip install beanprice</code> {$tr("to enable automatic price fetching. You can set this up later in Settings.")}
 			{/if}
 		</div>
 	</div>
@@ -119,7 +119,7 @@
 
 <!-- Action buttons -->
 <div class="action-row">
-	<button class="skip-link" on:click={onSkip}>Skip for now</button>
+	<button class="skip-link" on:click={onSkip}>{$tr("Skip for now")}</button>
 	<div class="action-buttons">
 		<button
 			class="re-detect-btn"
@@ -127,13 +127,13 @@
 			on:click={onDetect}
 			disabled={isDetecting}
 		>
-			{isDetecting ? '⏳ Detecting…' : 'Re-detect'}
+			{isDetecting ? $tr("⏳ Detecting…") : $tr("Re-detect")}
 		</button>
 		<button
 			class="mod-cta next-btn"
 			on:click={onNext}
 		>
-			Next: Organize →
+			{$tr("Next: Organize →")}
 		</button>
 	</div>
 </div>

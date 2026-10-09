@@ -1,85 +1,84 @@
 <!-- src/ui/modals/onboarding/InstallationHelp.svelte -->
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	export let activeInstallTab: 'windows' | 'macos' | 'linux-native' | 'linux-sandbox' = 'windows';
 </script>
 
 <div class="install-help">
-	<h4>📦 How to install</h4>
+	<h4>{$tr("📦 How to install")}</h4>
 
 	<!-- Platform tabs -->
 	<div class="install-tabs">
 		<button class="install-tab" class:is-active={activeInstallTab === 'windows'} on:click={() => activeInstallTab = 'windows'}>Windows</button>
 		<button class="install-tab" class:is-active={activeInstallTab === 'macos'} on:click={() => activeInstallTab = 'macos'}>macOS</button>
-		<button class="install-tab" class:is-active={activeInstallTab === 'linux-native'} on:click={() => activeInstallTab = 'linux-native'}>Linux (AppImage / Deb)</button>
-		<button class="install-tab" class:is-active={activeInstallTab === 'linux-sandbox'} on:click={() => activeInstallTab = 'linux-sandbox'}>Linux (Flatpak / Snap)</button>
+		<button class="install-tab" class:is-active={activeInstallTab === 'linux-native'} on:click={() => activeInstallTab = 'linux-native'}>{$tr("Linux (AppImage / Deb)")}</button>
+		<button class="install-tab" class:is-active={activeInstallTab === 'linux-sandbox'} on:click={() => activeInstallTab = 'linux-sandbox'}>{$tr("Linux (Flatpak / Snap)")}</button>
 	</div>
 
 	<div class="install-content">
 		{#if activeInstallTab === 'windows'}
 			<ol>
-				<li>Install <a href="https://www.python.org/downloads/" target="_blank">Python 3.8+</a> (check "Add to PATH" during install)</li>
-				<li>Open PowerShell and run:
+				<li>{$tr("Install")} <a href="https://www.python.org/downloads/" target="_blank">Python 3.8+</a> {$tr("(check \"Add to PATH\" during install)")}</li>
+				<li>{$tr("Open PowerShell and run:")}
 					<pre><code>pip install beancount beanquery beanprice</code></pre>
 				</li>
-				<li>Verify: <code>bean-query --version</code></li>
+				<li>{$tr("Verify:")} <code>bean-query --version</code></li>
 			</ol>
 			<div class="install-note">
-				<strong>WSL users:</strong> If you prefer running Beancount inside WSL,
-				install it there and use <code>wsl bean-query</code> as the command.
+				<strong>{$tr("WSL users:")}</strong> {$tr("If you prefer running Beancount inside WSL,\n\t\t\t\tinstall it there and use")} <code>wsl bean-query</code> {$tr("as the command.")}
 			</div>
 
 		{:else if activeInstallTab === 'macos'}
 			<ol>
-				<li>Open Terminal and run:
+				<li>{$tr("Open Terminal and run:")}
 					<pre><code>pip3 install beancount beanquery beanprice</code></pre>
 				</li>
-				<li>Verify: <code>bean-query --version</code></li>
+				<li>{$tr("Verify:")} <code>bean-query --version</code></li>
 			</ol>
 			<div class="install-note">
-				<strong>Note:</strong> GUI apps on macOS may not see <code>~/.local/bin</code>.
-				If auto-detection fails, enter the full path:
+				<strong>{$tr("Note:")}</strong> {$tr("GUI apps on macOS may not see")} <code>~/.local/bin</code>{$tr(".\n\t\t\t\tIf auto-detection fails, enter the full path:")}
 				<code>/Users/you/.local/bin/bean-query</code>
-				(find it with <code>which bean-query</code> in Terminal).
+				{$tr("(find it with")} <code>which bean-query</code> {$tr("in Terminal).")}
 			</div>
 
 		{:else if activeInstallTab === 'linux-native'}
 			<ol>
-				<li>Open your terminal and install via pip (recommended):
+				<li>{$tr("Open your terminal and install via pip (recommended):")}
 					<pre><code>pip install --user beancount beanquery beanprice</code></pre>
 				</li>
-				<li>Verify in terminal: <code>bean-query --version</code></li>
+				<li>{$tr("Verify in terminal:")} <code>bean-query --version</code></li>
 			</ol>
 			<div class="install-note">
-				<strong>Note on System Packages:</strong> Using <code>apt</code>, <code>dnf</code>, or <code>pacman</code> directly often installs Beancount v2. You must install <code>beanquery</code> via pip separately.
+				<strong>{$tr("Note on System Packages:")}</strong> {$tr("Using")} <code>apt</code>, <code>dnf</code>{$tr(", or")} <code>pacman</code> {$tr("directly often installs Beancount v2. You must install")} <code>beanquery</code> {$tr("via pip separately.")}
 			</div>
 
 		{:else if activeInstallTab === 'linux-sandbox'}
-			<p class="sandbox-intro">Sandboxed packages cannot see your host Python environment by default. Follow this step-by-step guide to grant access:</p>
+			<p class="sandbox-intro">{$tr("Sandboxed packages cannot see your host Python environment by default. Follow this step-by-step guide to grant access:")}</p>
 			
 			<div class="sandbox-section">
-				<strong>Flatpak — Recommended Setup</strong>
+				<strong>{$tr("Flatpak — Recommended Setup")}</strong>
 				<ol class="sandbox-steps expanded-steps">
 					<li>
-						<strong>Install the packages</strong> via pip on your host machine:
+						<strong>{$tr("Install the packages")}</strong> {$tr("via pip on your host machine:")}
 						<pre><code>pip install --user beancount beanquery beanprice</code></pre>
 					</li>
 					<li>
-						<strong>Find your binary path</strong> by running this in your terminal:
+						<strong>{$tr("Find your binary path")}</strong> {$tr("by running this in your terminal:")}
 						<pre><code>which bean-query</code></pre>
-						<div class="step-hint">Note the folder directory (e.g., if the output is <code>~/.local/bin/bean-query</code>, your folder is <code>~/.local/bin</code>).</div>
+						<div class="step-hint">{$tr("Note the folder directory (e.g., if the output is")} <code>~/.local/bin/bean-query</code>{$tr(", your folder is")} <code>~/.local/bin</code>).</div>
 					</li>
 					<li>
-						<strong>Grant Obsidian filesystem access</strong> to that folder using <code>flatpak override</code>:
+						<strong>{$tr("Grant Obsidian filesystem access")}</strong> {$tr("to that folder using")} <code>flatpak override</code>:
 						<pre><code>sudo flatpak override --filesystem=~/.local/bin md.obsidian.Obsidian</code></pre>
 						<div class="sandbox-footnote">
-							💡 <em>Replace <code>~/.local/bin</code> with your actual folder from Step 2 if different (e.g., <code>/usr/bin</code> for system packages or <code>~/miniconda3/bin</code> for conda).</em>
+							💡 <em>{$tr("Replace")} <code>~/.local/bin</code> {$tr("with your actual folder from Step 2 if different (e.g.,")} <code>/usr/bin</code> {$tr("for system packages or")} <code>~/miniconda3/bin</code> {$tr("for conda).")}</em>
 						</div>
 					</li>
 					<li>
-						<strong>Restart Obsidian completely</strong> so the sandbox recognizes the new filesystem permissions.
+						<strong>{$tr("Restart Obsidian completely")}</strong> {$tr("so the sandbox recognizes the new filesystem permissions.")}
 					</li>
 					<li>
-						<strong>Configure & Verify:</strong> Enter the full absolute path from Step 2 (e.g., <code>/home/you/.local/bin/bean-query</code> or <code>~/.local/bin/bean-query</code>) into the command box above and click Verify.
+						<strong>{$tr("Configure & Verify:")}</strong> {$tr("Enter the full absolute path from Step 2 (e.g.,")} <code>/home/you/.local/bin/bean-query</code> {$tr("or")} <code>~/.local/bin/bean-query</code>{$tr(") into the command box above and click Verify.")}
 					</li>
 				</ol>
 			</div>
@@ -87,18 +86,18 @@
 			<div class="sandbox-section">
 				<strong>Snap</strong>
 				<ol class="sandbox-steps">
-					<li>Find the absolute path on your host by running <code>which bean-query</code> in your terminal.</li>
-					<li>Enter the full path into the command box above (e.g., <code>/home/you/.local/bin/bean-query</code>) and click Verify.</li>
+					<li>{$tr("Find the absolute path on your host by running")} <code>which bean-query</code> {$tr("in your terminal.")}</li>
+					<li>{$tr("Enter the full path into the command box above (e.g.,")} <code>/home/you/.local/bin/bean-query</code>{$tr(") and click Verify.")}</li>
 				</ol>
 				<div class="install-note">
-					ℹ️ <strong>Note on Confinement:</strong> If your Snap installation is strictly confined and blocks host CLI execution, we recommend switching to the official AppImage or Flatpak release.
+					ℹ️ <strong>{$tr("Note on Confinement:")}</strong> {$tr("If your Snap installation is strictly confined and blocks host CLI execution, we recommend switching to the official AppImage or Flatpak release.")}
 				</div>
 			</div>
 		{/if}
 	</div>
 
 	<div class="install-docs-link">
-		📖 <a href="https://beancount.github.io/docs/installing_beancount/" target="_blank">Official Beancount installation guide</a>
+		📖 <a href="https://beancount.github.io/docs/installing_beancount/" target="_blank">{$tr("Official Beancount installation guide")}</a>
 	</div>
 </div>
 

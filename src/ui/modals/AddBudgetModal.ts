@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 // src/ui/modals/AddBudgetModal.ts
 
 import { App, Modal, Notice } from 'obsidian';
@@ -113,11 +114,11 @@ export class AddBudgetModal extends Modal {
                         this.close();
                         if (this.onSuccess) this.onSuccess();
                     } else {
-                        new Notice(`保存预算失败：${result.error || '未知错误'}`);
+                        new Notice(t("保存预算失败：{0}", [result.error || '未知错误']));
                     }
                 } catch (error) {
                     Logger.error('[AddBudgetModal] Error saving budget:', error);
-                    new Notice(`错误：${error instanceof Error ? error.message : '未知错误'}`);
+                    new Notice(t("错误：{0}", [error instanceof Error ? error.message : '未知错误']));
                 }
             })();
         });

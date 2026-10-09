@@ -1,5 +1,6 @@
 <!-- src/ui/modals/onboarding/StepReady.svelte -->
 <script lang="ts">
+	import { tr } from "../../../i18n";
 	export let beanQueryCommand: string | null = null;
 	export let beanQueryVersion: string | null = null;
 	export let beanPriceValid = false;
@@ -15,11 +16,11 @@
 
 <div class="success-banner">
 	<span class="success-icon">🎉</span>
-	<h3>You're all set!</h3>
+	<h3>{$tr("You're all set!")}</h3>
 </div>
 
 <div class="summary-card">
-	<h4>Configuration Summary</h4>
+	<h4>{$tr("Configuration Summary")}</h4>
 	<div class="summary-grid">
 		<div class="summary-row">
 			<span class="summary-label">bean-query</span>
@@ -27,43 +28,43 @@
 		</div>
 		<div class="summary-row">
 			<span class="summary-label">bean-price</span>
-			<span class="summary-value">{beanPriceValid ? beanPriceCommand : 'Not configured (optional)'}</span>
+			<span class="summary-value">{beanPriceValid ? beanPriceCommand : $tr("Not configured (optional)")}</span>
 		</div>
 		<div class="summary-row">
-			<span class="summary-label">Folder</span>
+			<span class="summary-label">{$tr("Folder")}</span>
 			<span class="summary-value"><code>{structuredFolderName}/</code></span>
 		</div>
 		<div class="summary-row">
-			<span class="summary-label">Data source</span>
-			<span class="summary-value">{dataChoice === 'demo' ? 'Demo Data' : 'Existing Ledger'}</span>
+			<span class="summary-label">{$tr("Data source")}</span>
+			<span class="summary-value">{dataChoice === 'demo' ? $tr("Demo Data") : $tr("Existing Ledger")}</span>
 		</div>
 		<div class="summary-row">
-			<span class="summary-label">Currency</span>
+			<span class="summary-label">{$tr("Currency")}</span>
 			<span class="summary-value currency">{operatingCurrency}</span>
 		</div>
 		<div class="summary-row">
-			<span class="summary-label">Transactions</span>
-			<span class="summary-value">{fileOrganization === 'monthly' ? 'Monthly' : 'Yearly'} files</span>
+			<span class="summary-label">{$tr("Transactions")}</span>
+			<span class="summary-value">{fileOrganization === 'monthly' ? $tr("Monthly") : $tr("Yearly")} {$tr("files")}</span>
 		</div>
 	</div>
 </div>
 
 <div class="next-steps">
-	<h4>🚀 Next steps</h4>
+	<h4>{$tr("🚀 Next steps")}</h4>
 	<ol>
-		<li>Open the <strong>Finance Dashboard</strong> to explore your data</li>
-		<li>Browse the 5 tabs: Overview, Transactions, Journal, Balance Sheet, Commodities</li>
-		<li>Try BQL queries in your Markdown notes using <code>```bql</code> code blocks</li>
+		<li>{$tr("Open the")} <strong>{$tr("Finance Dashboard")}</strong> {$tr("to explore your data")}</li>
+		<li>{$tr("Browse the 5 tabs: Overview, Transactions, Journal, Balance Sheet, Commodities")}</li>
+		<li>{$tr("Try BQL queries in your Markdown notes using")} <code>```bql</code> {$tr("code blocks")}</li>
 		{#if beanPriceValid}
-			<li>Enable <strong>Automatic Price Fetching</strong> in Settings → General</li>
+			<li>{$tr("Enable")} <strong>{$tr("Automatic Price Fetching")}</strong> {$tr("in Settings → General")}</li>
 		{/if}
-		<li>Manage commands anytime in <strong>Settings → Connection</strong></li>
+		<li>{$tr("Manage commands anytime in")} <strong>{$tr("Settings → Connection")}</strong></li>
 	</ol>
 </div>
 
 <div class="action-row centered">
-	<button on:click={onClose}>Close</button>
-	<button class="mod-cta" on:click={onFinishAndOpenDashboard}>Open Dashboard</button>
+	<button on:click={onClose}>{$tr("Close")}</button>
+	<button class="mod-cta" on:click={onFinishAndOpenDashboard}>{$tr("Open Dashboard")}</button>
 </div>
 
 <style>

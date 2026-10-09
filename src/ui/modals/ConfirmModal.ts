@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { App, Modal, Setting } from 'obsidian';
 
 export class ConfirmModal extends Modal {
@@ -21,12 +22,12 @@ export class ConfirmModal extends Modal {
 
         new Setting(contentEl)
             .addButton(btn => btn
-                .setButtonText('Cancel')
+                .setButtonText(t("Cancel"))
                 .onClick(() => {
                     this.close();
                 }))
             .addButton(btn => btn
-                .setButtonText('Confirm')
+                .setButtonText(t("Confirm"))
                 .setCta()
                 .onClick(() => {
                     this.onConfirm();

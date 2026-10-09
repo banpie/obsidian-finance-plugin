@@ -1,5 +1,6 @@
 <!-- src/ui/partials/dashboard/cards/CommodityCard.svelte -->
 <script lang="ts">
+	import { tr } from "../../../../i18n";
 	import { createEventDispatcher } from "svelte";
 	import type { CommodityInfo } from "../../../../controllers/CommoditiesController";
 	import { formatAmount } from "../../../../utils/index";
@@ -75,7 +76,7 @@
 
 	// Helper to format the price date
 	function formatStatusTime(dateStr: string | null | undefined): string {
-		if (!dateStr) return "No data";
+		if (!dateStr) return $tr("No data");
 
 		try {
 			const date = new Date(dateStr);
@@ -94,9 +95,9 @@
 			const diffMs = d2.getTime() - d1.getTime();
 			const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-			if (diffDays === 0) return "Today";
-			if (diffDays === 1) return "Yesterday";
-			if (diffDays < 7) return `${diffDays}d ago`;
+			if (diffDays === 0) return $tr("Today");
+			if (diffDays === 1) return $tr("Yesterday");
+			if (diffDays < 7) return $tr("{0}d ago", [diffDays]);
 			return date.toLocaleDateString(undefined, {
 				month: "short",
 				day: "numeric",
@@ -108,11 +109,11 @@
 
 	$: displayName = commodity?.displayName || commodity?.metadata?.name || "";
 	$: isFiatCurrency = fiatCurrencySymbols.has(commodity?.symbol || '');
-	$: priceLabel = isFiatCurrency ? 'FX Rate' : 'Unit Price';
-	$: holdingsLabel = isFiatCurrency ? 'Balance' : 'Units';
+	$: priceLabel = isFiatCurrency ? 'FX Rate' : $tr("Unit Price");
+	$: holdingsLabel = isFiatCurrency ? $tr("Balance") : $tr("Units");
 	$: ariaLabel = displayName
-		? `View details for ${commodity?.symbol || `UNKNOWN_${index}`} (${displayName})`
-		: `View details for ${commodity?.symbol || `UNKNOWN_${index}`}`;
+		? $tr("View details for {0} ({1})", [commodity?.symbol || `UNKNOWN_${index}`, displayName])
+		: $tr("View details for {0}", [commodity?.symbol || `UNKNOWN_${index}`]);
 </script>
 
 <div class="commodity-card-wrapper" class:is-operating={commodity?.isOperatingCurrency}>
@@ -171,7 +172,7 @@
 			{:else if commodity?.holdingsRaw && !commodity?.isOperatingCurrency}
 				<!-- Has holdings but no price to convert, so no market value is available. -->
 				<div class="value-container" title={commodity.holdingsRaw}>
-					<span class="value-main no-price">No value</span>
+					<span class="value-main no-price">{$tr("No value")}</span>
 				</div>
 			{:else}
 				<div class="value-container">
@@ -188,7 +189,7 @@
 				<!-- Filler block — keeps card height consistent with non-operating cards -->
 				<div class="op-currency-note">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="op-icon"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-					<span>Base currency for all conversions in this ledger</span>
+					<span>{$tr("Base currency for all conversions in this ledger")}</span>
 				</div>
 			{:else}
 				<!-- Price row -->
@@ -197,7 +198,7 @@
 					{#if commodity?.currentPrice}
 						<span class="data-value" title={commodity.currentPrice}>{commodity.currentPrice}</span>
 					{:else}
-						<span class="data-value unavailable">No price available</span>
+						<span class="data-value unavailable">{$tr("No price available")}</span>
 					{/if}
 				</div>
 
@@ -214,7 +215,7 @@
 		</div>
 
 		<div class="card-footer">
-			<span class="details-text">View Details</span>
+			<span class="details-text">{$tr("View Details")}</span>
 			<div class="arrow-box">
 				<svg
 					viewBox="0 0 24 24"

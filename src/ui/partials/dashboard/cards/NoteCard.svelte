@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tr } from "../../../../i18n";
     import { createEventDispatcher } from 'svelte';
     import type { JournalNote } from '../../../../models/journal';
 
@@ -11,15 +12,15 @@
     <div class="card-header">
         <div class="header-left">
             <span class="badge badge-note">
-                <span class="icon">📝</span> NOTE
+                <span class="icon">📝</span> {$tr("NOTE")}
             </span>
             <span class="date">{entry.date}</span>
         </div>
         <div class="header-right">
-            <button class="btn-icon" on:click={() => dispatch('edit', entry)} title="Edit">
+            <button class="btn-icon" on:click={() => dispatch('edit', entry)} title={$tr("Edit")}>
                 ✏️
             </button>
-            <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title="Delete">
+            <button class="btn-icon delete-btn" on:click={() => dispatch('delete', entry)} title={$tr("Delete")}>
                 ❌
             </button>
         </div>
