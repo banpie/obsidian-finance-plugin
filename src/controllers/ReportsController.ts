@@ -1,3 +1,4 @@
+import { presentAmount } from '../utils/transactionDisplay';
 import { t } from "../i18n";
 import { writable, type Writable, get } from 'svelte/store';
 import { parse as parseCsv } from 'csv-parse/sync';
@@ -412,10 +413,10 @@ export class ReportsController {
 			const expensesByAccount = this.parseAccountRows(expensesCsv);
 			const incomeByCategory = this.groupRows(incomeByAccount, row => this.accountSegment(row.account, 1));
 			const expensesByCategory = this.groupRows(expensesByAccount, row => this.accountSegment(row.account, 1));
-			const assetsByAccount = this.parseAccountRows(assetsCsv).filter(row => row.amount > 0);
-			const liabilitiesByAccount = this.parseAccountRows(liabilitiesCsv).filter(row => row.amount > 0);
-			const assetsByCategory = this.groupRows(assetsByAccount, row => getBalanceCategoryLabel(row.account), true);
-			const liabilitiesByCategory = this.groupRows(liabilitiesByAccount, row => getBalanceCategoryLabel(row.account), true);
+			const assetsByAccount = this.parseAccountRows(assetsCsv);
+			const liabilitiesByAccount = this.parseAccountRows(liabilitiesCsv);
+			const assetsByCategory = this.groupRows(assetsByAccount, row => getBalanceCategoryLabel(row.account));
+			const liabilitiesByCategory = this.groupRows(liabilitiesByAccount, row => getBalanceCategoryLabel(row.account));
 			const investmentCostBasis = this.parseInvestmentCostBasisRows(investmentCostPostingsCsv, currency);
 			this.addInvestmentCashflowBasisRows(investmentCostBasis, investmentCashflowPostingsCsv, currency);
 			const investmentNativePrices = this.parseInvestmentNativePrices(investmentNativePricesCsv, currency);
@@ -483,7 +484,7 @@ export class ReportsController {
 				projects,
 				projectTransactions,
 				incomeChartConfig: this.buildDoughnutConfig('Income', incomeByCategory, totalIncome, currency),
-				expensesChartConfig: this.buildDoughnutConfig('Expenses', expensesByCategory, totalExpenses, currency),
+				expensesChartConfig: this.buildDoughnutConfig('Expenses', expensesByCategory, totalExpenses, currency, -1),
 				assetsChartConfig: this.buildDoughnutConfig('Assets', assetsByCategory, totalAssets, currency),
 				investmentsChartConfig: this.buildDoughnutConfig('Investments', investmentsByType, investmentRows.reduce((sum, row) => sum + row.amount, 0), currency),
 			}));
@@ -1109,8 +1110,7 @@ export class ReportsController {
 
 	private formatAmountCommodity(amount: number, commodity: string): string {
 		if (!commodity) return '';
-		const maximumFractionDigits = Number.isInteger(amount) ? 0 : 4;
-		return `${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits })} ${commodity}`;
+		return `${amount} ${commodity}`;
 	}
 
 	private formatInvestmentCostBasisRaw(costBasis: InvestmentCostBasis, operatingCurrency: string): string {
@@ -1283,18 +1283,18 @@ export class ReportsController {
 		return 'this-month';
 	}
 
-	private buildDoughnutConfig(title: string, rows: ReportRow[], total: number, currency: string): ChartConfiguration | null {
+	private buildDoughnutConfig(title: string, rows: ReportRow[], total: number, currency: string, direction: 1 | -1 = 1): ChartConfiguration | null {
 		const chartRows = rows
-			.filter(row => row.amount > 0)
+			.filter(row => Math.abs(row.amount) >= 0.01)
 			.slice(0, 8);
-		if (chartRows.length === 0 || total <= 0) return null;
+		if (chartRows.length === 0) return null;
 
 		return {
 			type: 'doughnut',
 			data: {
 				labels: chartRows.map(row => row.label),
 				datasets: [{
-					data: chartRows.map(row => row.amount),
+					data: chartRows.map(row => Math.abs(row.amount)),
 					backgroundColor: chartRows.map((_, index) => CHART_COLORS[index % CHART_COLORS.length]),
 					borderWidth: 1,
 				}],
@@ -1307,10 +1307,11 @@ export class ReportsController {
 					legend: { position: 'bottom' },
 					tooltip: {
 						callbacks: {
-							label: (context: { label: string; parsed: number }) => {
-								const value = context.parsed || 0;
-								const percent = total ? (value / total) * 100 : 0;
-								return `${context.label}: ${value.toLocaleString()} ${currency} (${percent.toFixed(1)}%)`;
+							labelTextColor: (context: { dataIndex: number }) => (chartRows[context.dataIndex]?.amount ?? 0) * direction < 0 ? '#e93147' : '#08b94e',
+							label: (context: { label: string; parsed: number; dataIndex: number }) => {
+								const value = (chartRows[context.dataIndex]?.amount ?? 0) * direction;
+								const percent = total ? (value * direction / total) * 100 : 0;
+								return `${context.label}: ${presentAmount(value, currency).text} (${percent.toFixed(1)}%)`;
 							},
 						},
 					},

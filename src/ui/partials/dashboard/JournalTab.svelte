@@ -417,6 +417,7 @@
 </script>
 
 <div class="journal-tab">
+    <p class="amount-convention">{$tr("Income and expense postings use the same display direction as Transactions. Hover an amount to see the original posting.")}</p>
     <!-- Filters Toolbar -->
     <div class="filters-container">
         <div class="filter-row">
@@ -595,6 +596,7 @@
 </div>
 
 <style>
+    .amount-convention { color: var(--text-muted); font-size: var(--font-ui-small); margin: 0 0 var(--size-4-3); }
     .journal-tab {
         display: flex;
         flex-direction: column;

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Amount from '../../common/Amount.svelte';
+	import InventoryAmounts from '../../common/InventoryAmounts.svelte';
 	import { tr } from "../../../i18n";
 	import { createEventDispatcher } from 'svelte';
 	// --- REMOVED onMount, parseCsv, queries, plugin imports ---
@@ -73,7 +75,6 @@
 	});
 	$: stateStore = controller ? controller.state : placeholderState;
 	$: state = $stateStore;
-	$: currencyDecimals = controller ? controller.plugin.currencyPrecisionService.getDecimals(state.currency) : 2;
 	// ------------------------------------------------------
 
 	// Helper function to generate indentation based on account level
@@ -349,7 +350,6 @@
 						liabilities={[]}
 						equity={[]}
 						currency={state.currency}
-						decimals={currencyDecimals}
 						totalAssets={state.totalAssets}
 						totalLiabilities={0}
 						totalEquity={0}
@@ -363,7 +363,6 @@
 						liabilities={state.liabilities}
 						equity={[]}
 						currency={state.currency}
-						decimals={currencyDecimals}
 						totalAssets={0}
 						totalLiabilities={state.totalLiabilities}
 						totalEquity={0}
@@ -377,7 +376,6 @@
 						liabilities={[]}
 						equity={state.equity}
 						currency={state.currency}
-						decimals={currencyDecimals}
 						totalAssets={0}
 						totalLiabilities={0}
 						totalEquity={state.totalEquity}
@@ -437,11 +435,11 @@
 								{/if}
 							</td>
 								<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
-									{item.amount}
+									<Amount value={item.amountNumber} currency={state.currency} />
 								</td>
 								{#if showOtherCurrenciesColumn}
 									<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
-										{item.otherCurrencies || ''}
+										<InventoryAmounts value={item.otherCurrencies || ''} />
 									</td>
 								{/if}
 							</tr>
@@ -478,11 +476,11 @@
 								{/if}
 							</td>
 								<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
-									{item.amount}
+									<Amount value={item.amountNumber} currency={state.currency} />
 								</td>
 								{#if showOtherCurrenciesColumn}
 									<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
-										{item.otherCurrencies || ''}
+										<InventoryAmounts value={item.otherCurrencies || ''} />
 									</td>
 								{/if}
 							</tr>
@@ -519,11 +517,11 @@
 								{/if}
 							</td>
 								<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
-									{item.amount}
+									<Amount value={item.amountNumber} currency={state.currency} />
 								</td>
 								{#if showOtherCurrenciesColumn}
 									<td class="align-right other-currencies-cell" on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
-										{item.otherCurrencies || ''}
+										<InventoryAmounts value={item.otherCurrencies || ''} />
 									</td>
 								{/if}
 							</tr>

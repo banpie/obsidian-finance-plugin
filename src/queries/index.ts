@@ -167,7 +167,7 @@ export function getInvestmentTransactionPostingsQuery(startDate: string, endDate
 
 export function getAccountTransactionsQuery(account: string, startDate: string, endDate: string, limit = 500): string {
 	const escapedAccount = account.replace(/'/g, "''");
-	return `SELECT date, payee, narration, account, position, balance WHERE account = '${escapedAccount}' AND date >= ${startDate} AND date < ${endDate} ORDER BY date DESC, lineno DESC LIMIT ${limit}`;
+	return `SELECT date, payee, narration, account, str(position) AS position, str(units(balance)) AS balance WHERE account = '${escapedAccount}' AND date >= ${startDate} AND date < ${endDate} ORDER BY date DESC, lineno DESC LIMIT ${limit}`;
 }
 
 export function getBalanceSheetQuery(currency: string): string {

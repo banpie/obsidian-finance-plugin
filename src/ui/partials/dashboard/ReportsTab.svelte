@@ -1,4 +1,7 @@
 <script lang="ts">
+	import Amount from '../../common/Amount.svelte';
+	import InventoryAmounts from '../../common/InventoryAmounts.svelte';
+	import { presentAmount } from '../../../utils/transactionDisplay';
 	import { tr } from "../../../i18n";
 	import { writable, type Writable } from 'svelte/store';
 	import type { ReportsController, ReportsState, ReportRow, ReportTransaction, ReportInvestmentTransaction, ReportAccountTransaction, ReportProjectRow, ReportProjectTransaction, ReportLoanRow, ReportsView } from '../../../controllers/ReportsController';
@@ -143,8 +146,7 @@
 	}
 
 	function formatSignedCurrency(value: number): string {
-		const prefix = value > 0 ? '+' : '';
-		return `${prefix}${formatCurrency(value)}`;
+		return presentAmount(value, state.currency).text;
 	}
 
 	function formatSignedPercent(value: number): string {
@@ -514,8 +516,16 @@
 		return $tr("Category Breakdown");
 	}
 
-	function detailValue(selection: DetailSelection): string {
-		return selection.valueLabel || formatCurrency(selection.amount);
+	function accountBalanceValue(row: ReportRow): number {
+		if (row.account?.startsWith('Liabilities:')) {
+			return -(state.liabilitiesByAccount.find(source => source.account === row.account)?.amount ?? Math.abs(row.amount));
+		}
+		return row.amount;
+	}
+
+	function detailDirection(selection: DetailSelection): 1 | -1 {
+		return selection.kind === 'expense' || selection.kind === 'liability'
+			|| selection.loanFilter === 'payable' || selection.projectType === 'Expense' ? -1 : 1;
 	}
 
 	function isBalanceDetail(kind: DetailKind): boolean {
@@ -1087,15 +1097,15 @@
 		<div class="metric-grid">
 			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('income', 'Income', state.totalIncome)}>
 				<span>{$tr("Income")}</span>
-				<strong>{formatCurrency(state.totalIncome)}</strong>
+				<strong><Amount value={state.totalIncome} currency={state.currency} /></strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('expense', 'Expenses', state.totalExpenses)}>
 				<span>{$tr("Expenses")}</span>
-				<strong>{formatCurrency(state.totalExpenses)}</strong>
+				<strong><Amount value={state.totalExpenses} currency={state.currency} direction={-1} /></strong>
 			</button>
 			<div class="metric-card">
 				<span>{$tr("Net Income")}</span>
-				<strong class={amountClass(state.netIncome)}>{formatCurrency(state.netIncome)}</strong>
+				<strong class={amountClass(state.netIncome)}><Amount value={state.netIncome} currency={state.currency} /></strong>
 			</div>
 			<div class="metric-card">
 				<span>{$tr("Savings Rate")}</span>
@@ -1138,7 +1148,7 @@
 						>
 							<div class="breakdown-main">
 								<span class="row-label">{$tr(row.label)}</span>
-								<span class="row-value">{formatCurrency(row.amount)}</span>
+								<span class="row-value"><Amount value={row.amount} currency={state.currency} /></span>
 							</div>
 							<div class="bar-track">
 								<div class="bar-fill" class:negative={row.amount < 0} style={`width: ${barWidth(row)}`}></div>
@@ -1173,10 +1183,10 @@
 						>
 							<div class="breakdown-main">
 								<span class="row-label">{$tr(row.label)}</span>
-								<span class="row-value">{formatCurrency(row.amount)}</span>
+								<span class="row-value"><Amount value={row.amount} currency={state.currency} direction={-1} /></span>
 							</div>
 							<div class="bar-track">
-								<div class="bar-fill" class:negative={row.amount < 0} style={`width: ${barWidth(row)}`}></div>
+								<div class="bar-fill" class:negative={row.amount > 0} style={`width: ${barWidth(row)}`}></div>
 							</div>
 							<div class="row-meta">
 								<span>{formatPercent(row.percent)}</span>
@@ -1195,19 +1205,19 @@
 		<div class="metric-grid">
 			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('asset', 'Total Assets', state.totalAssets, null, true)}>
 				<span>{$tr("Total Assets")}</span>
-				<strong>{formatCurrency(state.totalAssets)}</strong>
+				<strong><Amount value={state.totalAssets} currency={state.currency} /></strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('liability', 'Liabilities', state.totalLiabilities, null, true)}>
 				<span>{$tr("Liabilities")}</span>
-				<strong>{formatCurrency(state.totalLiabilities)}</strong>
+				<strong><Amount value={state.totalLiabilities} currency={state.currency} direction={-1} /></strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('networth', 'Net Worth', state.netWorth, null, true)}>
 				<span>{$tr("Net Worth")}</span>
-				<strong>{formatCurrency(state.netWorth)}</strong>
+				<strong><Amount value={state.netWorth} currency={state.currency} /></strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openDetails('investment', 'Investment Assets', investmentTotal, null, true)}>
 				<span>{$tr("Investment Assets")}</span>
-				<strong>{formatCurrency(investmentTotal)}</strong>
+				<strong><Amount value={investmentTotal} currency={state.currency} /></strong>
 			</button>
 		</div>
 
@@ -1230,7 +1240,7 @@
 						>
 							<div class="breakdown-main">
 								<span class="row-label">{$tr(row.label)}</span>
-								<span class="row-value">{formatCurrency(row.amount)}</span>
+								<span class="row-value"><Amount value={row.amount} currency={state.currency} /></span>
 							</div>
 							<div class="bar-track">
 								<div class="bar-fill" class:negative={row.amount < 0} style={`width: ${barWidth(row)}`}></div>
@@ -1261,7 +1271,7 @@
 						>
 							<div class="breakdown-main">
 								<span class="row-label">{$tr(row.label)}</span>
-								<span class="row-value">{formatCurrency(row.amount)}</span>
+								<span class="row-value"><Amount value={row.amount} currency={state.currency} /></span>
 							</div>
 							<div class="bar-track">
 								<div class="bar-fill" class:negative={row.amount < 0} style={`width: ${barWidth(row)}`}></div>
@@ -1347,7 +1357,7 @@
 										<span class="cell-secondary">{investmentNativePrice(row)}</span>
 									{/if}
 								</td>
-								<td class="align-right">{formatCurrency(row.amount)}</td>
+								<td class="align-right"><Amount value={row.amount} currency={state.currency} /></td>
 								<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
 								<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
 								<td class={`align-right ${investmentGainClass(row)}`} title={investmentGainTitle(row)}>{investmentGain(row)}</td>
@@ -1370,15 +1380,15 @@
 		<div class="metric-grid">
 			<button type="button" class="metric-card interactive-card" on:click={() => openLoanSummaryDetails('To Receive', loanReceivableTotal, 'receivable')}>
 				<span>{$tr("To Receive")}</span>
-				<strong>{formatCurrency(loanReceivableTotal)}</strong>
+				<strong><Amount value={loanReceivableTotal} currency={state.currency} /></strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openLoanSummaryDetails('To Pay', loanPayableTotal, 'payable')}>
 				<span>{$tr("To Pay")}</span>
-				<strong>{formatCurrency(loanPayableTotal)}</strong>
+				<strong><Amount value={loanPayableTotal} currency={state.currency} direction={-1} /></strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openLoanSummaryDetails('Net Position', loanNetTotal, 'net')}>
 				<span>{$tr("Net Position")}</span>
-				<strong class={amountClass(loanNetTotal)}>{formatCurrency(loanNetTotal)}</strong>
+				<strong class={amountClass(loanNetTotal)}><Amount value={loanNetTotal} currency={state.currency} /></strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openLoanSummaryDetails('Open Loans', activeLoanCount, 'all', String(activeLoanCount))}>
 				<span>{$tr("Open Loans")}</span>
@@ -1441,9 +1451,9 @@
 								<td class={loanDirectionClass(row)}>{loanDirectionLabel(row)}</td>
 								<td><span class={`status-pill ${statusClass(row)}`} title={statusTitle(row)}>{statusLabel(row)}</span></td>
 								<td title={row.account}>{loanAccountLabel(row.account)}{#if getAccountDisplayContext(row.account)}<div class="account-reference">{getAccountDisplayContext(row.account)}</div>{/if}</td>
-								<td class="align-right">{row.receivable ? formatCurrency(row.receivable) : '—'}</td>
-								<td class="align-right">{row.payable ? formatCurrency(row.payable) : '—'}</td>
-								<td class={`align-right ${amountClass(row.netAmount)}`}>{formatCurrency(row.netAmount)}</td>
+								<td class="align-right">{#if row.receivable}<Amount value={row.receivable} currency={state.currency} />{:else}—{/if}</td>
+								<td class="align-right">{#if row.payable}<Amount value={row.payable} currency={state.currency} direction={-1} />{:else}—{/if}</td>
+								<td class={`align-right ${amountClass(row.netAmount)}`}><Amount value={row.netAmount} currency={state.currency} /></td>
 								<td class="align-right">{formatPercent(row.percent)}</td>
 							</tr>
 						{:else}
@@ -1459,15 +1469,15 @@
 		<div class="metric-grid">
 			<button type="button" class="metric-card interactive-card" on:click={() => openProjectSummaryDetails('Project Income', projectIncomeTotal, 'Income')}>
 				<span>{$tr("Project Income")}</span>
-				<strong>{formatCurrency(projectIncomeTotal)}</strong>
+				<strong><Amount value={projectIncomeTotal} currency={state.currency} /></strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openProjectSummaryDetails('Project Expenses', projectExpensesTotal, 'Expense')}>
 				<span>{$tr("Project Expenses")}</span>
-				<strong>{formatCurrency(projectExpensesTotal)}</strong>
+				<strong><Amount value={projectExpensesTotal} currency={state.currency} direction={-1} /></strong>
 			</button>
 			<button type="button" class="metric-card interactive-card" on:click={() => openProjectSummaryDetails('Project Net Income', projectNetIncomeTotal)}>
 				<span>{$tr("Project Net Income")}</span>
-				<strong class={amountClass(projectNetIncomeTotal)}>{formatCurrency(projectNetIncomeTotal)}</strong>
+				<strong class={amountClass(projectNetIncomeTotal)}><Amount value={projectNetIncomeTotal} currency={state.currency} /></strong>
 			</button>
 			<div class="metric-card">
 				<span>{$tr("Projects")}</span>
@@ -1527,9 +1537,9 @@
 								<td><span class="table-link">{project.label}</span></td>
 								<td>{project.tag || '—'}</td>
 								<td><span class={`status-pill ${statusClass(project)}`} title={statusTitle(project)}>{statusLabel(project)}</span></td>
-								<td class="align-right">{formatCurrency(project.income)}</td>
-								<td class="align-right">{formatCurrency(project.expenses)}</td>
-								<td class={`align-right ${amountClass(project.netIncome)}`}>{formatCurrency(project.netIncome)}</td>
+								<td class="align-right"><Amount value={project.income} currency={state.currency} /></td>
+								<td class="align-right"><Amount value={project.expenses} currency={state.currency} direction={-1} /></td>
+								<td class={`align-right ${amountClass(project.netIncome)}`}><Amount value={project.netIncome} currency={state.currency} /></td>
 								<td class="align-right">{project.transactionCount}</td>
 							</tr>
 						{:else}
@@ -1558,7 +1568,7 @@
 					</div>
 				</div>
 				<div class="detail-modal-actions">
-					<strong class={detailValueClass(detailSelection)}>{detailValue(detailSelection)}</strong>
+					<strong class={detailValueClass(detailSelection)}>{#if detailSelection.valueLabel}{detailSelection.valueLabel}{:else}<Amount value={detailSelection.amount} currency={state.currency} direction={detailDirection(detailSelection)} />{/if}</strong>
 					<button type="button" class="close-button" on:click={closeDetails} aria-label={$tr("Close details")}>{$tr("Close")}</button>
 				</div>
 			</header>
@@ -1614,9 +1624,9 @@
 										<td class={loanDirectionClass(row)}>{loanDirectionLabel(row)}</td>
 										<td><span class={`status-pill ${statusClass(row)}`} title={statusTitle(row)}>{statusLabel(row)}</span></td>
 										<td title={row.account}>{loanAccountLabel(row.account)}{#if getAccountDisplayContext(row.account)}<div class="account-reference">{getAccountDisplayContext(row.account)}</div>{/if}</td>
-										<td class="align-right">{row.receivable ? formatCurrency(row.receivable) : '—'}</td>
-										<td class="align-right">{row.payable ? formatCurrency(row.payable) : '—'}</td>
-										<td class={`align-right ${amountClass(row.netAmount)}`}>{formatCurrency(row.netAmount)}</td>
+										<td class="align-right">{#if row.receivable}<Amount value={row.receivable} currency={state.currency} />{:else}—{/if}</td>
+										<td class="align-right">{#if row.payable}<Amount value={row.payable} currency={state.currency} direction={-1} />{:else}—{/if}</td>
+										<td class={`align-right ${amountClass(row.netAmount)}`}><Amount value={row.netAmount} currency={state.currency} /></td>
 										<td class="align-right">{detailPercent(loanDetailBaseAmount(row, detailSelection), loanDetailTotal(detailSelection))}</td>
 									</tr>
 								{:else}
@@ -1673,7 +1683,7 @@
 								{#each filteredDetailGroups as group}
 									<tr class="group-row">
 										<td colspan={detailSelection.kind === 'investment' ? 4 : 1}>{$tr(group.label)}</td>
-										<td class={`align-right ${detailAmountClass(detailSelection.kind, group.amount)}`}>{formatCurrency(group.amount)}</td>
+										<td class={`align-right ${detailAmountClass(detailSelection.kind, group.amount)}`}><Amount value={group.amount} currency={state.currency} direction={detailDirection(detailSelection)} /></td>
 										{#if detailSelection.kind === 'investment'}
 											<td class="align-right">{formatOptionalCurrency(groupCostBasis(group.rows))}</td>
 											<td class="align-right">—</td>
@@ -1697,7 +1707,7 @@
 												<td>{row.commodity || ''}</td>
 												<td><span class={`status-pill ${statusClass(row)}`} title={statusTitle(row)}>{statusLabel(row)}</span></td>
 											{/if}
-											<td class={`align-right ${detailAmountClass(detailSelection.kind, row.amount)}`}>{formatCurrency(row.amount)}</td>
+											<td class={`align-right ${detailAmountClass(detailSelection.kind, row.amount)}`}><Amount value={row.amount} currency={state.currency} direction={detailDirection(detailSelection)} /></td>
 											{#if detailSelection.kind === 'investment'}
 												<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
 												<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
@@ -1725,7 +1735,7 @@
 											<td>{row.commodity || ''}</td>
 											<td><span class={`status-pill ${statusClass(row)}`} title={statusTitle(row)}>{statusLabel(row)}</span></td>
 										{/if}
-										<td class={`align-right ${detailAmountClass(detailSelection.kind, row.amount)}`}>{formatCurrency(row.amount)}</td>
+										<td class={`align-right ${detailAmountClass(detailSelection.kind, row.amount)}`}><Amount value={row.amount} currency={state.currency} direction={detailDirection(detailSelection)} /></td>
 										{#if detailSelection.kind === 'investment'}
 											<td class="align-right" title={investmentCostTitle(row)}>{investmentCostBasis(row)}</td>
 											<td class="align-right" title={investmentAverageCostTitle(row)}>{investmentAverageCost(row)}</td>
@@ -1785,7 +1795,7 @@
 										{/if}
 										<td title={counterpartTitle(transaction)}>{counterpartLabel(transaction)}</td>
 										<td title={transaction.account}>{detailAccountLabel(transaction.account)}</td>
-										<td class={`align-right ${amountClass(transaction.amount)}`}>{formatCurrency(transaction.amount)}</td>
+										<td class={`align-right ${amountClass(transaction.amount)}`}><Amount value={transaction.amount} currency={state.currency} /></td>
 									</tr>
 								{:else}
 									<tr><td colspan={detailSelection.kind === 'project' ? 6 : 5}>{$tr("No matching transactions.")}</td></tr>
@@ -1808,7 +1818,7 @@
 					<div class="period-label" title={holdingSelection.account}>{$tr("Code:")} {holdingSelection.commodity || '—'} · {detailRowLabel(holdingSelection)}</div>
 				</div>
 				<div class="detail-modal-actions">
-					<strong>{formatCurrency(holdingSelection.amount)}</strong>
+					<strong><Amount value={holdingSelection.amount} currency={state.currency} /></strong>
 					<button type="button" class="close-button" on:click={closeHoldingTransactions} aria-label={$tr("Close holding transactions")}>{$tr("Close")}</button>
 				</div>
 			</header>
@@ -1860,9 +1870,9 @@
 										<td>{transaction.date}</td>
 										<td title={transaction.payee}>{holdingTransactionLabel(transaction)}</td>
 										<td>{$tr(transaction.type)}</td>
-										<td class="align-right">{transaction.quantity}</td>
+										<td class="align-right"><Amount value={transaction.quantity} /></td>
 										<td class="align-right">{transaction.unitCost || '—'}</td>
-										<td class="align-right">{transaction.cashAmount || '—'}</td>
+										<td class="align-right"><Amount value={transaction.cashAmount} /></td>
 										<td class="align-right">{transaction.costBasis || '—'}</td>
 										<td title={transaction.accounts}>{transaction.accounts}</td>
 										<td class="align-right">
@@ -1914,7 +1924,7 @@
 					<div class="period-label">{state.periodLabel} · {accountSelection.account}</div>
 				</div>
 				<div class="detail-modal-actions">
-					<strong>{formatCurrency(accountSelection.amount)}</strong>
+					<strong><Amount value={accountBalanceValue(accountSelection)} currency={state.currency} /></strong>
 					<button type="button" class="close-button" on:click={closeAccountTransactions} aria-label={$tr("Close account transactions")}>{$tr("Close")}</button>
 				</div>
 			</header>
@@ -1953,8 +1963,8 @@
 									<tr>
 										<td>{transaction.date}</td>
 										<td title={transaction.payee}>{accountTransactionLabel(transaction)}</td>
-										<td class="align-right">{transaction.position}</td>
-										<td class="align-right">{transaction.balance || '—'}</td>
+										<td class="align-right"><Amount value={transaction.position} account={transaction.account} /></td>
+										<td class="align-right"><InventoryAmounts value={transaction.balance} account={transaction.account} /></td>
 									</tr>
 								{/each}
 							</tbody>

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { tr } from "../../../../i18n";
     import { createEventDispatcher } from 'svelte';
+    import Amount from '../../../common/Amount.svelte';
+    import InventoryAmounts from '../../../common/InventoryAmounts.svelte';
     import type { JournalBalance } from '../../../../models/journal';
 
     export let entry: JournalBalance;
@@ -32,14 +34,14 @@
                 {entry.account}
             </button>
             <div class="amount">
-                {entry.amount} {entry.currency}
+                <Amount value={entry.amount} currency={entry.currency} account={entry.account} />
             </div>
         </div>
         {#if entry.diff_amount}
              <div class="balance-row diff">
                 <div class="label">{$tr("Difference:")}</div>
                 <div class="amount error">
-                    {entry.diff_amount}
+                    <InventoryAmounts value={entry.diff_amount} account={entry.account} />
                 </div>
             </div>
         {/if}

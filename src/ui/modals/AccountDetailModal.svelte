@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Amount from '../common/Amount.svelte';
+	import { presentAmount, transactionDisplayDirection } from '../../utils/transactionDisplay';
 	import { tr } from "../../i18n";
 	import { createEventDispatcher } from "svelte";
 	import type { ChartConfiguration } from "chart.js/auto";
@@ -62,11 +64,10 @@
 	}
 
 	$: balanceHistory = (balanceHistoryInterval === "week" ? detail.balanceHistoryWeekly : detail.balanceHistoryMonthly) || [];
-	$: balanceHistoryChartConfig = buildBalanceHistoryChart(balanceHistory, detail.balanceHistoryCurrency);
+	$: displayedBalanceHistory = balanceHistory.map(point => ({ ...point, value: point.value * transactionDisplayDirection(account) }));
+	$: balanceHistoryChartConfig = buildBalanceHistoryChart(displayedBalanceHistory, detail.balanceHistoryCurrency);
 
-	function formatBalanceAmount(value: number): string {
-		return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
-	}
+
 
 	function buildBalanceHistoryChart(
 		history: Array<{ date: string; label: string; value: number }>,
@@ -100,7 +101,7 @@
 						mode: "index",
 						intersect: false,
 						callbacks: {
-							label: (context) => `Balance: ${formatBalanceAmount(context.parsed.y)} ${currency}`,
+							label: (context) => `Balance: ${presentAmount(context.parsed.y, currency).text}`,
 						},
 					},
 				},
@@ -194,10 +195,10 @@
 								</tr>
 							</thead>
 							<tbody>
-								{#each balanceHistory.slice().reverse() as point}
+								{#each displayedBalanceHistory.slice().reverse() as point}
 									<tr>
 										<td>{point.label}</td>
-										<td>{formatBalanceAmount(point.value)}</td>
+										<td><Amount value={point.value} currency={detail.balanceHistoryCurrency} /></td>
 									</tr>
 								{/each}
 							</tbody>

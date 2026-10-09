@@ -8,6 +8,8 @@
   can be swapped in the same UI area.
 -->
 <script lang="ts">
+	import Amount from './Amount.svelte';
+	import { presentAmount } from '../../utils/transactionDisplay';
 	import { tr } from "../../i18n";
 	import { createEventDispatcher } from 'svelte';
 	import type { AccountItem } from '../../controllers/BalanceSheetController';
@@ -19,7 +21,6 @@
 	export let liabilities: AccountItem[] = [];
 	export let equity: AccountItem[]      = [];
 	export let currency: string           = 'USD';
-	export let decimals: number            = 2;
 	export let totalAssets: number        = 0;
 	export let totalLiabilities: number   = 0;
 	export let totalEquity: number        = 0;
@@ -30,6 +31,7 @@
 	export let equityLabel: string              = 'Equity';
 	// Expected sign per section: true = expect negative balance, false = expect positive
 	export let assetsExpectNegative: boolean      = false;
+	export let amountDirection: 1 | -1 = 1;
 	export let liabilitiesExpectNegative: boolean = true;  // beancount liabilities are credit (negative)
 
 	// ── SVG geometry ─────────────────────────────────────────────────────────
@@ -134,7 +136,7 @@
 				id:          item.account,
 				label:       item.displayName,
 				path:        p,
-				amount:      item.amount,
+				amount:      presentAmount(item.amountNumber * amountDirection, currency).text,
 				value:       Math.abs(item.amountNumber),
 				color:       getColor(section, depth),
 				x0:          x,
@@ -186,7 +188,7 @@
 
 			return {
 				id, label, path: label,
-				amount:     `${value.toFixed(decimals)} ${currency}`,
+				amount:     presentAmount(value * amountDirection, currency).text,
 				value:      Math.abs(value),
 				color:      getColor(section, 0),
 				x0, x1,
@@ -383,7 +385,7 @@
 		{#if hoveredNode}
 			<div class="icicle-tooltip" style="left:{tooltipX}px;top:{tooltipY}px;">
 				<div class="tt-path">{hoveredNode.path}</div>
-				<div class="tt-amount">{hoveredNode.amount}</div>
+				<div class="tt-amount"><Amount value={hoveredNode.amount} /></div>
 				{#if hoveredNode.sourceItem?.children?.length}
 					<div class="tt-hint">{$tr("Click to drill down ›")}</div>
 				{/if}

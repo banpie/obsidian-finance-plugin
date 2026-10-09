@@ -7,6 +7,8 @@
   Supports hover tooltips and click-to-drill-down navigation.
 -->
 <script lang="ts">
+	import Amount from './Amount.svelte';
+	import { presentAmount } from '../../utils/transactionDisplay';
 	import { tr } from "../../i18n";
 	import { createEventDispatcher } from 'svelte';
 	import type { AccountItem } from '../../controllers/BalanceSheetController';
@@ -18,7 +20,6 @@
 	export let liabilities: AccountItem[] = [];
 	export let equity: AccountItem[]      = [];
 	export let currency: string           = 'USD';
-	export let decimals: number            = 2;
 	export let totalAssets: number        = 0;
 	export let totalLiabilities: number   = 0;
 	export let totalEquity: number        = 0;
@@ -31,6 +32,8 @@
 	export let assetsExpectNegative: boolean      = false;
 	export let liabilitiesExpectNegative: boolean = true;  // beancount liabilities are credit (negative)
 
+	export let amountDirection: 1 | -1 = 1;
+	export let signColors = false;
 	// ── SVG geometry ─────────────────────────────────────────────────────────
 	const SIZE    = 480;
 	const CX      = SIZE / 2;
@@ -78,19 +81,22 @@
 	};
 
 	function getColor(section: string, depth: number, negative: boolean = false): string {
-		const hue  = SECTION_HUE[section] ?? 200;
+		const displaySection = signColors ? (negative === (amountDirection === 1) ? 'Liabilities' : 'Assets') : section;
+		const hue  = SECTION_HUE[displaySection] ?? 200;
 		const sat  = 52;
 		const lig  = Math.min(72, 36 + depth * 10);
 		return `hsl(${hue}, ${sat}%, ${lig}%)`;
 	}
 
 	function getHoverColor(section: string, negative: boolean = false): string {
-		const hue = SECTION_HUE[section] ?? 200;
+		const displaySection = signColors ? (negative === (amountDirection === 1) ? 'Liabilities' : 'Assets') : section;
+		const hue = SECTION_HUE[displaySection] ?? 200;
 		return `hsl(${hue}, 65%, 55%)`;
 	}
 
 	// ── Anomaly detection ────────────────────────────────────────────────────
 	function isAnomalous(section: string, negative: boolean): boolean {
+		if (signColors) return false; // Income reversals and net expense refunds are valid signed flows.
 		if (section === 'Assets')      return assetsExpectNegative ? !negative : negative;
 		if (section === 'Liabilities') return liabilitiesExpectNegative ? !negative : negative;
 		return negative; // equity: expect positive
@@ -125,7 +131,7 @@
 				id:          item.account,
 				label:       item.displayName,
 				path:        p,
-				amount:      item.amount,
+				amount:      presentAmount(item.amountNumber * amountDirection, currency).text,
 				value:       Math.abs(item.amountNumber),
 				color:       getColor(section, depth, isNeg),
 				startAngle:  angle,
@@ -182,7 +188,7 @@
 
 			return {
 				id, label, path: label,
-				amount:     `${value.toFixed(decimals)} ${currency}`,
+				amount:     presentAmount(value * amountDirection, currency).text,
 				value:      Math.abs(value),
 				color:      getColor(section, 0, value < 0),
 				startAngle: sa,
@@ -309,17 +315,17 @@
 			: title;
 
 	$: centreSectionTotal = (() => {
-		if (title === assetsLabel)      return totalAssets;
-		if (title === liabilitiesLabel) return totalLiabilities;
-		if (title === equityLabel)      return totalEquity;
-		// "All Accounts" — show net worth (Assets minus Liabilities)
-		return Math.abs(totalAssets) - Math.abs(totalLiabilities);
+		if (assets.length && !liabilities.length && !equity.length) return totalAssets;
+		if (liabilities.length && !assets.length && !equity.length) return totalLiabilities;
+		if (equity.length && !assets.length && !liabilities.length) return totalEquity;
+		// Native liability balances are already negative. Selection must not depend on translated titles.
+		return totalAssets + totalLiabilities;
 	})();
 
 	$: centreAmount = hoveredNode
 		? hoveredNode.amount
 		: drillStack.length === 0
-			? `${centreSectionTotal.toFixed(decimals)} ${currency}`
+			? presentAmount(centreSectionTotal * amountDirection, currency).text
 			: '';
 </script>
 
@@ -425,7 +431,7 @@
 				text-anchor="middle"
 				dominant-baseline="middle"
 				font-size="11"
-				fill="var(--text-muted)"
+				fill={centreAmount.startsWith('+') ? 'var(--color-green)' : centreAmount.startsWith('-') ? 'var(--color-red)' : 'var(--text-muted)'}
 				pointer-events="none"
 			>{centreAmount}</text>
 		</svg>
@@ -434,7 +440,7 @@
 		{#if hoveredNode}
 			<div class="sunburst-tooltip" style="left:{tooltipX}px;top:{tooltipY}px;">
 				<div class="tt-path">{hoveredNode.path}</div>
-				<div class="tt-amount">{hoveredNode.amount}</div>
+				<div class="tt-amount"><Amount value={hoveredNode.amount} /></div>
 				{#if hoveredNode.sourceItem?.children?.length}
 					<div class="tt-hint">{$tr("Click to drill down ›")}</div>
 				{/if}

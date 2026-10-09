@@ -3,9 +3,44 @@ import { describe, expect, it, vi } from 'vitest';
 import type BeancountPlugin from '../src/main';
 import { TransactionController } from '../src/controllers/TransactionController';
 import { getTransactionsQuery } from '../src/queries';
-import { displayTransactionAmount, presentTransactionRow } from '../src/utils/transactionDisplay';
+import { displayTransactionAmount, presentTransactionRow, presentAmount, presentInventoryAmounts, monetaryPrecision, presentScheduledAmount } from '../src/utils/transactionDisplay';
+import type { ScheduledTransactionItem } from '../src/models/schedule';
 
 describe('transaction cash direction display', () => {
+    it('does not classify a scheduled expense or internal transfer as income from its cached positive magnitude', () => {
+        const schedule = { displayCurrency: 'CNY', displayAmount: 50, postings: [
+            { account: 'Assets:Bank', amount: -50, currency: 'CNY' },
+            { account: 'Expenses:Rent', amount: 50, currency: 'CNY' },
+        ] } as ScheduledTransactionItem;
+        expect(presentScheduledAmount(schedule).text).toBe('-50.00 CNY');
+        schedule.postings = [{ account: 'Income:Salary', amount: -50, currency: 'CNY' }];
+        expect(presentScheduledAmount(schedule).text).toBe('+50.00 CNY');
+        schedule.postings = [{ account: 'Expenses:Rent', amount: -50, currency: 'CNY' }];
+        expect(presentScheduledAmount(schedule).text).toBe('+50.00 CNY');
+        schedule.postings = [
+            { account: 'Assets:Bank', amount: -50, currency: 'CNY' },
+            { account: 'Assets:Cash', amount: 50, currency: 'CNY' },
+        ];
+        expect(presentScheduledAmount(schedule)).toEqual({ text: '50.00 CNY', value: 0, color: 'neutral' });
+    });
+
+    it('shares the same formatting across numeric reports and grouped CSV strings', () => {
+        expect(presentAmount(2400, 'CNY').text).toBe('+2,400.00 CNY');
+        expect(presentAmount('2,400.00 CNY').text).toBe('+2,400.00 CNY');
+        expect(presentAmount(600, 'CNY', -1).text).toBe('-600.00 CNY');
+        expect(presentAmount(null, 'CNY').text).toBe('—');
+        expect(presentAmount(1e-8, 'BTC').text).toBe('+0.00000001 BTC');
+        expect(presentAmount(1e-8, 'CNY').text).toBe('+0.00000001 CNY');
+        expect(monetaryPrecision('CNY', 0)).toBe(2);
+        expect(monetaryPrecision('JPY', 2)).toBe(0);
+    });
+
+    it('keeps currency signs separate without splitting grouping or lot annotations', () => {
+        expect(presentInventoryAmounts('(-1,000.31 CNY, 0.01 USD)', 'Income:Rental').map(x => x.text))
+            .toEqual(['+1,000.31 CNY', '-0.01 USD']);
+        expect(presentInventoryAmounts('(0.000001 BTC {10000 USD, 2026-09-01}, -3 HKD)').map(x => x.text))
+            .toEqual(['+0.000001 BTC {10000 USD, 2026-09-01}', '-3.00 HKD']);
+    });
     it.each([
         ['Income:Rental', '-2400.0 CNY', '+2,400.00 CNY', 2400, 'positive'],
         ['Income:Rental', '600.0 CNY', '-600.00 CNY', -600, 'negative'],

@@ -1,5 +1,6 @@
 <!-- src/ui/partials/dashboard/cards/CommodityCard.svelte -->
 <script lang="ts">
+	import Amount from '../../../common/Amount.svelte';
 	import { tr } from "../../../../i18n";
 	import { createEventDispatcher } from "svelte";
 	import type { CommodityInfo } from "../../../../controllers/CommoditiesController";
@@ -168,8 +169,8 @@
 			<!-- Value (primary) -->
 			{#if (commodity?.valueInOperatingCurrency ?? 0) !== 0}
 				<div class="value-container" title={`${formatAmount(commodity.valueInOperatingCurrency ?? 0, operatingCurrencyDecimals, true)} ${operatingCurrency}`}>
-					<span class="value-main">{formatValue(commodity.valueInOperatingCurrency ?? 0)}</span>
-					<span class="value-currency">{operatingCurrency}</span>
+					<span class="value-main"><Amount value={commodity.valueInOperatingCurrency ?? 0} currency={operatingCurrency} /></span>
+
 				</div>
 			{:else if commodity?.holdingsRaw && !commodity?.isOperatingCurrency}
 				<!-- Has holdings but no price to convert, so no market value is available. -->

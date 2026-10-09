@@ -1,3 +1,4 @@
+import { presentAmount } from '../utils/transactionDisplay';
 import { t } from "../i18n";
 // src/controllers/BalanceSheetController.ts
 
@@ -365,7 +366,7 @@ export class BalanceSheetController {
 						mode: 'index',
 						intersect: false,
 						callbacks: {
-							label: (context: { parsed: { y: number | null } }) => `Net Worth: ${context.parsed.y !== null ? context.parsed.y.toLocaleString() : 0} ${currency}`
+							label: (context: { parsed: { y: number | null } }) => `Net Worth: ${presentAmount(context.parsed.y, currency).text}`
 						}
 					}
 				},

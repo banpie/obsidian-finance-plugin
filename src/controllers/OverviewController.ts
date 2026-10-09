@@ -1,4 +1,5 @@
 import { t } from "../i18n";
+import { monetaryPrecision } from '../utils/transactionDisplay';
 // src/controllers/OverviewController.ts
 
 import { writable, type Writable, get } from 'svelte/store';
@@ -110,7 +111,8 @@ export class OverviewController {
 			const reportingMode = this.plugin.getActiveLedgerProfile()?.reportingMode === 'corporate' ? 'corporate' : 'personal';
 			const reportingBasis = reportingMode === 'corporate' ? 'accrual' : 'cash-flow';
 			await this.plugin.currencyPrecisionService.ensureLoaded();
-			const decimals = this.plugin.currencyPrecisionService.getDecimals(reportingCurrency);
+			const decimals = monetaryPrecision(reportingCurrency, this.plugin.currencyPrecisionService.getDecimals(reportingCurrency));
+
 			const [netWorthResult, periodIncomeResult, periodExpensesResult, periodSavingsResult] = await Promise.all([
 				this.plugin.runQuery(queries.getTotalWorthQuery(reportingCurrency, decimals, period.endDate, period.valuationDate)),
 				this.plugin.runQuery(queries.getPeriodIncomeQuery(reportingCurrency, decimals, period.startDate, period.endDate, reportingBasis)),
@@ -124,7 +126,7 @@ export class OverviewController {
 			Logger.log("OverviewController: Parsed Net Worth:", netWorthNum);
 
 			const newState: Partial<OverviewState> = {
-				netWorth: `${netWorthNum.toFixed(decimals)} ${reportingCurrency}`,
+				netWorth: `${netWorthNum} ${reportingCurrency}`,
 				currency: reportingCurrency,
 				reportingMode,
 				periodLabel: period.label,
@@ -264,8 +266,7 @@ export class OverviewController {
 	}
 
 	private formatCurrency(amount: number, currency: string): string {
-		const decimals = this.plugin.currencyPrecisionService.getDecimals(currency);
-		return `${amount.toFixed(decimals)} ${currency}`;
+		return `${amount} ${currency}`;
 	}
 
 	private formatPeriodResults(incomeCsv: string, expensesCsv: string, savingsCsv: string, currency: string): Partial<OverviewState> {
