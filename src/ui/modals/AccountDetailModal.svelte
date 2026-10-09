@@ -6,6 +6,7 @@
 	import ChartComponent from "../common/ChartComponent.svelte";
 	import CustomSelect from "../common/CustomSelect.svelte";
 	import TabBar from "../common/TabBar.svelte";
+	import { formatAccountDisplayName } from "../../utils/displayNames";
 
 	export let account: string;
 	export let detail: AccountDetail;
@@ -27,7 +28,9 @@
 
 	function shortAccount(acct: string): string {
 		const parts = acct.split(":");
-		return parts.length > 1 ? parts.slice(1).join(":") : acct;
+		const leaf = parts[parts.length - 1];
+		const formatted = formatAccountDisplayName(acct, leaf);
+		return formatted !== leaf ? formatted : (parts.length > 1 ? parts.slice(1).join(":") : acct);
 	}
 
 	function handleSave() {

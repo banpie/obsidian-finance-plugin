@@ -8,6 +8,7 @@
 	import ReportFilterBar from '../../common/ReportFilterBar.svelte';
 	import PeriodNavigator from './PeriodNavigator.svelte';
 	import { getBalanceCategoryLabel } from '../../../utils/accountLabels';
+	import { formatAccountDisplayName, formatInvestmentDisplayName, formatLoanDisplayName, getAccountDisplayContext } from '../../../utils/displayNames';
 	import {
 		INVESTMENT_TYPE_LABELS,
 		getInvestmentTypeKey,
@@ -348,7 +349,7 @@
 
 	function detailAccountLabel(account: string | undefined): string {
 		const parts = (account || '').split(':');
-		return parts.slice(2).join(':') || parts[1] || account || 'Other';
+		return formatAccountDisplayName(account, parts.slice(2).join(':') || parts[1] || account || 'Other');
 	}
 
 	function rowsForCategory<T extends { account?: string }>(rows: T[], category: string | null): T[] {
@@ -363,7 +364,7 @@
 
 	function reportRowSearchValues(row: ReportRow): Array<string | number | null | undefined> {
 		const type = row.investmentType || getInvestmentTypeKey(row.account);
-		return [row.label, row.account, row.commodity, row.commodityName, type, getInvestmentTypeLabel(type)];
+		return [row.label, row.account, row.commodity, row.commodityName, detailRowLabel(row), commodityNameLabel(row), type, getInvestmentTypeLabel(type)];
 	}
 
 	function transactionSearchValues(transaction: ReportTransaction): Array<string | number | null | undefined> {
@@ -529,8 +530,8 @@
 
 	function commodityNameLabel(row: ReportRow): string {
 		const name = (row.commodityName || '').trim();
-		if (name && row.commodity !== state.currency) return name;
-		return row.label || row.commodity || '';
+		if (name && row.commodity !== state.currency) return formatInvestmentDisplayName(name);
+		return formatAccountDisplayName(row.account, row.label || row.commodity || '');
 	}
 
 	function assetDetailGroups(): DetailGroup[] {
@@ -789,7 +790,7 @@
 
 	function loanAccountLabel(account: string): string {
 		const parts = account.split(':');
-		return parts.slice(2).join(':') || account;
+		return formatAccountDisplayName(account, parts.slice(2).join(':') || account);
 	}
 
 	function openLoanTransactions(row: ReportLoanRow) {
@@ -969,7 +970,7 @@
 	$: loanLifecycleRows = state.loans.filter(row => matchesLifecycleFilter(row.status, loanLifecycleFilter));
 	$: displayedLoanRows = loanLifecycleRows.filter(row =>
 		(loanDirectionFilter === 'all' || row.direction === loanDirectionFilter)
-		&& matchesReportSearch(loanSearch, [row.label, row.account, loanAccountLabel(row.account), loanDirectionLabel(row), statusLabel(row)])
+		&& matchesReportSearch(loanSearch, [row.label, row.account, formatLoanDisplayName(row.label), loanAccountLabel(row.account), loanDirectionLabel(row), statusLabel(row)])
 	);
 
 	$: availableProjectTags = Array.from(new Set(state.projects.map(project => project.tag).filter(Boolean))).sort((a, b) => a.localeCompare(b));
@@ -993,7 +994,7 @@
 	$: detailLoanBaseRows = loanRowsForDetail(detailSelection);
 	$: filteredDetailLoanRows = detailLoanBaseRows.filter(row =>
 		matchesLifecycleFilter(row.status, detailRowLifecycleFilter)
-		&& matchesReportSearch(detailRowSearch, [row.label, row.account, loanAccountLabel(row.account), loanDirectionLabel(row), statusLabel(row)])
+		&& matchesReportSearch(detailRowSearch, [row.label, row.account, formatLoanDisplayName(row.label), loanAccountLabel(row.account), loanDirectionLabel(row), statusLabel(row)])
 	);
 	$: filteredDetailTransactions = detailTransactions.filter(transaction =>
 		(detailTransactionTypeFilter === 'all' || transactionTypeLabel(transaction) === detailTransactionTypeFilter)
@@ -1331,7 +1332,7 @@
 							>
 								<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 								<td>{row.commodity || ''}</td>
-								<td title={row.account || row.label}>{row.label}</td>
+								<td title={row.account || row.label}>{detailRowLabel(row)}{#if getAccountDisplayContext(row.account)}<div class="account-reference">{getAccountDisplayContext(row.account)}</div>{/if}</td>
 								<td><span class={`status-pill ${statusClass(row)}`} title={statusTitle(row)}>{statusLabel(row)}</span></td>
 								<td class="align-right" title={investmentQuantityTitle(row)}>{investmentQuantity(row)}</td>
 								<td class="align-right price-cell" title={investmentPriceTitle(row)}>
@@ -1430,10 +1431,10 @@
 								on:keydown={(event) => handleLoanRowKeydown(event, row)}
 								title={$tr("View loan transactions")}
 							>
-								<td><span class="table-link">{row.label}</span></td>
+								<td title={row.label}><span class="table-link">{formatLoanDisplayName(row.label)}</span></td>
 								<td class={loanDirectionClass(row)}>{loanDirectionLabel(row)}</td>
 								<td><span class={`status-pill ${statusClass(row)}`} title={statusTitle(row)}>{statusLabel(row)}</span></td>
-								<td title={row.account}>{loanAccountLabel(row.account)}</td>
+								<td title={row.account}>{loanAccountLabel(row.account)}{#if getAccountDisplayContext(row.account)}<div class="account-reference">{getAccountDisplayContext(row.account)}</div>{/if}</td>
 								<td class="align-right">{row.receivable ? formatCurrency(row.receivable) : '—'}</td>
 								<td class="align-right">{row.payable ? formatCurrency(row.payable) : '—'}</td>
 								<td class={`align-right ${amountClass(row.netAmount)}`}>{formatCurrency(row.netAmount)}</td>
@@ -1603,10 +1604,10 @@
 										on:keydown={(event) => handleLoanRowKeydown(event, row)}
 										title={$tr("View loan transactions")}
 									>
-										<td><span class="table-link">{row.label}</span></td>
+										<td title={row.label}><span class="table-link">{formatLoanDisplayName(row.label)}</span></td>
 										<td class={loanDirectionClass(row)}>{loanDirectionLabel(row)}</td>
 										<td><span class={`status-pill ${statusClass(row)}`} title={statusTitle(row)}>{statusLabel(row)}</span></td>
-										<td title={row.account}>{loanAccountLabel(row.account)}</td>
+										<td title={row.account}>{loanAccountLabel(row.account)}{#if getAccountDisplayContext(row.account)}<div class="account-reference">{getAccountDisplayContext(row.account)}</div>{/if}</td>
 										<td class="align-right">{row.receivable ? formatCurrency(row.receivable) : '—'}</td>
 										<td class="align-right">{row.payable ? formatCurrency(row.payable) : '—'}</td>
 										<td class={`align-right ${amountClass(row.netAmount)}`}>{formatCurrency(row.netAmount)}</td>
@@ -1684,7 +1685,7 @@
 											on:keydown={(event) => handleHoldingRowKeydown(event, row)}
 											class="child-row"
 										>
-											<td title={row.account || row.label}>{detailDisplayLabel(row)}</td>
+											<td title={row.account || row.label}>{detailDisplayLabel(row)}{#if getAccountDisplayContext(row.account)}<div class="account-reference">{[row.commodity, getAccountDisplayContext(row.account)].filter(Boolean).join(' · ')}</div>{/if}</td>
 											{#if detailSelection.kind === 'investment'}
 												<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 												<td>{row.commodity || ''}</td>
@@ -1712,7 +1713,7 @@
 										on:click={(event) => canOpenCashFlowCategory(row) ? handleCashFlowCategoryRow(row) : handleHoldingRowClick(event, row)}
 										on:keydown={(event) => canOpenCashFlowCategory(row) ? handleCashFlowCategoryKeydown(event, row) : handleHoldingRowKeydown(event, row)}
 									>
-										<td title={row.account || row.label}>{detailDisplayLabel(row)}</td>
+										<td title={row.account || row.label}>{detailDisplayLabel(row)}{#if getAccountDisplayContext(row.account)}<div class="account-reference">{[row.commodity, getAccountDisplayContext(row.account)].filter(Boolean).join(' · ')}</div>{/if}</td>
 										{#if detailSelection.kind === 'investment'}
 											<td title={row.commodityName || row.label}><span class="table-link">{commodityNameLabel(row)}</span></td>
 											<td>{row.commodity || ''}</td>
@@ -1798,7 +1799,7 @@
 			<header class="detail-modal-header">
 				<div>
 					<h3>{commodityNameLabel(holdingSelection)}</h3>
-					<div class="period-label">{$tr("Code:")} {holdingSelection.commodity || '—'} · {holdingSelection.label}</div>
+					<div class="period-label" title={holdingSelection.account}>{$tr("Code:")} {holdingSelection.commodity || '—'} · {detailRowLabel(holdingSelection)}</div>
 				</div>
 				<div class="detail-modal-actions">
 					<strong>{formatCurrency(holdingSelection.amount)}</strong>
@@ -1963,6 +1964,12 @@
 </div>
 
 <style>
+	.account-reference {
+		color: var(--text-muted);
+		font-size: var(--font-smallest);
+		margin-top: 2px;
+	}
+
 	.reports-tab {
 		display: flex;
 		flex-direction: column;

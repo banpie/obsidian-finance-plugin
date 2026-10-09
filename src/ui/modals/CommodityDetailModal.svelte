@@ -6,6 +6,7 @@
 	import CustomSelect from "../common/CustomSelect.svelte";
 	import TabBar from "../common/TabBar.svelte";
 	import { formatSignificantAmount } from "../../utils/index";
+	import { formatInvestmentDisplayName } from "../../utils/displayNames";
 	export let symbol: string;
 	export let commodity: any = {
 		symbol: "",
@@ -83,7 +84,8 @@
 	$: nativePriceDate = commodity?.nativePriceDate;
 	$: convertedPriceDate = commodity?.priceDate;
 	$: showNativePrice = nativeCurrentPrice && commodity?.nativeCurrency !== commodity?.operatingCurrency;
-	$: displayName = commodity?.displayName || commodity?.metadata?.name || "";
+	$: rawDisplayName = commodity?.displayName || commodity?.metadata?.name || "";
+	$: displayName = formatInvestmentDisplayName(String(rawDisplayName));
 	$: priceHistory = commodity?.priceHistory || [];
 	$: priceHistoryChartConfig = buildPriceHistoryChart(priceHistory);
 	$: otherMeta = Object.entries(commodity?.metadata || {}).filter(
@@ -193,7 +195,7 @@
 		<div class="identity-info">
 			<div class="symbol-name">{symbol}</div>
 			{#if displayName}
-				<div class="display-name">{displayName}</div>
+				<div class="display-name" title={String(rawDisplayName)}>{displayName}</div>
 			{/if}
 			{#if showNativePrice}
 				<div class="current-price">

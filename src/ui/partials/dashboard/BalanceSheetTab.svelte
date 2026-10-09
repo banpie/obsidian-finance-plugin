@@ -16,6 +16,7 @@
 	import SkeletonLoader from '../../common/SkeletonLoader.svelte';
 	import ErrorBanner from '../../common/ErrorBanner.svelte';
 	import CustomSelect from '../../common/CustomSelect.svelte';
+	import { getAccountDisplayContext } from '../../../utils/displayNames';
 
 	const dispatch = createEventDispatcher();
 
@@ -431,6 +432,9 @@
 									<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 								{/if}
 								{getIndentation(item.level)}{item.displayName}
+								{#if !item.isCategory && getAccountDisplayContext(item.account)}
+									<span class="account-reference" title={item.account}>{getAccountDisplayContext(item.account)}</span>
+								{/if}
 							</td>
 								<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 									{item.amount}
@@ -469,6 +473,9 @@
 									<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 								{/if}
 								{getIndentation(item.level)}{item.displayName}
+								{#if !item.isCategory && getAccountDisplayContext(item.account)}
+									<span class="account-reference" title={item.account}>{getAccountDisplayContext(item.account)}</span>
+								{/if}
 							</td>
 								<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 									{item.amount}
@@ -507,6 +514,9 @@
 									<span class="collapse-icon">{isCollapsed(item.account) ? '▶' : '▼'}</span>
 								{/if}
 								{getIndentation(item.level)}{item.displayName}
+								{#if !item.isCategory && getAccountDisplayContext(item.account)}
+									<span class="account-reference" title={item.account}>{getAccountDisplayContext(item.account)}</span>
+								{/if}
 							</td>
 								<td class="align-right amount-cell" class:category-amount={item.isCategory} on:click={(e) => !item.isCategory && handleAccountNavigate(item.account, e)}>
 									{item.amount}
@@ -527,6 +537,12 @@
 </div>
 
 <style>
+	.account-reference {
+		color: var(--text-muted);
+		font-size: var(--font-smallest);
+		margin-left: 8px;
+	}
+
 	.balance-sheet-container { 
 		padding: 0; 
 		width: 100%;
