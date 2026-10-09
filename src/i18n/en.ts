@@ -37,6 +37,8 @@ export const en: Record<string, string> = {
   "Income": "Income",
   "Expenses": "Expenses",
   "Expense": "Expense",
+  "Refund / expense reduction": "Refund / expense reduction",
+  "Income reversal": "Income reversal",
   "Net Income": "Net Income",
   "Net Profit": "Net Profit",
   "Net Result": "Net Result",

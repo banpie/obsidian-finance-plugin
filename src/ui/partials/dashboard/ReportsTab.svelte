@@ -9,6 +9,7 @@
 	import PeriodNavigator from './PeriodNavigator.svelte';
 	import { getBalanceCategoryLabel } from '../../../utils/accountLabels';
 	import { formatAccountDisplayName, formatInvestmentDisplayName, formatLoanDisplayName, getAccountDisplayContext } from '../../../utils/displayNames';
+	import { projectReportKey, projectTransactionTypeLabelKey } from '../../../utils/projectReports';
 	import {
 		INVESTMENT_TYPE_LABELS,
 		getInvestmentTypeKey,
@@ -482,7 +483,8 @@
 	}
 
 	function transactionTypeLabel(transaction: ReportTransaction): string {
-		return 'type' in transaction ? (transaction as ReportProjectTransaction).type : '';
+		if (!('type' in transaction)) return '';
+		return $tr(projectTransactionTypeLabelKey((transaction as ReportProjectTransaction).type, transaction.amount));
 	}
 
 	function counterpartLabel(transaction: ReportTransaction): string {
@@ -884,7 +886,7 @@
 		return rows.filter(row => {
 			const projectMatches = label === null && tag === undefined
 				? true
-				: row.projectLabel === (label || 'Unassigned') && row.projectTag === (tag || '');
+				: projectReportKey(row.projectLabel, row.projectTag) === projectReportKey(label, tag);
 			const typeMatches = type ? row.type === type : true;
 			return projectMatches && typeMatches;
 		});

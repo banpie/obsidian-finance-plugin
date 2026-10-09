@@ -37,6 +37,8 @@ export const zhCN: Record<string, string> = {
   "Income": "收入",
   "Expenses": "支出",
   "Expense": "支出",
+  "Refund / expense reduction": "退款／支出冲减",
+  "Income reversal": "收入冲减",
   "Net Income": "净收入",
   "Net Profit": "净利润",
   "Net Result": "收支结余",
