@@ -546,11 +546,6 @@ export default class BeancountPlugin extends Plugin {
 		for (const command of this.localizedCommands) {
 			this.addCommand({ ...command, name: t(command.name) });
 		}
-		for (const leaf of this.app.workspace.getLeavesOfType(UNIFIED_DASHBOARD_VIEW_TYPE)) {
-			if (leaf.view instanceof UnifiedDashboardView) {
-				leaf.view.component?.$set({ languagePreference: this.settings.language });
-			}
-		}
 	}
 
 	public isActiveLedgerReadOnly(): boolean {
