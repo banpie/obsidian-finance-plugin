@@ -1,3 +1,5 @@
+import { formatAccountDisplayName } from './displayNames';
+
 /**
  * Returns a user-facing label for a balance-sheet major category.
  *
@@ -21,5 +23,5 @@ export function getBalanceCategoryLabel(account: string | undefined): string {
 export function getBalanceAccountDisplayName(accountPath: string, fallback: string): string {
 	if (accountPath === 'Assets:Loans') return 'Loan Receivables';
 	if (accountPath === 'Liabilities:Loans') return 'Loan Payables';
-	return fallback;
+	return formatAccountDisplayName(accountPath, fallback);
 }

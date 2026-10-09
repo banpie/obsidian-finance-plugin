@@ -17,6 +17,7 @@ import {
 } from '../utils/index';
 import { PriceService } from '../services/price.service';
 import { Notice } from 'obsidian';
+import { formatInvestmentDisplayName } from '../utils/displayNames';
 
 /**
  * Interface representing metadata and state of a single commodity.
@@ -189,7 +190,8 @@ export class CommoditiesController {
         const normalizedSearch = searchTerm.toLowerCase();
         const filtered = commodities.filter(commodity =>
             commodity.symbol.toLowerCase().includes(normalizedSearch) ||
-            (commodity.displayName || '').toLowerCase().includes(normalizedSearch)
+            (commodity.displayName || '').toLowerCase().includes(normalizedSearch) ||
+            formatInvestmentDisplayName(commodity.displayName || '').toLowerCase().includes(normalizedSearch)
         );
         this.filteredCommodities.set(filtered);
     }

@@ -4,6 +4,7 @@
 	import { createEventDispatcher } from "svelte";
 	import type { CommodityInfo } from "../../../../controllers/CommoditiesController";
 	import { formatAmount } from "../../../../utils/index";
+	import { formatInvestmentDisplayName } from "../../../../utils/displayNames";
 
 	export let commodity: CommodityInfo;
 	export let index: number = 0;
@@ -107,7 +108,8 @@
 		}
 	}
 
-	$: displayName = commodity?.displayName || commodity?.metadata?.name || "";
+	$: rawDisplayName = commodity?.displayName || commodity?.metadata?.name || "";
+	$: displayName = formatInvestmentDisplayName(String(rawDisplayName));
 	$: isFiatCurrency = fiatCurrencySymbols.has(commodity?.symbol || '');
 	$: priceLabel = isFiatCurrency ? 'FX Rate' : $tr("Unit Price");
 	$: holdingsLabel = isFiatCurrency ? $tr("Balance") : $tr("Units");
@@ -182,7 +184,7 @@
 			{/if}
 
 			{#if displayName}
-				<div class="card-display-name" title={displayName}>{displayName}</div>
+				<div class="card-display-name" title={String(rawDisplayName)}>{displayName}</div>
 			{/if}
 
 			{#if commodity?.isOperatingCurrency}
