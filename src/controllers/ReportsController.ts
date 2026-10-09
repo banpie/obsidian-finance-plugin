@@ -8,6 +8,7 @@ import { Logger } from '../utils/logger';
 import { getBalanceCategoryLabel } from '../utils/accountLabels';
 import { findInvestmentLifecycle, parseInvestmentLifecycleCsv, type InvestmentLifecycleVerification } from '../utils/investmentLifecycle';
 import { getInvestmentTypeKey } from '../utils/reportFilters';
+import { projectReportKey } from '../utils/projectReports';
 import type { InvestmentGainLossColorConvention } from '../settings';
 
 export type ReportsPeriodMode = 'month' | 'year';
@@ -868,9 +869,20 @@ export class ReportsController {
 		includeInactive = false
 	): ReportProjectRow[] {
 		const projects = new Map<string, ReportProjectRow>();
+		const labelsByTag = new Map<string, string>();
+		// Current-period names take precedence; history also names refund-only periods.
+		for (const row of [
+			...this.parseRows(incomeCsv),
+			...this.parseRows(expensesCsv),
+			...this.parseRows(projectNamesCsv),
+		]) {
+			const label = (row[0] || '').trim();
+			const tag = this.projectTag(row[1]);
+			if (tag && label && label !== tag && !labelsByTag.has(tag)) labelsByTag.set(tag, label);
+		}
 		const ensureProject = (label: string, tag: string): ReportProjectRow => {
-			const normalizedLabel = this.projectLabel(label, tag);
 			const normalizedTag = this.projectTag(tag);
+			const normalizedLabel = labelsByTag.get(normalizedTag) || this.projectLabel(label, tag);
 			const key = this.projectKey(normalizedLabel, normalizedTag);
 			const existing = projects.get(key);
 			if (existing) return existing;
@@ -906,6 +918,7 @@ export class ReportsController {
 		const transactionKeysByProject = new Map<string, Set<string>>();
 		for (const transaction of transactions) {
 			const project = ensureProject(transaction.projectLabel, transaction.projectTag);
+			transaction.projectLabel = project.label;
 			const key = this.projectKey(project.label, project.tag);
 			const transactionKeys = transactionKeysByProject.get(key) || new Set<string>();
 			transactionKeys.add(this.transactionKey(transaction.date, transaction.payee, transaction.narration));
@@ -1182,7 +1195,7 @@ export class ReportsController {
 	}
 
 	private projectKey(label: string, tag: string): string {
-		return `${label || 'Unassigned'}\u001f${tag || ''}`;
+		return projectReportKey(label, tag);
 	}
 
 	private balanceLifecycleStatus(amount: number, closeDate?: string, asOfDate?: string): ReportLifecycleStatus {
