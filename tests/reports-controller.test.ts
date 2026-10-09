@@ -13,6 +13,25 @@ function deferred<T>() {
 }
 
 describe('ReportsController', () => {
+    it('normalizes expense detail purchases and refunds without flipping already signed income', async () => {
+        const runQuery = vi.fn(async (query: string) => {
+            if (query === queries.getPeriodExpenseTransactionsQuery('CNY', 2, '2026-09-01', '2026-10-01')) return 'date,payee,narration,account,amount\n2026-09-01,Shop,Purchase,Expenses:Charging,25\n2026-09-08,Shop,Refund,Expenses:Charging,-5\n';
+            if (query === queries.getPeriodIncomeTransactionsQuery('CNY', 2, '2026-09-01', '2026-10-01')) return 'date,payee,narration,account,amount\n2026-09-01,Tenant,Rent,Income:Rental,2400\n2026-09-08,Tenant,Return,Income:Rental,-600\n';
+            return 'value\n0\n';
+        });
+        const plugin = {
+            settings: { activeLedgerProfileId: 'personal', operatingCurrency: 'CNY' },
+            getActiveLedgerProfile: () => ({ reportingMode: 'personal' }),
+            app: { vault: { adapter: { read: vi.fn().mockResolvedValue('') } } }, runQuery,
+        } as unknown as BeancountPlugin;
+        const controller = new ReportsController(plugin);
+        await controller.loadData('month', 2026, 9, 'custom-month');
+        const state = get(controller.state);
+        expect(state.error).toBeNull();
+        expect(state.expenseTransactions.map(row => row.amount)).toEqual([-25, 5]);
+        expect(state.incomeTransactions.map(row => row.amount)).toEqual([2400, -600]);
+    });
+
     it('retains reverse asset and liability balances in the period detail rows', async () => {
         const end = '2026-10-01', valuation = '2026-09-30';
         const runQuery = vi.fn(async (query: string) => {
