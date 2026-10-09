@@ -472,7 +472,7 @@ export class ReportsController {
 				incomeByAccount: this.withPercent(incomeByAccount, totalIncome),
 				expensesByAccount: this.withPercent(expensesByAccount, totalExpenses),
 				incomeTransactions: this.parseTransactionRows(incomeTransactionsCsv, counterpartAccounts),
-				expenseTransactions: this.parseTransactionRows(expenseTransactionsCsv, counterpartAccounts),
+				expenseTransactions: this.parseTransactionRows(expenseTransactionsCsv, counterpartAccounts, -1),
 				assetsByCategory: this.withPercent(assetsByCategory, totalAssets),
 				assetsByAccount: this.withPercent(assetsByAccount, totalAssets),
 				liabilitiesByCategory: this.withPercent(liabilitiesByCategory, totalLiabilities),
@@ -827,7 +827,7 @@ export class ReportsController {
 		return `${account}\u001f${commodity}`;
 	}
 
-	private parseTransactionRows(rawCsv: string, counterpartAccounts = new Map<string, string[]>()): ReportTransaction[] {
+	private parseTransactionRows(rawCsv: string, counterpartAccounts = new Map<string, string[]>(), direction: 1 | -1 = 1): ReportTransaction[] {
 		return this.parseRows(rawCsv)
 			.filter(row => row.length >= 5)
 			.map(row => ({
@@ -836,7 +836,7 @@ export class ReportsController {
 				narration: row[2],
 				account: row[3],
 				counterpartAccounts: counterpartAccounts.get(this.transactionKey(row[0], row[1], row[2])) || [],
-				amount: this.parseNumber(row[4]),
+				amount: this.parseNumber(row[4]) * direction,
 			}))
 			.filter(row => row.date && row.account && Math.abs(row.amount) >= 0.01);
 	}
