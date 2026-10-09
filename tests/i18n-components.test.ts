@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compile, preprocess } from 'svelte/compiler';
 import { createRequire } from 'node:module';
+import { runInNewContext } from 'node:vm';
 // Resolve the package's actual CJS export instead of Vite's synthetic named exports.
 const { sveltePreprocess } = createRequire(import.meta.url)('svelte-preprocess') as typeof import('svelte-preprocess');
 
@@ -14,6 +15,31 @@ function componentFiles(folder: string): string[] {
 }
 
 describe('localized Svelte components', () => {
+    it('keeps purchases and refunds in the expense filter when their display labels are translated', async () => {
+        const filename = path.resolve('src/ui/partials/dashboard/ReportsTab.svelte');
+        const result = await preprocess(readFileSync(filename, 'utf8'), sveltePreprocess(), { filename });
+        const typeFunction = result.code.match(/function transactionType\(transaction\)\s*\{[\s\S]*?\n\s*\}/)?.[0];
+        const expression = result.code.match(/\$:\s*filteredDetailTransactions\s*=\s*([\s\S]*?);/)?.[1];
+        expect(typeFunction).toBeTruthy();
+        expect(expression).toBeTruthy();
+        // Execute the real component's filter, with localized display text supplied.
+        const purchase = { type: 'Expense', amount: -20 };
+        const refund = { type: 'Expense', amount: 5 };
+        const income = { type: 'Income', amount: 100 };
+        const rows = [purchase, refund, income];
+        const apply = (type: string): unknown[] => runInNewContext(`${typeFunction}\n${expression}`, {
+            detailTransactions: rows,
+            detailTransactionTypeFilter: type,
+            detailTransactionSearch: '',
+            matchesReportSearch: () => true,
+            transactionSearchValues: () => [],
+            transactionTypeLabel: () => '退款／支出冲减',
+        }) as unknown[];
+        expect(apply('Expense')).toEqual([purchase, refund]);
+        expect(apply('Income')).toEqual([income]);
+        expect(apply('all')).toEqual(rows);
+    });
+
     it('compiles every real component without undefined translation functions or translated option values', async () => {
         for (const filename of componentFiles(path.resolve('src/ui'))) {
             const source = readFileSync(filename, 'utf8');
